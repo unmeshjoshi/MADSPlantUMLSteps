@@ -14,7 +14,7 @@ class DiagramGenerator {
         this.outputDir = outputDir
     }
 
-    void generate() {
+    void generateSteps() {
         if (!sourceFile.exists()) {
             throw new GradleException("Source file not found: ${sourceFile.absolutePath}")
         }
@@ -33,7 +33,6 @@ class DiagramGenerator {
             } else if (isStepEnd(line) && inStep) {
                 println "Step end: ${line}"
                 createStepFile(currentContent, stepCounter)
-                generateDiagram(stepCounter)
                 resetForNextStep(currentContent)
                 stepCounter++
                 inStep = false
@@ -46,7 +45,13 @@ class DiagramGenerator {
 
         generateHtml(stepCounter - 1)
     }
-    
+
+    void generateDiagrams() {
+        outputDir.eachDir { dir ->
+        
+        }
+    }
+
     private boolean isStepStart(String line) {
         return line.trim().matches("'\\s*\\[step\\d+\\]");
     }
@@ -59,6 +64,19 @@ class DiagramGenerator {
         def stepFile = new File(outputDir, "step${stepCounter}.puml")
         stepFile.text = currentContent.toString() + "@enduml\n"
         println "Generated: ${stepFile.absolutePath}"
+    }
+
+    private void generateAllDiagrams() {
+        def stepFile = new File(outputDir, "**")
+        def command = "java -jar ${plantUmlJarPath} ${outputDir.absolutePath}/** -o ${outputDir.absolutePath}"
+        def process = command.execute()
+        process.waitFor()
+
+        if (process.exitValue() != 0) {
+            println "Error generating diagram ${process.err.text}"
+        } else {
+            println "Generated diagrams"
+        }
     }
 
     private void generateDiagram(int stepCounter) {
@@ -180,7 +198,9 @@ task generateStepwiseDiagrams {
             def diagramOutputDir = new File(outputDir, diagramName)
             diagramOutputDir.mkdirs()
 
-            new DiagramGenerator(plantUmlJarPath, file, diagramOutputDir).generate()
+            def g = new DiagramGenerator(plantUmlJarPath, file, diagramOutputDir)
+            g.generateSteps()
+            g.generateAllDiagrams()
         }
     }
 }
