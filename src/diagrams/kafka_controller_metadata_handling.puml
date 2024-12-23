@@ -1,5 +1,6 @@
 @startuml
 !include ../style.puml
+
 ' [step1]
 participant "Broker 1" as b1
 participant "Broker 2" as b2
@@ -8,9 +9,10 @@ participant "ZooKeeper" as zk
 participant "Admin Client" as client
 ' [/step1]
 
-' Broker registration
 ' [step2]
+group #LightBlue "Broker Registration" 
 b1 -> zk: Register broker (id=1)
+
 ' [/step2]
 
 ' [step3]
@@ -19,51 +21,56 @@ b2 -> zk: Register broker (id=2)
 
 ' [step4]
 b3 -> zk: Register broker (id=3)
+end
 ' [/step4]
 
-' Controller election
 ' [step5]
+group  #LightGreen "Controller Election"
 b1 -> zk: Try create /controller znode
 activate b1
 zk -> b1: Success
 note right of b1: Becomes Controller
+end
 ' [/step5]
 
-' Initialize controller
 ' [step6]
-b1 -> b1: Initialize
+group #LightYellow "Controller Initialization" 
+b1 -> b1: Initialize 
 ' [/step6]
 
 ' [step7]
 b1 -> zk: Load broker metadata
+
 ' [/step7]
 
 ' [step8]
 b1 -> zk: Subscribe to topic changes
 deactivate b1
+end
 ' [/step8]
 
 ' [step9]
+group #LightPink "Topic Creation" 
 client -> zk: Create topic "test"\n(3 partitions, RF=3)     
 ' [/step9]
 
 ' [step10]
 zk -> zk: Store topic metadata
+end
 ' [/step10]
 
-' Controller notification
 ' [step11]
 zk -> b1: Topic change callback
 activate b1
 ' [/step11]
 
-' Leader election
 ' [step12]
+group #LightCoral "Controller notifies brokers" 
 b1 -> b1: Elect leaders for partitions\nP0: Leader=1, Replicas=[1,2,3]\nP1: Leader=2, Replicas=[2,3,1]\nP2: Leader=3, Replicas=[3,1,2]
 ' [/step12]
 
-' Send LeaderAndIsr requests
 ' [step13]
+
 b1 -> b1: LeaderAndIsr Request\n(P0: Leader, P1: Follower, P2: Follower)
 ' [/step13]
 
@@ -75,7 +82,6 @@ b1 -> b2: LeaderAndIsr Request\n(P0: Follower, P1: Leader, P2: Follower)
 b1 -> b3: LeaderAndIsr Request\n(P0: Follower, P1: Follower, P2: Leader)
 ' [/step15]
 
-' Send UpdateMetadata requests
 ' [step16]  
 b1 -> b1: UpdateMetadata Request
 ' [/step16]
@@ -87,6 +93,7 @@ b1 -> b2: UpdateMetadata Request
 ' [step18]
 b1 -> b3: UpdateMetadata Request
 deactivate b1
+end
 ' [/step18]
 
 @enduml
