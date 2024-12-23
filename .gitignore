@@ -1,0 +1,25 @@
+# Ignore Gradle build folder
+build/
+
+# Ignore generated diagram files
+src/diagrams/**/step*.puml
+src/diagrams/**/step*.png
+src/diagrams/**/index.html
+
+# Ignore IDE-specific files
+.idea/
+*.iml
+.gradle/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore PlantUML jar
+plantuml.jar
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+*.bak
+

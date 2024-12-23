@@ -1,0 +1,128 @@
+@startuml
+!include ../style.puml
+
+footer Page %page% of %lastpage%
+' [step1]
+participant athens
+participant byzantium 
+participant cyrene 
+
+note over byzantium
+ballot=1
+==Log==
+--index 1--
+set title Microservices
+----
+====
+end note
+/ note over cyrene
+ballot=3
+==Log==
+--index 1--
+set title Distributed Systems
+----
+====
+end note
+' [/step1]
+
+' [step2]
+athens->athens:runLeaderElection()
+' [/step2]
+
+' [step3]   
+athens -> athens: prepare(4)
+athens <-- athens: promise, []
+
+note over athens
+ballot=4
+==Log==
+====
+end note
+' [/step4]
+
+' [step5]   
+athens -> byzantium: prepare(4)
+athens <-- byzantium: promise, [1, set title Distributed Systems]
+
+note over byzantium
+ballot=4
+==Log==
+--index 1--
+set title Microservices
+----
+====
+end note
+' [/step6]
+
+' [step7]   
+athens -> cyrene: prepare(4)
+athens <-- cyrene: promise, [3, set title Distributed Systems]
+
+note over cyrene
+==Log==
+ballot=4
+--index 1--
+set title Distributed Systems
+----
+end note
+' [/step7]
+
+' [step8]
+athens->athens:isQuorumPrepared
+' [/step8]
+
+' [step9]
+athens -> athens: mergeLog
+
+note over athens
+athens picks up
+highest numbered
+value Distributed Systems
+end note
+
+note over athens
+ballot=4
+==Log==
+--index 1--
+set title Distributed Systems
+----
+====
+end note
+' [/step10]
+
+' [step11]
+athens->byzantium:accept(4, set title Distributed Systems)
+athens <-- byzantium:accepted
+note over byzantium
+ballot=4
+==Log==
+--index 1--
+set title Distributed Systems
+----
+====
+end note
+' [/step11]
+
+' [step12]
+athens->cyrene:accept(4, set title Distributed Systems)
+athens <-- cyrene:accepted
+note over cyrene
+ballot=4
+==Log==
+--index 1--
+set title Distributed Systems
+----
+====
+end note
+
+note over athens
+<:crown:>
+ballot=4
+==Log==
+--index 1--
+set title Distributed Systems
+----
+====
+end note
+' [/step12]
+@enduml

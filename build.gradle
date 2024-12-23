@@ -1,0 +1,186 @@
+// Import required Java libraries
+import java.nio.file.Files
+import java.nio.file.Paths
+
+// DiagramGenerator Class
+class DiagramGenerator {
+    private final String plantUmlJarPath
+    private final File sourceFile
+    private final File outputDir
+
+    DiagramGenerator(String plantUmlJarPath, File sourceFile, File outputDir) {
+        this.plantUmlJarPath = plantUmlJarPath
+        this.sourceFile = sourceFile
+        this.outputDir = outputDir
+    }
+
+    void generate() {
+        if (!sourceFile.exists()) {
+            throw new GradleException("Source file not found: ${sourceFile.absolutePath}")
+        }
+
+        println "Processing: ${sourceFile.name}"
+
+        def lines = sourceFile.readLines()
+        def currentContent = new StringBuilder("@startuml\n")
+        def stepCounter = 1
+        boolean inStep = false
+
+        lines.each { line ->
+            if (isStepStart(line)) {
+                inStep = true
+                println "Step start: ${line}"
+            } else if (isStepEnd(line) && inStep) {
+                println "Step end: ${line}"
+                createStepFile(currentContent, stepCounter)
+                generateDiagram(stepCounter)
+                resetForNextStep(currentContent)
+                stepCounter++
+                inStep = false
+            } else if (inStep) {
+                currentContent.append(line).append('\n')
+            } else {
+                currentContent.append(line).append('\n') // Retain global participants
+            }
+        }
+
+        generateHtml(stepCounter - 1)
+    }
+    
+    private boolean isStepStart(String line) {
+        return line.trim().matches("'\\s*\\[step\\d+\\]");
+    }
+
+    private boolean isStepEnd(String line) {
+         return line.trim().matches("'\\s*\\[/step\\d+\\]");
+    }
+
+    private void createStepFile(StringBuilder currentContent, int stepCounter) {
+        def stepFile = new File(outputDir, "step${stepCounter}.puml")
+        stepFile.text = currentContent.toString() + "@enduml\n"
+        println "Generated: ${stepFile.absolutePath}"
+    }
+
+    private void generateDiagram(int stepCounter) {
+        def stepFile = new File(outputDir, "step${stepCounter}.puml")
+        def command = "java -jar ${plantUmlJarPath} -o ${outputDir.absolutePath} ${stepFile.absolutePath}"
+        def process = command.execute()
+        process.waitFor()
+
+        if (process.exitValue() != 0) {
+            println "Error generating diagram for step ${stepCounter}: ${process.err.text}"
+        } else {
+            println "Generated diagram for step ${stepCounter}"
+        }
+    }
+
+    private void resetForNextStep(StringBuilder currentContent) {
+    //    do   nothing
+    }
+
+    private void generateHtml(int totalSteps) {
+        def htmlFile = new File(outputDir, "index.html")
+        htmlFile.text = getHtmlContent(outputDir.name, totalSteps)
+        println "Generated index.html for ${outputDir.name}"
+    }
+
+    private String getHtmlContent(String diagramName, int totalSteps) {
+        return """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${diagramName} Viewer</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+        #diagram { width: 80%; max-width: 800px; height: auto; border: 1px solid #ccc; margin: 20px auto; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h1>${diagramName} Viewer</h1>
+    <img id="diagram" src="step1.png" alt="Sequence Diagram">
+    <br>
+    <button id="prevButton" onclick="prevStep()" disabled>Previous</button>
+    <button id="nextButton" onclick="nextStep()">Next</button>
+    <script>
+        const totalSteps = ${totalSteps};
+        let currentStep = 1;
+
+        const diagramElement = document.getElementById('diagram');
+        const prevButton = document.getElementById('prevButton');
+        const nextButton = document.getElementById('nextButton');
+
+        function updateDiagram() {
+            diagramElement.src = `step\${currentStep}.png`;
+            prevButton.disabled = currentStep === 1;
+            nextButton.disabled = currentStep === totalSteps;
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateDiagram();
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateDiagram();
+            }
+        }
+    </script>
+</body>
+</html>
+"""
+    }
+}
+
+task clean {
+    doLast {
+        def buildDir = file('build')
+        if (buildDir.exists()) {
+            buildDir.deleteDir()
+            println "Build directory deleted."
+        } else {
+            println "Build directory does not exist."
+        }
+    }
+}
+
+import static groovy.io.FileType.*
+import java.nio.file.StandardCopyOption
+
+// Gradle task to generate diagrams for all .puml files in the source directory
+task generateStepwiseDiagrams {
+    doLast {
+        def plantUmlJarPath = './plantuml-1.2024.8.jar'
+        def sourceDir = file('src/diagrams')
+        def outputDir = file('build/diagrams')
+        outputDir.mkdirs()
+
+        if (!sourceDir.exists() || !sourceDir.isDirectory()) {
+            throw new GradleException("Source directory not found: ${sourceDir.absolutePath}")
+        }
+
+        // Copy style.puml to each output directory
+        def styleFile = new File(sourceDir, 'style.puml')
+        if (styleFile.exists()) {
+            Files.copy(styleFile.toPath(), new File(outputDir, 'style.puml').toPath(), StandardCopyOption.REPLACE_EXISTING)
+        } else {
+            println "style.puml not found in source directory. Skipping style file copying."
+        }
+
+        sourceDir.eachFileMatch(FILES, ~/.*\.puml/) { file ->
+            def diagramName = file.name.replace('.puml', '')
+            println "Processing: ${diagramName}"
+            def diagramOutputDir = new File(outputDir, diagramName)
+            diagramOutputDir.mkdirs()
+
+            new DiagramGenerator(plantUmlJarPath, file, diagramOutputDir).generate()
+        }
+    }
+}

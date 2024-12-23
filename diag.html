@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sequence Diagram Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #diagram {
+            width: 80%;
+            max-width: 80%;
+            height: auto;
+            border: 1px solid #ccc;
+            margin: 20px auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sequence Diagram Viewer</h1>
+    <img id="diagram" src="" alt="Sequence Diagram">
+    <br>
+    <button id="prevButton" onclick="prevStep()" disabled>Previous</button>
+    <button id="nextButton" onclick="nextStep()">Next</button>
+
+    <script>
+        const diagramDir = 'build/diagrams/sequence1'; // Directory containing diagrams
+        const totalSteps = 17; // Total number of steps
+        let currentStep = 1;
+
+        const diagramElement = document.getElementById('diagram');
+        const prevButton = document.getElementById('prevButton');
+        const nextButton = document.getElementById('nextButton');
+
+        // Function to update the diagram
+        function updateDiagram() {
+            diagramElement.src = `${diagramDir}/step${currentStep}.png`;
+            prevButton.disabled = currentStep === 1;
+            nextButton.disabled = currentStep === totalSteps;
+        }
+
+        // Function to go to the previous step
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateDiagram();
+            }
+        }
+
+        // Function to go to the next step
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateDiagram();
+            }
+        }
+
+        // Initialize the viewer
+        updateDiagram();
+    </script>
+</body>
+</html>
+
