@@ -74,7 +74,7 @@ gradle clean
 ## Customization
 
 ### Style
-- Define your custom styles in `style.puml` and place it in the `src/plant` directory.
+- Define your custom styles in `style.puml` and place it in the `src/diagrams` directory.
 
 ### HTML Viewer
 - The generated `index.html` can be modified in the `DiagramGenerator` class.
