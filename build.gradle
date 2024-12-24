@@ -46,12 +46,6 @@ class DiagramGenerator {
         generateHtml(stepCounter - 1)
     }
 
-    void generateDiagrams() {
-        outputDir.eachDir { dir ->
-        
-        }
-    }
-
     private boolean isStepStart(String line) {
         return line.trim().matches("'\\s*\\[step\\d+\\]");
     }
@@ -157,16 +151,21 @@ class DiagramGenerator {
     }
 }
 
-task clean {
-    doLast {
-        def buildDir = file('build')
-        if (buildDir.exists()) {
-            buildDir.deleteDir()
-            println "Build directory deleted."
-        } else {
-            println "Build directory does not exist."
-        }
-    }
+plugins {
+    id 'java'
+    id 'groovy'
+}
+
+repositories {  
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.apache.poi:poi:5.2.5'
+    implementation 'org.apache.poi:poi-ooxml:5.2.5'
+    implementation 'org.apache.xmlbeans:xmlbeans:5.1.1'
+    implementation 'org.apache.commons:commons-collections4:4.4'
+    implementation 'org.codehaus.groovy:groovy-all:3.0.19'
 }
 
 import static groovy.io.FileType.*
@@ -201,6 +200,43 @@ task generateStepwiseDiagrams {
             def g = new DiagramGenerator(plantUmlJarPath, file, diagramOutputDir)
             g.generateSteps()
             g.generateAllDiagrams()
+        }
+    }
+}
+
+
+task generatePPT {
+    dependsOn generateStepwiseDiagrams, classes
+    
+    doLast {
+        def outputDir = file('build/diagrams')
+        def pptFile = new File(outputDir, "sequence_diagrams.pptx")
+        
+        try {
+            def urls = sourceSets.main.runtimeClasspath.files.collect { it.toURI().toURL() }
+            def classLoader = new URLClassLoader(urls as URL[], Thread.currentThread().contextClassLoader)
+            
+            println "Classpath entries:"
+            urls.each { println "  $it" }
+            
+            def pptGeneratorClass = classLoader.loadClass('PPTGenerator')
+            println "Successfully loaded PPTGenerator class"
+            
+            def method = pptGeneratorClass.getDeclaredMethod('generatePPT', File.class, File.class)
+            println "Found generatePPT method"
+            
+            println "Output directory exists: ${outputDir.exists()}"
+            println "Output directory path: ${outputDir.absolutePath}"
+            
+            method.invoke(null, outputDir, pptFile)
+        } catch (Exception e) {
+            println "Error details:"
+            println "Message: ${e.message}"
+            if (e.cause) {
+                println "Cause: ${e.cause.message}"
+                e.cause.printStackTrace()
+            }
+            throw e
         }
     }
 }
