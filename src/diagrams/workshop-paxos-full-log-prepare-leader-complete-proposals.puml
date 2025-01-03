@@ -38,9 +38,9 @@ ballot=4
 ==Log==
 ====
 end note
-' [/step4]
+' [/step3]
 
-' [step5]   
+' [step4]
 athens -> byzantium: prepare(4)
 athens <-- byzantium: promise, [1, set title Distributed Systems]
 
@@ -52,9 +52,9 @@ set title Microservices
 ----
 ====
 end note
-' [/step6]
+' [/step4]
 
-' [step7]   
+' [step5]
 athens -> cyrene: prepare(4)
 athens <-- cyrene: promise, [3, set title Distributed Systems]
 
@@ -65,13 +65,13 @@ ballot=4
 set title Distributed Systems
 ----
 end note
-' [/step7]
+' [/step5]
 
-' [step8]
+' [step6]
 athens->athens:isQuorumPrepared
-' [/step8]
+' [/step6]
 
-' [step9]
+' [step7]
 athens -> athens: mergeLog
 
 note over athens
@@ -88,9 +88,9 @@ set title Distributed Systems
 ----
 ====
 end note
-' [/step10]
+' [/step7]
 
-' [step11]
+' [step8]
 athens->byzantium:accept(4, set title Distributed Systems)
 athens <-- byzantium:accepted
 note over byzantium
@@ -101,9 +101,9 @@ set title Distributed Systems
 ----
 ====
 end note
-' [/step11]
+' [/step8]
 
-' [step12]
+' [step9]
 athens->cyrene:accept(4, set title Distributed Systems)
 athens <-- cyrene:accepted
 note over cyrene
@@ -124,5 +124,5 @@ set title Distributed Systems
 ----
 ====
 end note
-' [/step12]
+' [/step9]
 @enduml

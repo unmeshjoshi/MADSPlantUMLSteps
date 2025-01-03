@@ -1,0 +1,39 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "python310": {
+      "plugin_version": "0.0.4",
+      "resolved": "github:NixOS/nixpkgs/75a52265bda7fd25e06e3a67dee3f0354e73243c#python310",
+      "source": "nixpkg",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "path": "/nix/store/ak3zf631ws2rwsl5qq0x3v7j18h0c2jj-python3-3.10.13",
+              "default": true
+            }
+          ]
+        }
+      }
+    },
+    "python310Packages.pip": {
+      "resolved": "github:NixOS/nixpkgs/75a52265bda7fd25e06e3a67dee3f0354e73243c#python310Packages.pip",
+      "source": "nixpkg",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "man",
+              "path": "/nix/store/q6f3v1y0pnpfhwk218xyfxx6yvdngaz4-python3.10-pip-23.2.1-man",
+              "default": true
+            },
+            {
+              "path": "/nix/store/vyh7bsqnpg3v2y8fvw5h8x8dfm0r6bmf-python3.10-pip-23.2.1",
+              "default": true
+            }
+          ]
+        }
+      }
+    }
+  }
+}

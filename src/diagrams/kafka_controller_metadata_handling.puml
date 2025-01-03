@@ -1,7 +1,7 @@
 @startuml
 !include ../style.puml
 
-' [step1]
+' [step1 {"name":"Three Broker Cluster"}]
 participant "Broker 1" as b1
 participant "Broker 2" as b2
 participant "Broker 3" as b3
@@ -9,22 +9,22 @@ participant "ZooKeeper" as zk
 participant "Admin Client" as client
 ' [/step1]
 
-' [step2]
+' [step2 {"name":"Broker1 registers"}]
 group #LightBlue "Broker Registration" 
 b1 -> zk: Register broker (id=1)
 
 ' [/step2]
 
-' [step3]
+' [step3 {"name":"Broker2 registers"}]
 b2 -> zk: Register broker (id=2)
 ' [/step3]
 
-' [step4]
+' [step4 {"name":"Broker3 registers"}]
 b3 -> zk: Register broker (id=3)
 end
 ' [/step4]
 
-' [step5]
+' [step5 {"name":"Broker1 is elected as a controller"}]
 group  #LightGreen "Controller Election"
 b1 -> zk: Try create /controller znode
 activate b1
