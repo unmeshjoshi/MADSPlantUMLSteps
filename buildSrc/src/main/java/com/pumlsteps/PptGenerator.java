@@ -73,21 +73,7 @@ public class PptGenerator {
             assert imageFile.exists();
 
             BufferedImage image = ImageIO.read(imageFile);
-            int imageWidth = image.getWidth();
-            int imageHeight = image.getHeight();
 
-            // Calculate scale factors
-            double scaleX = (double) slideWidth / imageWidth;
-            double scaleY = (double) slideHeight / imageHeight;
-            double scaleFactor = Math.min(scaleX, scaleY);
-
-            // Calculate scaled dimensions
-            int scaledWidth = (int) (imageWidth * scaleFactor);
-            int scaledHeight = (int) (imageHeight * scaleFactor);
-
-            // Center the image
-            int xPosition = (slideWidth - scaledWidth) / 2;
-            int yPosition = (slideHeight - scaledHeight) / 2;
 
             // Create a new slide
             XSLFSlide slide = ppt.createSlide();
@@ -98,6 +84,22 @@ public class PptGenerator {
             titleBox.setAnchor(new Rectangle(50, 20, slideWidth - 100, 50));
             titleBox.setHorizontalCentered(true);
             titleBox.getTextParagraphs().get(0).setBulletFontSize(24.0);
+
+
+            // Calculate remaining area for image
+            int imageY = 70;  // Below title
+            int imageHeight = slideHeight - imageY - 20;  // Leave margin at bottom
+
+            double scaleX = (double) (slideWidth - 100) / image.getWidth();
+            double scaleY = (double) imageHeight / image.getHeight();
+            double scale = Math.min(scaleX, scaleY);
+
+            int scaledWidth = (int) (image.getWidth() * scale);
+            int scaledHeight = (int) (image.getHeight() * scale);
+
+            // Center the image
+            int xPosition = (slideWidth - scaledWidth) / 2;
+            int yPosition = (slideHeight - scaledHeight) / 2;
 
             // Add the image
             XSLFPictureData pictureData = ppt.addPicture(Files.readAllBytes(imageFile.toPath()), XSLFPictureData.PictureType.PNG);
