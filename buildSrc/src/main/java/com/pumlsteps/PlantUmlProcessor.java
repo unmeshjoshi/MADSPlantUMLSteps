@@ -78,38 +78,58 @@ public class PlantUmlProcessor {
         }
     }
 
-
-    private List ignoredFiles = Arrays.asList("style.puml");
     public void process(File sourceDir, File outputDir) throws IOException {
+        checkAndCreate(outputDir);
+
+        PumlFile.find(sourceDir)
+                .forEach(pumlFile ->
+                        processSinglePumlFile(outputDir, pumlFile));
+
+        generatePpt(outputDir);
+        generateRootHtml(outputDir);
+    }
+
+    private void generatePpt(File outputDir) {
+        pptGenerator.save(new File(outputDir, "all_steps.pptx").getAbsolutePath());
+    }
+
+    private static void checkAndCreate(File outputDir) throws IOException {
         if (!outputDir.exists() && !outputDir.mkdirs()) {
             throw new IOException("Failed to create output directory: " + outputDir.getAbsolutePath());
         }
+    }
 
-        var pumlFiles = PumlFile.find(sourceDir);
+    private void processSinglePumlFile(File outputDir, PumlFile sourcePumlFile) {
+        try {
+            System.out.println("Processing file = " + sourcePumlFile.getFile().getAbsolutePath());
 
-        if (pumlFiles.isEmpty()) {
-            return;
-        }
-
-        for (PumlFile sourcePumlFile : pumlFiles) {
+            var parsedPumlFile = parseSteps(sourcePumlFile);
 
             File subDir = sourcePumlFile.createSubDirectory(outputDir);
-
-            System.out.println("Processing file = " + sourcePumlFile.getFile().getAbsolutePath());
-            var parsedPumlFile = parser.parse(sourcePumlFile);
             var generatedSteps
-                    = stepImageGenerator.generateDiagrams(parsedPumlFile.getSteps(), subDir);
+                    = generateStepDiagrams(parsedPumlFile, subDir);
 
             System.out.println("steps = " + generatedSteps.size());
 
             String sectionName = sourcePumlFile.getBaseName();
-            pptGenerator.addSlide(sectionName, generatedSteps);
-            generateStepHtml(subDir,  generatedSteps);
-
+            generateStepSlides(sectionName, generatedSteps);
+            generateStepHtml(subDir, generatedSteps);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
+    }
 
-        pptGenerator.save(new File(outputDir, "all_steps.pptx").getAbsolutePath());
-        generateRootHtml(outputDir);
+    private List<GeneratedStep> generateStepDiagrams(ParsedPlantUmlFile parsedPumlFile, File subDir) throws IOException {
+        return stepImageGenerator.generateDiagrams(parsedPumlFile.getSteps(), subDir);
+    }
+
+    private ParsedPlantUmlFile parseSteps(PumlFile sourcePumlFile) throws IOException {
+        var parsedPumlFile = parser.parse(sourcePumlFile);
+        return parsedPumlFile;
+    }
+
+    private void generateStepSlides(String sectionName, List<GeneratedStep> generatedSteps) {
+        pptGenerator.addSlides(sectionName, generatedSteps);
     }
 
 

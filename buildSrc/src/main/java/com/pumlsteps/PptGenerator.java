@@ -27,7 +27,7 @@ public class PptGenerator {
      * @param sectionName The name of the section.
      * @param steps       The list of steps in the section.
      */
-    public void addSlide(String sectionName, List<GeneratedStep> steps) {
+    public void addSlides(String sectionName, List<GeneratedStep> steps) {
         // Add a separator slide for the section
         addSeparatorSlide(sectionName);
 
