@@ -301,6 +301,32 @@ class StepParserTest {
         assertTrue(step3.getContent().contains("Again processed the request"));
     }
 
+    @Test
+    void testNewPageStepStartsWithFreshContent() throws Exception {
+        File tempFile = createTempFile("""
+            @startuml
+            participant "User" as U
+            participant "System" as S
+
+            ' [step1 {"name":"First Page"}]
+            U -> S: First action
+            ' [/step1]
+
+            ' [step2 {"name":"Second Page", "newPage":true}]
+            S -> U: Second action
+            ' [/step2]
+            @enduml
+        """);
+
+        ParsedPlantUmlFile parsedPlantUmlFile = parser.parse(tempFile);
+        List<Step> steps = parsedPlantUmlFile.getSteps();
+
+        Step step2 = steps.get(1);
+        assertFalse(step2.getContent().contains("First action"), 
+            "New page step should start fresh without previous content");
+        assertTrue(step2.getContent().contains("Second action"));
+        assertTrue(step2.getContent().startsWith("@startuml"));
+    }
 
     private File createTempFile(String content) throws Exception {
         File tempFile = File.createTempFile("temp", ".puml");

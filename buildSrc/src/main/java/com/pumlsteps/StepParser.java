@@ -67,6 +67,10 @@ public class StepParser {
                 Map<String, Object> metadata = parseMetadata(line);
                 currentStep = (int) metadata.get("step");
                 inStep = true;
+                if (metadata.containsKey("newPage")) {
+                    currentContent.setLength(0);
+                    currentContent.append("@startuml");
+                }
                 steps.add(new Step(currentStep, metadata));
             } else if (isStepEnd(line, currentStep)) {
                 Step step = steps.get(steps.size() - 1); // Get the last added step

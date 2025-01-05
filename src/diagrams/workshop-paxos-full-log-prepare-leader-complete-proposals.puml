@@ -40,7 +40,7 @@ ballot=4
 end note
 ' [/step3]
 
-' [step4]
+' [step4 {"newPage":"true"}]
 athens -> byzantium: prepare(4)
 athens <-- byzantium: promise, [1, set title Distributed Systems]
 
