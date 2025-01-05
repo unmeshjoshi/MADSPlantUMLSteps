@@ -27,14 +27,13 @@ public class PptGenerator {
      * @param sectionName The name of the section.
      * @param steps       The list of steps in the section.
      */
-    public void addSlide(String sectionName, List<Step> steps) {
+    public void addSlide(String sectionName, List<GeneratedStep> steps) {
         // Add a separator slide for the section
         addSeparatorSlide(sectionName);
 
         // Add slides for each step in the section
-        for (Step step : steps) {
-            File imageFile = new File(step.getFilePath().replace(".puml", ".png"));
-            addStepSlide(sectionName, step.getTitle(), imageFile);
+        for (GeneratedStep step : steps) {
+            addStepSlide(sectionName, step.getTitle(), step.getPngFile());
         }
     }
 
@@ -71,7 +70,8 @@ public class PptGenerator {
             int slideHeight = ppt.getPageSize().height;
 
             // Load the image to get its dimensions
-            System.out.println("ImageFilePath = " + imageFile.getAbsolutePath());
+            assert imageFile.exists();
+
             BufferedImage image = ImageIO.read(imageFile);
             int imageWidth = image.getWidth();
             int imageHeight = image.getHeight();
@@ -103,6 +103,7 @@ public class PptGenerator {
             XSLFPictureData pictureData = ppt.addPicture(Files.readAllBytes(imageFile.toPath()), XSLFPictureData.PictureType.PNG);
             slide.createPicture(pictureData).setAnchor(new Rectangle(xPosition, yPosition, scaledWidth, scaledHeight));
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException("Error adding step slide: " + e.getMessage(), e);
         }
     }

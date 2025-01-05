@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class PlantUmlProcessor {
     private final StepParser parser;
@@ -17,34 +19,92 @@ public class PlantUmlProcessor {
         this.pptGenerator = new PptGenerator();
     }
 
+
+    public static class PumlFile {
+        private static final List<String> IGNORED_FILES = List.of("style.puml");
+        private final File file;
+
+        public PumlFile(File file) {
+            if (!file.exists()) {
+                throw new IllegalArgumentException("File does not exist: " + file.getAbsolutePath());
+            }
+            if (!file.getName().endsWith(".puml")) {
+                throw new IllegalArgumentException("Not a PUML file: " + file.getName());
+            }
+            this.file = file;
+        }
+
+        public static List<PumlFile> find(File sourceDir) {
+            if (!sourceDir.exists() || !sourceDir.isDirectory()) {
+                throw new IllegalArgumentException("Invalid source directory: " + sourceDir.getAbsolutePath());
+            }
+
+            File[] files = sourceDir.listFiles((dir, name) ->
+                    name.endsWith(".puml") && !IGNORED_FILES.contains(name)
+            );
+
+            if (files == null) {
+                return Collections.emptyList();
+            }
+
+            return Arrays.stream(files)
+                    .map(PumlFile::new)
+                    .collect(Collectors.toList());
+        }
+
+        public File createSubDirectory(File parentDir) throws IOException {
+            File subDir = new File(parentDir, getBaseName());
+            if (!subDir.exists() && !subDir.mkdirs()) {
+                throw new IOException("Failed to create subdirectory: " + subDir.getAbsolutePath());
+            }
+            return subDir;
+        }
+
+        public String getBaseName() {
+            return file.getName().replace(".puml", "");
+        }
+
+        public File getFile() {
+            return file;
+        }
+
+        public List<String> readLines() throws IOException {
+            return Files.readAllLines(file.toPath());
+        }
+
+        @Override
+        public String toString() {
+            return file.getAbsolutePath();
+        }
+    }
+
+
     private List ignoredFiles = Arrays.asList("style.puml");
     public void process(File sourceDir, File outputDir) throws IOException {
         if (!outputDir.exists() && !outputDir.mkdirs()) {
             throw new IOException("Failed to create output directory: " + outputDir.getAbsolutePath());
         }
 
-        File[] pumlFiles = sourceDir.listFiles((dir, name) -> name.endsWith(".puml") && !ignoredFiles.contains(name));
-        if (pumlFiles == null) return;
+        var pumlFiles = PumlFile.find(sourceDir);
 
-        for (File sourceFile : pumlFiles) {
-            String sectionName = sourceFile.getName().replace(".puml", "");
-            File subDir = new File(outputDir, sectionName);
-            if (!subDir.exists() && !subDir.mkdirs()) {
-                throw new IOException("Failed to create subdirectory: " + subDir.getAbsolutePath());
-            }
+        if (pumlFiles.isEmpty()) {
+            return;
+        }
 
-            System.out.println("Processing file = " + sourceFile.getAbsolutePath());
-            var pumlFile = parser.parse(sourceFile);
+        for (PumlFile sourcePumlFile : pumlFiles) {
 
-            for (Step step : pumlFile.getSteps()) {
-                File stepFile = new File(subDir, "step" + step.getStepNumber() + ".puml");
-                Files.writeString(stepFile.toPath(), step.getContent());
-                step.setFilePath(stepFile.getAbsolutePath());
-            }
-            stepImageGenerator.generateDiagram(subDir, subDir);
-            System.out.println("steps = " + pumlFile.getSteps().size());
-            pptGenerator.addSlide(sectionName, pumlFile.getSteps());
-            generateStepHtml(subDir,  pumlFile.getSteps());
+            File subDir = sourcePumlFile.createSubDirectory(outputDir);
+
+            System.out.println("Processing file = " + sourcePumlFile.getFile().getAbsolutePath());
+            var parsedPumlFile = parser.parse(sourcePumlFile);
+            var generatedSteps
+                    = stepImageGenerator.generateDiagrams(parsedPumlFile.getSteps(), subDir);
+
+            System.out.println("steps = " + generatedSteps.size());
+
+            String sectionName = sourcePumlFile.getBaseName();
+            pptGenerator.addSlide(sectionName, generatedSteps);
+            generateStepHtml(subDir,  generatedSteps);
 
         }
 
@@ -53,7 +113,7 @@ public class PlantUmlProcessor {
     }
 
 
-    private void generateStepHtml(File subDir, List<Step> steps) throws IOException {
+    private void generateStepHtml(File subDir, List<GeneratedStep> steps) throws IOException {
         int totalSteps = steps.size(); // Get the actual number of steps
 
         String htmlContent = String.format("""

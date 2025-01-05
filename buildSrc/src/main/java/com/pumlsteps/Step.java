@@ -1,5 +1,7 @@
 package com.pumlsteps;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.Map;
 
 public class Step {
@@ -39,5 +41,15 @@ public class Step {
 
     public String getTitle() {
         return metadata.getOrDefault("name", "Step " + this.getStepNumber()).toString();
+    }
+
+    @NotNull
+    public String pumlFileName() {
+        return "step" + getStepNumber() + ".puml";
+    }
+
+    @NotNull
+    public String pngFileName() {
+        return "step" + getStepNumber() + ".png";
     }
 }

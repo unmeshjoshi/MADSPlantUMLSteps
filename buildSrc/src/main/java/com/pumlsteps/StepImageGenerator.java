@@ -1,6 +1,10 @@
 package com.pumlsteps;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class StepImageGenerator {
     private final String plantUmlJarPath;
@@ -9,18 +13,58 @@ public class StepImageGenerator {
         this.plantUmlJarPath = plantUmlJarPath;
     }
 
-    public void generateDiagram(File pumlFile, File outputDir) {
+    public List<GeneratedStep> generateDiagrams(List<Step> steps, File outputDir) throws IOException {
+        // First create all GeneratedSteps and write PUML files
+
+        //generate all the step puml files.
+        generateStepPumlFiles(steps, outputDir);
+        // Then generate all PNGs together
+        generateStepPngs(outputDir);
+
+        return steps.stream()
+                .map(step -> new GeneratedStep(step, GeneratedStep.pngFile(step, outputDir)))
+                .collect(Collectors.toList());
+
+    }
+
+    private void generateStepPumlFiles(List<Step> steps, File outputDir) {
+        steps.forEach(step -> {
+            writePumlFile(step, outputDir);
+        });
+    }
+
+    private void writePumlFile(Step step, File outputDir) {
+        File pumlFile = GeneratedStep.pumlFile(step, outputDir);
         try {
-            ProcessBuilder builder = new ProcessBuilder(
-                "java", "-jar", plantUmlJarPath, "-o", outputDir.getAbsolutePath(), pumlFile.getAbsolutePath()
-            );
-            Process process = builder.start();
+            Files.writeString(pumlFile.toPath(), step.getContent());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to write PUML file: " + pumlFile, e);
+        }
+    }
+
+    private void generateStepPngs(File outputDirectory) throws IOException {
+        System.out.println("Processing puml files in directory " + outputDirectory);
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                "java", "-jar", plantUmlJarPath,
+                outputDirectory.getAbsolutePath()
+        );
+        Process process = processBuilder.start();
+
+        try {
+            // Wait for process to complete and check exit code
             int exitCode = process.waitFor();
+
+            // Capture error output if process fails
             if (exitCode != 0) {
-                throw new RuntimeException("Failed to generate diagram for: " + pumlFile.getName());
+                String errorOutput = new String(process.getErrorStream().readAllBytes());
+                throw new IOException(
+                        String.format("PlantUML generation failed with exit code %d: %s",
+                                exitCode, errorOutput)
+                );
             }
-        } catch (Exception e) {
-            throw new RuntimeException("Error generating diagram: " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // Restore interrupted status
+            throw new IOException("PNG generation was interrupted", e);
         }
     }
 }

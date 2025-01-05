@@ -74,12 +74,12 @@ class StepParserTest {
     @Test
     void testParseMetadata_EmptyMetadata() {
         String line = "' [step10 ]"; // Missing curly braces
-        assertNull(parser.parseMetadata(line));
+        assertTrue(parser.parseMetadata(line).isEmpty());
     }
 
     @Test
     void testSimpleStepWithoutMetadata() throws Exception {
-        File tempFile = createTempFile("""
+        var tempFile = createTempFile("""
         @startuml
            ' [step1]
             group #LightYellow "Controller Initialization" 
@@ -102,7 +102,7 @@ class StepParserTest {
         ParsedPlantUmlFile parsedPlantUmlFile = parser.parse(tempFile);
 
         // Assert file name
-        assertEquals(getNameWithoutExtension(tempFile), parsedPlantUmlFile.getName());
+        assertEquals(tempFile.getBaseName(), parsedPlantUmlFile.getName());
 
         // Assert step count
         List<Step> steps = parsedPlantUmlFile.getSteps();
@@ -113,7 +113,7 @@ class StepParserTest {
 
     @Test
     void testParseSingleStep() throws Exception {
-        File tempFile = createTempFile("""
+        var tempFile = createTempFile("""
             @startuml
             participant "User" as U
             participant "System" as S
@@ -128,7 +128,7 @@ class StepParserTest {
 
         ParsedPlantUmlFile parsedPlantUmlFile = parser.parse(tempFile);
 
-        assertEquals(getNameWithoutExtension(tempFile), parsedPlantUmlFile.getName());
+        assertEquals(tempFile.getBaseName(), parsedPlantUmlFile.getName());
         List<Step> steps = parsedPlantUmlFile.getSteps();
         assertEquals(1, steps.size());
 
@@ -146,7 +146,7 @@ class StepParserTest {
 
     @Test
     void testParseMultipleSteps() throws Exception {
-        File tempFile = createTempFile("""
+        var tempFile = createTempFile("""
             @startuml
             participant "User" as U
             participant "System" as S
@@ -166,7 +166,7 @@ class StepParserTest {
 
         ParsedPlantUmlFile parsedPlantUmlFile = parser.parse(tempFile);
 
-        assertEquals(getNameWithoutExtension(tempFile), parsedPlantUmlFile.getName());
+        assertEquals(tempFile.getBaseName(), parsedPlantUmlFile.getName());
         List<Step> steps = parsedPlantUmlFile.getSteps();
         assertEquals(2, steps.size());
 
@@ -183,7 +183,7 @@ class StepParserTest {
 
     @Test
     void testPreservePreviousStepContent() throws Exception {
-        File tempFile = createTempFile("""
+        var tempFile = createTempFile("""
             @startuml
             participant "User" as U
             participant "System" as S
@@ -214,7 +214,7 @@ class StepParserTest {
 
     @Test
     void testNestedStepsNotAllowed() throws Exception {
-        File tempFile = createTempFile("""
+        var tempFile = createTempFile("""
             @startuml
             ' [step1 {"name":"Outer Step", "author":"Alice"}]
             participant "User" as U
@@ -232,7 +232,7 @@ class StepParserTest {
 
     @Test
     void testMissingEndTag() throws Exception {
-        File tempFile = createTempFile("""
+        var tempFile = createTempFile("""
             @startuml
             ' [step1 {"name":"Missing End", "author":"Alice"}]
             participant "User" as U
@@ -249,7 +249,7 @@ class StepParserTest {
 
     @Test
     void testValidStepContentForAllScenarios() throws Exception {
-        File tempFile = createTempFile("""
+        var tempFile = createTempFile("""
         @startuml
         participant "User" as U
         participant "System" as S
@@ -303,7 +303,7 @@ class StepParserTest {
 
     @Test
     void testNewPageStepStartsWithFreshContent() throws Exception {
-        File tempFile = createTempFile("""
+        var tempFile = createTempFile("""
             @startuml
             participant "User" as U
             participant "System" as S
@@ -328,10 +328,10 @@ class StepParserTest {
         assertTrue(step2.getContent().startsWith("@startuml"));
     }
 
-    private File createTempFile(String content) throws Exception {
-        File tempFile = File.createTempFile("temp", ".puml");
+    private PlantUmlProcessor.PumlFile createTempFile(String content) throws Exception {
+        var tempFile = File.createTempFile("temp", ".puml");
         Files.writeString(tempFile.toPath(), content);
         tempFile.deleteOnExit();
-        return tempFile;
+        return new PlantUmlProcessor.PumlFile(tempFile);
     }
 }

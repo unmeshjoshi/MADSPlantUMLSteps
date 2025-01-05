@@ -51,10 +51,10 @@ public class StepParser {
         return Collections.emptyMap();
     }
 
-    public ParsedPlantUmlFile parse(File sourceFile) throws IOException {
-        String fileName = sourceFile.getName().replace(".puml", "");
+    public ParsedPlantUmlFile parse(PlantUmlProcessor.PumlFile sourceFile) throws IOException {
+        String fileName = sourceFile.getBaseName();
         List<Step> steps = new ArrayList<>();
-        List<String> lines = Files.readAllLines(sourceFile.toPath());
+        List<String> lines = sourceFile.readLines();
         StringBuilder currentContent = new StringBuilder();
         boolean inStep = false;
         int currentStep = -1;

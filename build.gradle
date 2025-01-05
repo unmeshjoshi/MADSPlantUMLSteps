@@ -18,7 +18,7 @@ project.ext {
 }
 
 // Gradle task to generate diagrams for all .puml files in the source directory
-task generateStepwiseDiagrams {
+task stepDiagrams {
     doLast {
         def plantUmlJarPath = './plantuml-1.2024.8.jar'
         def sourceDir = file('src/diagrams')
