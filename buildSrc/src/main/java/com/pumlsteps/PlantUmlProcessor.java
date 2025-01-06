@@ -3,10 +3,7 @@ package com.pumlsteps;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class PlantUmlProcessor {
     private final StepParser parser;
@@ -19,64 +16,6 @@ public class PlantUmlProcessor {
         this.pptGenerator = new PptGenerator();
     }
 
-
-    public static class PumlFile {
-        private static final List<String> IGNORED_FILES = List.of("style.puml");
-        private final File file;
-
-        public PumlFile(File file) {
-            if (!file.exists()) {
-                throw new IllegalArgumentException("File does not exist: " + file.getAbsolutePath());
-            }
-            if (!file.getName().endsWith(".puml")) {
-                throw new IllegalArgumentException("Not a PUML file: " + file.getName());
-            }
-            this.file = file;
-        }
-
-        public static List<PumlFile> find(File sourceDir) {
-            if (!sourceDir.exists() || !sourceDir.isDirectory()) {
-                throw new IllegalArgumentException("Invalid source directory: " + sourceDir.getAbsolutePath());
-            }
-
-            File[] files = sourceDir.listFiles((dir, name) ->
-                    name.endsWith(".puml") && !IGNORED_FILES.contains(name)
-            );
-
-            if (files == null) {
-                return Collections.emptyList();
-            }
-
-            return Arrays.stream(files)
-                    .map(PumlFile::new)
-                    .collect(Collectors.toList());
-        }
-
-        public File createSubDirectory(File parentDir) throws IOException {
-            File subDir = new File(parentDir, getBaseName());
-            if (!subDir.exists() && !subDir.mkdirs()) {
-                throw new IOException("Failed to create subdirectory: " + subDir.getAbsolutePath());
-            }
-            return subDir;
-        }
-
-        public String getBaseName() {
-            return file.getName().replace(".puml", "");
-        }
-
-        public File getFile() {
-            return file;
-        }
-
-        public List<String> readLines() throws IOException {
-            return Files.readAllLines(file.toPath());
-        }
-
-        @Override
-        public String toString() {
-            return file.getAbsolutePath();
-        }
-    }
 
     public void process(File sourceDir, File outputDir) throws IOException {
         checkAndCreate(outputDir);

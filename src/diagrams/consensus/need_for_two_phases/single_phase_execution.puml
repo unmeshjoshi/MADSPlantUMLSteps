@@ -1,0 +1,54 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Initial Setup"}]
+participant "Alice\n(Client)" as client
+participant "Athens\n(Counter=5)" as athens
+participant "Byzantium\n(Counter=5)" as byzantium
+participant "Cyrene\n(Counter=5)" as cyrene
+' [/step1]
+
+' [step2 {"name":"Client sends increment request"}]
+group #LightBlue "Increment Request"
+    client -> athens: IncrementCounter
+    activate athens
+' [/step2]
+
+' [step3 {"name":"Athens executes immediately"}]
+    athens -> athens: Counter += 1
+    note right of athens: Counter = 6
+' [/step3]
+
+' [step4 {"name":"Athens tries to propagate"}]
+    athens --> byzantium: Update Counter\n(delayed/lost)
+    athens --> cyrene: Update Counter\n(delayed/lost)
+    note right of athens: Network issues prevent\nupdates from reaching\nother nodes
+' [/step4]
+
+' [step5 {"name":"Athens responds to client"}]
+    athens -> client: Success
+    deactivate athens
+end
+' [/step5]
+
+' [step6 {"name":"Athens fails"}]
+group #LightCoral "Node Failure"
+    note over athens: Athens crashes
+    athens -[#red]x athens
+' [/step6]
+
+' [step7 {"name":"System state is now inconsistent"}]
+note over byzantium: Counter = 5
+note over cyrene: Counter = 5
+note across: System is now inconsistent!\nAthens had Counter = 6\nByzantium and Cyrene still have Counter = 5
+' [/step7]
+
+' [step8 {"name":"Client confused about true value"}]
+client -> byzantium: ReadCounter
+activate byzantium
+byzantium -> client: Counter = 5
+deactivate byzantium
+note over client: Client sees Counter = 5\ndespite previous "successful"\nincrement operation!
+' [/step8]
+
+@enduml

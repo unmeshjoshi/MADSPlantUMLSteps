@@ -1,0 +1,72 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Initial Setup"}]
+participant "Alice\n(Client)" as client
+participant "Athens\n(Counter=5)" as athens
+participant "Byzantium\n(Counter=5)" as byzantium
+participant "Cyrene\n(Counter=5)" as cyrene
+' [/step1]
+
+' [step2 {"name":"Phase 1: Prepare"}]
+group #LightBlue "Phase 1: Prepare"
+    client -> athens: IncrementCounter
+    activate athens
+
+    par Prepare Phase
+        athens -> byzantium: Prepare(IncrementCounter)
+        activate byzantium
+        athens -> cyrene: Prepare(IncrementCounter)
+        activate cyrene
+    end
+' [/step2]
+
+' [step3 {"name":"Nodes Accept Prepare"}]
+    byzantium -> athens: Accept
+    deactivate byzantium
+    cyrene -> athens: Accept
+    deactivate cyrene
+
+    note over athens: Majority achieved\n(2 accepts + self)
+' [/step3]
+
+' [step4 {"name":"Phase 2: Execute", "newPage":"true"}]
+group #LightGreen "Phase 2: Execute"
+    par Execute Phase
+        athens -> athens: Execute(IncrementCounter)
+        activate athens #DarkGreen
+        athens -> athens: Counter += 1
+        note right of athens: Counter = 6
+        deactivate athens
+
+        athens -> byzantium: Execute(IncrementCounter)
+        activate byzantium
+        byzantium -> byzantium: Counter += 1
+        note right of byzantium: Counter = 6
+
+        athens -> cyrene: Execute(IncrementCounter)
+        activate cyrene
+        cyrene -> cyrene: Counter += 1
+        note right of cyrene: Counter = 6
+    end
+' [/step4]
+
+' [step5 {"name":"Execution Acknowledgement"}]
+    athens -> athens: Executed
+    byzantium -> athens: Executed
+    deactivate byzantium
+    cyrene -> athens: Executed
+    deactivate cyrene
+' [/step5]
+
+' [step6 {"name":"Client Response"}]
+    athens -> client: Success
+    deactivate athens
+end
+' [/step6]
+
+' [step7 {"name":"Final State"}]
+note across: System is now consistent!\nAll nodes have Counter = 6
+' [/step7]
+
+@enduml

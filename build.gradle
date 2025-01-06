@@ -12,13 +12,8 @@ plugins {
     id 'groovy'
 }
 
-// Initialize the metadata map at the project level
-project.ext {
-    diagramMetadata = [:]
-}
-
 // Gradle task to generate diagrams for all .puml files in the source directory
-task stepDiagrams {
+task generate {
     doLast {
         def plantUmlJarPath = './plantuml-1.2024.8.jar'
         def sourceDir = file('src/diagrams')

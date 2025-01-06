@@ -328,10 +328,60 @@ class StepParserTest {
         assertTrue(step2.getContent().startsWith("@startuml"));
     }
 
-    private PlantUmlProcessor.PumlFile createTempFile(String content) throws Exception {
+    @Test
+    public void shouldPreserveIncludesAcrossNewPages() throws Exception {
+        // Arrange
+        String content = """
+            !include ../style.puml
+            !include ../common.puml
+            @startuml
+            ' [step1 {"name":"First Step"}]
+            actor User
+            User -> System: Request
+            '[/step1]
+            
+            ' [step2 {"name":"Second Step", "newPage":true}]
+            actor User
+            User -> System: Process
+            ' [/step2]
+            
+            ' [step3 {"name":"Third Step", "newPage":true}]
+            actor User
+            User -> System: Response
+            ' [/step3]
+            @enduml
+            """;
+
+        PumlFile pumlFile = createTempFile(content);
+        StepParser parser = new StepParser();
+
+        // Act
+        ParsedPlantUmlFile result = parser.parse(pumlFile);
+
+        // Assert
+        List<Step> steps = result.getSteps();
+        assertEquals(3, steps.size());
+
+        // First step should have includes
+        assertTrue(steps.get(0).getContent().contains("!include ../style.puml"));
+        assertTrue(steps.get(0).getContent().contains("!include ../common.puml"));
+
+        // Second step (new page) should have includes
+        assertTrue(steps.get(1).getContent().contains("!include ../style.puml"));
+        assertTrue(steps.get(1).getContent().contains("!include ../common.puml"));
+        assertTrue(steps.get(1).getContent().contains("@startuml"));
+
+        // Third step (new page) should have includes
+        assertTrue(steps.get(2).getContent().contains("!include ../style.puml"));
+        assertTrue(steps.get(2).getContent().contains("!include ../common.puml"));
+        assertTrue(steps.get(2).getContent().contains("@startuml"));
+    }
+
+
+    private PumlFile createTempFile(String content) throws Exception {
         var tempFile = File.createTempFile("temp", ".puml");
         Files.writeString(tempFile.toPath(), content);
         tempFile.deleteOnExit();
-        return new PlantUmlProcessor.PumlFile(tempFile);
+        return new PumlFile(tempFile);
     }
 }

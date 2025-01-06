@@ -2,9 +2,7 @@ package com.pumlsteps;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -51,16 +49,23 @@ public class StepParser {
         return Collections.emptyMap();
     }
 
-    public ParsedPlantUmlFile parse(PlantUmlProcessor.PumlFile sourceFile) throws IOException {
+    public ParsedPlantUmlFile parse(PumlFile sourceFile) throws IOException {
         String fileName = sourceFile.getBaseName();
         List<Step> steps = new ArrayList<>();
         List<String> lines = sourceFile.readLines();
         StringBuilder currentContent = new StringBuilder();
+        List<String> includes = new ArrayList<>();
+
         boolean inStep = false;
         int currentStep = -1;
 
         for (String line : lines) {
-            if (isStepStart(line)) {
+            if (line.trim().startsWith("!include")) {
+                // Store includes for reuse
+                includes.add(line);
+                currentContent.append(line).append("\n");
+
+            } else if (isStepStart(line)) {
                 if (inStep) {
                     throw new IllegalStateException("Nested steps are not allowed.");
                 }
@@ -69,7 +74,10 @@ public class StepParser {
                 inStep = true;
                 if (metadata.containsKey("newPage")) {
                     currentContent.setLength(0);
-                    currentContent.append("@startuml");
+                    currentContent.append("@startuml\n");
+                    for (String include : includes) {
+                        currentContent.append(include).append("\n");
+                    }
                 }
                 steps.add(new Step(currentStep, metadata));
             } else if (isStepEnd(line, currentStep)) {

@@ -27,7 +27,7 @@ public class StepImageGenerator {
 
     }
 
-    private void generateStepPumlFiles(List<Step> steps, File outputDir) {
+    void generateStepPumlFiles(List<Step> steps, File outputDir) {
         steps.forEach(step -> {
             writePumlFile(step, outputDir);
         });
