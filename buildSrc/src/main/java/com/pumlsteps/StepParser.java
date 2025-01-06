@@ -55,36 +55,30 @@ public class StepParser {
         List<String> lines = sourceFile.readLines();
         StringBuilder currentContent = new StringBuilder();
         List<String> includes = new ArrayList<>();
+        List<String> participants = new ArrayList<>();
 
         boolean inStep = false;
         int currentStep = -1;
 
         for (String line : lines) {
             if (line.trim().startsWith("!include")) {
-                // Store includes for reuse
-                includes.add(line);
+                addInclude(line, includes, currentContent);
+
+            } else if (line.trim().startsWith("participant")) {
+                participants.add(line);
                 currentContent.append(line).append("\n");
 
             } else if (isStepStart(line)) {
                 if (inStep) {
                     throw new IllegalStateException("Nested steps are not allowed.");
                 }
-                Map<String, Object> metadata = parseMetadata(line);
-                currentStep = (int) metadata.get("step");
                 inStep = true;
-                if (metadata.containsKey("newPage")) {
-                    currentContent.setLength(0);
-                    currentContent.append("@startuml\n");
-                    for (String include : includes) {
-                        currentContent.append(include).append("\n");
-                    }
-                }
-                steps.add(new Step(currentStep, metadata));
+                currentStep = createStep(line, currentContent, includes, participants, steps);
+
             } else if (isStepEnd(line, currentStep)) {
-                Step step = steps.get(steps.size() - 1); // Get the last added step
-                step.setContent(currentContent.toString() + "\n@enduml");
                 inStep = false;
-                currentStep = -1;
+                currentStep = endStep(steps, currentContent);
+
             } else if (inStep) {
                 currentContent.append(line).append("\n");
             } else {
@@ -111,6 +105,46 @@ public class StepParser {
         }
 
         return new ParsedPlantUmlFile(fileName, steps);
+    }
+
+    private static int endStep(List<Step> steps, StringBuilder currentContent) {
+        int currentStep;
+        Step step = steps.get(steps.size() - 1); // Get the last added step
+        step.setContent(currentContent.toString() + "\n@enduml");
+        currentStep = -1;
+        return currentStep;
+    }
+
+    private int createStep(String line, StringBuilder currentContent, List<String> includes, List<String> participants, List<Step> steps) {
+        int currentStep;
+        Map<String, Object> metadata = parseMetadata(line);
+        currentStep = (int) metadata.get("step");
+        if (metadata.containsKey("newPage")) {
+            currentContent.setLength(0);
+            currentContent.append("@startuml\n");
+            addIncludes(currentContent, includes);
+            addParticipants(currentContent, participants);
+        }
+        steps.add(new Step(currentStep, metadata));
+        return currentStep;
+    }
+
+    private void addParticipants(StringBuilder currentContent, List<String> participants) {
+        for (String participant : participants) {
+            currentContent.append(participant).append("\n");
+        }
+    }
+
+    private static void addIncludes(StringBuilder currentContent, List<String> includes) {
+        for (String include : includes) {
+            currentContent.append(include).append("\n");
+        }
+    }
+
+    private static void addInclude(String line, List<String> includes, StringBuilder currentContent) {
+        // Store includes for reuse
+        includes.add(line);
+        currentContent.append(line).append("\n");
     }
 
 }

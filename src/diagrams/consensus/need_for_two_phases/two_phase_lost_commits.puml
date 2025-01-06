@@ -1,0 +1,90 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Initial Setup"}]
+participant "Alice\n(Client)" as client
+participant "Athens\n(Counter=5)" as athens
+participant "Byzantium\n(Counter=5)" as byzantium
+participant "Cyrene\n(Counter=5)" as cyrene
+' [/step1]
+
+' [step2 {"name":"Phase 1: Prepare"}]
+group #LightBlue "Phase 1: Prepare"
+    client -> athens: IncrementCounter
+    activate athens
+
+    par Prepare Phase
+        athens -> byzantium: Prepare(IncrementCounter)
+        activate byzantium
+        athens -> cyrene: Prepare(IncrementCounter)
+        activate cyrene
+    end
+
+    byzantium -> athens: Accept
+    deactivate byzantium
+    cyrene -> athens: Accept
+    deactivate cyrene
+
+    note over athens: Majority achieved\n(2 accepts + self)
+end
+' [/step2]
+
+' [step3 {"name":"Phase 2: Execute Start", "newPage":"true"}]
+group #LightCoral "Phase 2: Execute"
+    athens -> athens: Execute(IncrementCounter)
+    activate athens #DarkGreen
+    athens -> athens: Counter += 1
+    note right of athens: Counter = 6
+    deactivate athens
+
+    athens -> client: Success
+    note right #pink: Early response!\nBefore other nodes execute
+' [/step3]
+
+' [step4 {"name":"Failed Message Delivery", "newPage":"true"}]
+
+    par Failed Execute Messages
+        athens -[#red]-> byzantium: Execute(IncrementCounter)
+        note right #pink: Message lost
+
+        athens -[#red]-> cyrene: Execute(IncrementCounter)
+        note right #pink: Message lost
+    end
+    
+' [/step4]
+
+' [step5 {"name":"Athens Failure", "newPage":"true"}]
+group #Red "System Failure"
+    note over athens: Athens crashes
+    athens -[#red]x athens
+
+    note across #pink: System State After Failure:\n* Athens (failed): Counter = 6\n* Other nodes: Counter = 5\n* Client believes operation succeeded
+end
+' [/step5]
+
+' [step6 {"name":"Inconsistency Detection", "newPage":"true"}]
+group #Yellow "Inconsistency Detection"
+    client -> byzantium: ReadCounter
+    activate byzantium
+    byzantium -> client: Counter = 5
+    deactivate byzantium
+
+    client -> cyrene: ReadCounter
+    activate cyrene
+    cyrene -> client: Counter = 5
+    deactivate cyrene
+
+    note over client #pink: Client sees inconsistent state:\n* Got "Success" for increment\n* But counter still shows old value!
+end
+' [/step6]
+
+' [step7 {"name":"Recovery Challenges", "newPage":"true"}]
+group #LightYellow "Recovery Problems"
+    note across: Key Recovery Challenges:
+    note across: 1. Byzantium and Cyrene can't\ndetermine if they should execute
+    note across: 2. No way to verify if operation\nwas fully completed
+    note across: 3. System can't guarantee\nconsistency with client view
+end
+' [/step7]
+
+@enduml
