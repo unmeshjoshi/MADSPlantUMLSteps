@@ -1,0 +1,74 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Initial State"}]
+participant "Alice\n(Client)" as client
+participant "Byzantium\n(Counter=5\nHas accepted\nIncrementCounter)" as byzantium
+participant "Athens\n(Counter=6\nAlready executed\nIncrementCounter)" as athens
+participant "Cyrene\n(Counter=5)" as cyrene
+
+note across: Initial State:\n* Athens previously executed IncrementCounter (Counter=6)\n* Athens just rejoined the cluster\n* Byzantium starting recovery of accepted request\n* Each request has unique RequestID
+' [/step1]
+
+' [step2 {"name":"Recovery Initiation", "newPage":"true"}]
+group #LightBlue "Recovery Initiation"
+    client -> byzantium: IncrementCounter\nRequestID=xyz789
+    activate byzantium
+
+    note over byzantium #yellow: Found accepted request\nRequestID=xyz789
+end
+' [/step2]
+
+' [step3 {"name":"Recovery Phase 1", "newPage":"true"}]
+group #LightGreen "Recovery Phase 1: Re-Prepare"
+    byzantium -> athens: Prepare(IncrementCounter\nRequestID=xyz789)
+    activate athens
+    athens --> byzantium: Accept
+    deactivate athens
+
+    byzantium -> cyrene: Prepare(IncrementCounter\nRequestID=xyz789)
+    activate cyrene
+    cyrene --> byzantium: Accept
+    deactivate cyrene
+
+    note over byzantium: Majority achieved
+end
+' [/step3]
+
+' [step4 {"name":"Recovery Phase 2 with Idempotency", "newPage":"true"}]
+group #LightCoral "Recovery Phase 2: Re-Execute with Idempotency Check"
+    byzantium -> byzantium: Execute(IncrementCounter\nRequestID=xyz789)
+    activate byzantium #DarkGreen
+    byzantium -> byzantium: Counter += 1
+    note right of byzantium: Counter = 6
+    deactivate byzantium
+
+    byzantium -> athens: Execute(IncrementCounter\nRequestID=xyz789)
+    activate athens
+
+    note over athens #yellow: Idempotency Check:\n1. Check if RequestID=xyz789\nwas already executed\n2. Found in execution history\n3. Skip re-execution\n4. Return success
+
+    athens --> byzantium: Executed\n(Already processed)
+    deactivate athens
+
+    byzantium -> cyrene: Execute(IncrementCounter\nRequestID=xyz789)
+    activate cyrene
+    cyrene -> cyrene: Counter += 1
+    note right of cyrene: Counter = 6
+    cyrene --> byzantium: Executed
+    deactivate cyrene
+end
+' [/step4]
+
+' [step5 {"name":"Recovery Completion", "newPage":"true"}]
+group #LightYellow "Final State"
+    note over byzantium: Recovery complete with idempotency:\n1. Request executed where needed\n2. Athens skipped re-execution\n3. System consistent at Counter=6
+
+    byzantium -> client: Success
+    deactivate byzantium
+
+    note across: Final System State:\n* Athens: Counter = 6 (unchanged due to idempotency)\n* Byzantium: Counter = 6 (newly executed)\n* Cyrene: Counter = 6 (newly executed)\n* All nodes consistent via different paths
+end
+' [/step5]
+
+@enduml

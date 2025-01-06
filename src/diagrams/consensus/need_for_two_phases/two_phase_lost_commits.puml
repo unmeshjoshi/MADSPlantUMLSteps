@@ -50,7 +50,7 @@ group #LightCoral "Phase 2: Execute"
         athens -[#red]-> cyrene: Execute(IncrementCounter)
         note right #pink: Message lost
     end
-    
+
 ' [/step4]
 
 ' [step5 {"name":"Athens Failure", "newPage":"true"}]

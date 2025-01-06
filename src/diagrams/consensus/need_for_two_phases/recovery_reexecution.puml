@@ -1,0 +1,80 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Initial State After Athens Failure"}]
+participant "Alice\n(Client)" as client
+participant "Byzantium\n(Counter=5\nHas accepted\nIncrementCounter)" as byzantium
+participant "Cyrene\n(Counter=5)" as cyrene
+note across: System state after Athens failure:\n* Athens is down\n* Byzantium has accepted but unexecuted IncrementCounter\n* Cyrene has no record of the request
+' [/step1]
+
+' [step2 {"name":"Recovery Initiation", "newPage":"true"}]
+group #LightBlue "Recovery Initiation"
+    client -> byzantium: IncrementCounter
+    activate byzantium
+
+    note over byzantium #yellow: Found accepted\nIncrementCounter request\nin local state
+
+    note over byzantium #yellow: Safe choice:\nAssume request might have\nreached majority before
+end
+' [/step2]
+
+' [step3 {"name":"Recovery Phase 1", "newPage":"true"}]
+group #LightGreen "Recovery Phase 1: Re-Prepare"
+    note over byzantium
+        Safety achieved by re-running two phases:
+        1. If request was previously accepted by majority:
+           - Athens might have executed the request
+           - Re-prepare ensures all live nodes agree to
+             execute this request again
+           - When Athens rejoins, it will sync with
+             majority state
+           - This maintains consistency whether Athens
+             had executed or not
+
+        2. If request was not previously accepted by majority:
+           - Re-prepare gets fresh majority agreement
+           - Previous partial execution would have failed
+           - No node could have executed without majority
+    end note
+
+    byzantium -> cyrene: Prepare(IncrementCounter)
+    activate cyrene
+
+    cyrene --> byzantium: Accept
+    deactivate cyrene
+
+    note over byzantium: Majority achieved\n(self + Cyrene)
+end
+' [/step3]
+
+' [step4 {"name":"Recovery Phase 2", "newPage":"true"}]
+group #LightCoral "Recovery Phase 2: Re-Execute"
+    byzantium -> byzantium: Execute(IncrementCounter)
+    activate byzantium #DarkGreen
+    byzantium -> byzantium: Counter += 1
+    note right of byzantium: Counter = 6
+    deactivate byzantium
+
+    byzantium -> cyrene: Execute(IncrementCounter)
+    activate cyrene
+    cyrene -> cyrene: Counter += 1
+    note right of cyrene: Counter = 6
+
+    cyrene --> byzantium: Executed
+    deactivate cyrene
+end
+' [/step4]
+
+' [step5 {"name":"Recovery Completion", "newPage":"true"}]
+group #LightYellow "Recovery Completion"
+    note over byzantium: Recovery complete:\n1. Request re-accepted by majority\n2. Executed on all available nodes\n3. System now consistent
+
+    byzantium -> client: Success
+    deactivate byzantium
+
+    note across: Final System State:\n* Byzantium: Counter = 6\n* Cyrene: Counter = 6\n* System is consistent regardless of\nwhether Athens had executed or not
+end
+' [/step5]
+
+@enduml
