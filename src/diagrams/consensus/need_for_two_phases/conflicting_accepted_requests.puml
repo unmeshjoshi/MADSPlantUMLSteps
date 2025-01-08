@@ -1,0 +1,85 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Initial State"}]
+participant "Alice\n(Client)" as alice
+participant "Bob\n(Client)" as bob
+participant "Charlie\n(Client)" as charlie
+participant "Athens" as athens
+participant "Byzantium" as byzantium
+participant "Cyrene" as cyrene
+
+note over athens: Counter = 5
+/note over byzantium: Counter = 5
+/note over cyrene: Counter = 5
+' [/step1]
+
+' [step2 {"name":"Alice's Request to Athens", "newPage":"true"}]
+group #LightBlue "Alice's Request - Network Partition"
+    alice -> athens: IncrementCounter
+    activate athens
+
+    athens -[#red]-> byzantium: Prepare(IncrementCounter)
+    note right #pink: Cannot reach\nByzantium
+
+    athens -[#red]-> cyrene: Prepare(IncrementCounter)
+    note right #pink: Cannot reach\nCyrene
+
+    note over athens #yellow: Accepts request but\ncannot proceed\n(no majority possible)
+end
+' [/step2]
+
+' [step3 {"name":"Bob's Request to Byzantium", "newPage":"true"}]
+group #LightGreen "Bob's Request - Different Partition"
+    bob -> byzantium: IncrementByTwo
+    activate byzantium
+
+    byzantium -[#red]-> athens: Prepare(IncrementByTwo)
+    note right #pink: Cannot reach\nAthens
+
+    byzantium -[#red]-> cyrene: Prepare(IncrementByTwo)
+    note right #pink: Cannot reach\nCyrene
+
+    note over byzantium #yellow: Accepts request but\ncannot proceed\n(no majority possible)
+end
+' [/step3]
+
+' [step4 {"name":"Network Heals", "newPage":"true"}]
+group #LightYellow "Network Heals"
+    note over athens: Counter = 5\nHas accepted:\nIncrementCounter
+    /note over byzantium: Counter = 5\nHas accepted:\nIncrementByTwo
+    /note over cyrene: Counter = 5\nNo accepted requests
+
+    note across: Network connectivity restored
+end
+' [/step4]
+
+' [step5 {"name":"Charlie Triggers Recovery", "newPage":"true"}]
+group #LightCoral "Recovery Dilemma"
+    charlie -> athens: ReadCounter
+
+    note over athens: Recovery Challenge:\n1. Has local accepted request (IncrementCounter)\n2. Discovers Byzantium's request (IncrementByTwo)\n3. Which request to recover?
+
+    athens -> byzantium: Discover State
+    activate byzantium
+    byzantium --> athens: Has accepted IncrementByTwo
+    deactivate byzantium
+
+    athens -> cyrene: Discover State
+    activate cyrene
+    cyrene --> athens: No accepted requests
+    deactivate cyrene
+end
+' [/step5]
+
+' [step6 {"name":"Recovery Options", "newPage":"true"}]
+group #Red "Recovery Decision Required"
+    note across #pink: Recovery Protocol Questions:\n\n1. Should oldest request (Alice's) be recovered first?\n  - Maintains temporal order\n  - But how to track request timestamps reliably?\n\n2. Should we use node IDs to break ties?\n  - Athens (ID=1) vs Byzantium (ID=2)\n  - Deterministic but arbitrary\n\n3. How to ensure all nodes make same choice?\n  - Nodes must agree on recovery order\n  - Need stable leader election\n\n4. What if more requests arrive during recovery?\n  - Need to queue new requests\n  - Or reject until system stabilizes
+
+    note over athens: Recovery BLOCKED:\nNeeds clear protocol for\nrequest prioritization
+    /note over byzantium: Cannot proceed:\nWaiting for recovery\nprotocol decision
+    /note over cyrene: Neutral state:\nReady to accept\nwhatever is chosen
+end
+' [/step6]
+
+@enduml

@@ -1,0 +1,118 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Initial Sequence"}]
+participant "Alice\n(Client)" as alice
+participant "Athens" as athens
+participant "Byzantium" as byzantium
+participant "Cyrene" as cyrene
+
+note over athens: Counter = 5
+/note over byzantium: Counter = 5
+/note over cyrene: Counter = 5
+
+note across: Initial State:\n* First request from Alice: IncrementCounter\n* Second request from Bob: IncrementByTwo
+' [/step1]
+
+' [step2 {"name":"Alice's Request Phase 1", "newPage":"true"}]
+group #LightBlue "Alice's Request - Phase 1"
+    alice -> athens: IncrementCounter
+    activate athens
+
+    athens -> byzantium: Prepare(IncrementCounter)
+    activate byzantium
+    byzantium --> athens: Accept
+    deactivate byzantium
+
+    athens -[#red]-> cyrene: Prepare(IncrementCounter)
+    note right #pink: Message lost\nNetwork issue
+end
+' [/step2]
+
+' [step3 {"name":"Alice's Request Execute Phase", "newPage":"true"}]
+group #LightGreen "Alice's Request - Phase 2"
+    note over athens: Majority achieved\n(self + Byzantium)
+
+    athens -> athens: Execute(IncrementCounter)
+    athens -> athens: Counter += 1
+    note over athens: Counter = 6
+    /note over byzantium: Counter = 5
+    /note over cyrene: Counter = 5
+end
+' [/step3]
+
+' [step4 {"name":"Node Crashes", "newPage":"true"}]
+group #Red "Nodes Crash"
+    athens -> alice: Success
+    deactivate athens
+
+    note over athens #red: Athens crashes\nCounter persisted = 6\nAccepted request state LOST
+    /note over byzantium #red: Byzantium crashes\nCounter persisted = 5\nAccepted request state LOST
+    /note over cyrene #yellow: Cyrene stays up\nCounter = 5\nNo request state
+end
+' [/step4]
+
+' [step5 {"name":"Nodes Restart", "newPage":"true"}]
+participant "Bob\n(Client)" as bob
+
+group #LightYellow "After Recovery"
+    note over athens: Counter = 6\nNo memory of\naccepted requests
+    /note over byzantium: Counter = 5\nNo memory of\naccepted requests
+    /note over cyrene: Counter = 5\nNo request state
+end
+' [/step5]
+
+' [step6 {"name":"Bob's Request Creates Split", "newPage":"true"}]
+group #Red "Split Brain Due to Lost State"
+    bob -> athens: IncrementByTwo
+    activate athens
+
+    athens -> byzantium: Prepare(IncrementByTwo)
+    activate byzantium
+    byzantium --> athens: Accept
+    deactivate byzantium
+
+    athens -> cyrene: Prepare(IncrementByTwo)
+    activate cyrene
+    cyrene --> athens: Accept
+    deactivate cyrene
+
+    note over athens: Majority achieved\n(All nodes accept because\nthey lost accepted request state)
+end
+' [/step6]
+
+' [step7 {"name":"System Split", "newPage":"true"}]
+group #Red "System Becomes Inconsistent"
+    athens -> athens: Execute(IncrementByTwo)
+    athens -> athens: Counter += 2
+    note over athens: Counter = 8
+    /note over byzantium: Counter = 5
+    /note over cyrene: Counter = 5
+
+    athens -> byzantium: Execute(IncrementByTwo)
+    activate byzantium
+    byzantium -> byzantium: Counter += 2
+    note over athens: Counter = 8
+    /note over byzantium: Counter = 7
+    /note over cyrene: Counter = 5
+
+    athens -> cyrene: Execute(IncrementByTwo)
+    activate cyrene
+    cyrene -> cyrene: Counter += 2
+    note over athens: Counter = 8
+    /note over byzantium: Counter = 7
+    /note over cyrene: Counter = 7
+
+    byzantium --> athens: Executed
+    deactivate byzantium
+    cyrene --> athens: Executed
+    deactivate cyrene
+
+    athens -> bob: Success
+    deactivate athens
+
+    note across #red: System Split After Crashes:\n* Athens: Counter = 8 (had first increment + executed second)\n* Byzantium: Counter = 7 (lost first increment + executed second)\n* Cyrene: Counter = 7 (never got first + executed second)\n\nIssue: Lost accepted request state allowed\nconflicting operation to proceed!
+end
+' [/step7]
+
+@enduml

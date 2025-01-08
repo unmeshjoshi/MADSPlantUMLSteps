@@ -1,0 +1,53 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Initial State"}]
+participant "Alice\n(Client)" as alice
+participant "Athens" as athens
+participant "Byzantium" as byzantium
+participant "Cyrene" as cyrene
+
+note over athens: Known Generation = 0\nIs Leader = false
+/note over byzantium: Known Generation = 0\nIs Leader = false
+/note over cyrene: Known Generation = 0\nIs Leader = false
+' [/step1]
+
+' [step2 {"name":"Client Request Triggers Election", "newPage":"true"}]
+group #LightBlue "Client Request"
+    alice -> athens: IncrementCounter
+    activate athens
+
+    note over athens: Not leader\nMust initiate election
+end
+' [/step2]
+
+' [step3 {"name":"Leadership Election", "newPage":"true"}]
+group #LightGreen "Leadership Proposal"
+    athens -> byzantium: ProposeLeadership(Generation=7)
+    activate byzantium
+    note over byzantium: No higher generation seen\nUpdate known generation\nGrant vote
+    byzantium --> athens: Accept
+    deactivate byzantium
+
+    athens -> cyrene: ProposeLeadership(Generation=7)
+    activate cyrene
+    note over cyrene: No higher generation seen\nUpdate known generation\nGrant vote
+    cyrene --> athens: Accept
+    deactivate cyrene
+
+    note over athens: Majority achieved\nBecomes leader
+end
+' [/step3]
+
+' [step4 {"name":"Final State", "newPage":"true"}]
+group #LightYellow "Election Result"
+    note over athens: Known Generation = 7\nIs Leader = true
+    /note over byzantium: Known Generation = 7\nIs Leader = false
+    /note over cyrene: Known Generation = 7\nIs Leader = false
+
+    athens -> alice: Will process request\nas new leader
+    deactivate athens
+end
+' [/step4]
+
+@enduml

@@ -1,0 +1,97 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Initial Sequence"}]
+participant "Alice\n(Client)" as alice
+participant "Athens\n(Counter=5)" as athens
+participant "Byzantium\n(Counter=5)" as byzantium
+participant "Cyrene\n(Counter=5)" as cyrene
+
+note across: Initial State:\n* All nodes have Counter=5\n* First request from Alice: IncrementCounter\n* Second request from Bob: IncrementByTwo
+' [/step1]
+
+' [step2 {"name":"Alice's Request Phase 1", "newPage":"true"}]
+group #LightBlue "Alice's Request - Phase 1"
+    alice -> athens: IncrementCounter
+    activate athens
+
+    athens -> byzantium: Prepare(IncrementCounter)
+    activate byzantium
+    byzantium --> athens: Accept
+    deactivate byzantium
+
+    athens -[#red]-> cyrene: Prepare(IncrementCounter)
+    note right #pink: Message lost\nNetwork issue
+end
+' [/step2]
+
+' [step3 {"name":"Alice's Request Execute Phase", "newPage":"true"}]
+group #LightGreen "Alice's Request - Phase 2"
+    note over athens: Majority achieved\n(self + Byzantium)
+
+    athens -> athens: Execute(IncrementCounter)
+    athens -> athens: Counter += 1
+    note right of athens: Counter = 6
+
+    athens -[#red]-> byzantium: Execute(IncrementCounter)
+    note right #pink: Message lost\nNetwork issue
+
+    athens -> alice: Success
+    deactivate athens
+end
+' [/step3]
+
+' [step4 {"name":"Premature Request Cleanup", "newPage":"true"}]
+group #LightCoral "Premature State Cleanup"
+    note over athens #pink: Athens removes accepted\nIncrementCounter request\nafter self-execution
+
+    note over byzantium #yellow: Byzantium keeps accepted\nIncrementCounter request\n(never received execute)
+    note over byzantium #yellow: Counter still at 5!
+
+    note over cyrene #yellow: Cyrene never received\nthe request
+end
+' [/step4]
+
+' [step5 {"name":"Bob's Conflicting Request", "newPage":"true"}]
+participant "Bob\n(Client)" as bob
+
+group #Red "Split Brain Scenario"
+    bob -> athens: IncrementByTwo
+    activate athens
+
+    athens -> byzantium: Prepare(IncrementByTwo)
+    activate byzantium
+    note over byzantium #red: Rejects new request\ndue to accepted\nIncrementCounter
+    byzantium --> athens: Reject
+    deactivate byzantium
+
+    athens -> cyrene: Prepare(IncrementByTwo)
+    activate cyrene
+    cyrene --> athens: Accept
+    deactivate cyrene
+
+    note over athens: Majority achieved\n(self + Cyrene)
+end
+' [/step5]
+
+' [step6 {"name":"System Split", "newPage":"true"}]
+group #Red "System Becomes Inconsistent"
+    athens -> athens: Execute(IncrementByTwo)
+    athens -> athens: Counter += 2
+    note right of athens: Counter = 8
+
+    athens -> cyrene: Execute(IncrementByTwo)
+    activate cyrene
+    cyrene -> cyrene: Counter += 2
+    note right of cyrene: Counter = 7
+    cyrene --> athens: Executed
+    deactivate cyrene
+
+    athens -> bob: Success
+    deactivate athens
+
+    note across #red: System Split:\n* Athens: Counter = 8 (executed both requests)\n* Byzantium: Counter = 5 (accepted but never executed first request)\n* Cyrene: Counter = 7 (only executed second request)
+end
+' [/step6]
+
+@enduml

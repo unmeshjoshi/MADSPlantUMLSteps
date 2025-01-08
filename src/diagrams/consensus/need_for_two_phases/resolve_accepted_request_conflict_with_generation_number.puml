@@ -1,0 +1,60 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Initial Conflicting State"}]
+participant "Charlie\n(Client)" as charlie
+participant "Athens" as athens
+participant "Byzantium" as byzantium
+participant "Cyrene" as cyrene
+
+note over athens: Counter = 5\nAccepted: IncrementCounter\nGeneration = 7
+/note over byzantium: Counter = 5\nAccepted: IncrementByTwo\nGeneration = 8
+/note over cyrene: Counter = 5\nNo accepted values
+' [/step1]
+
+' [step2 {"name":"Recovery Trigger", "newPage":"true"}]
+group #LightBlue "Recovery Initiation"
+    charlie -> athens: ReadCounter
+    activate athens
+
+    note over athens #yellow: Must recover system state\nBefore processing new request
+end
+' [/step2]
+
+' [step3 {"name":"State Discovery", "newPage":"true"}]
+group #LightGreen "Discover Accepted Values"
+    athens -> byzantium: DiscoverState
+    activate byzantium
+    byzantium --> athens: Accepted: IncrementByTwo\nGeneration = 8
+    deactivate byzantium
+
+    athens -> cyrene: DiscoverState
+    activate cyrene
+    cyrene --> athens: No accepted values
+    deactivate cyrene
+
+    note over athens: Found higher generation\naccepted value (Gen 8)
+end
+' [/step3]
+
+' [step4 {"name":"Recovery Decision", "newPage":"true"}]
+group #LightYellow "Choose Higher Generation"
+    note over athens: Local: Generation 7
+    /note over byzantium: Found: Generation 8
+    /note over cyrene: No generation
+
+    note across: Recovery Rule:\n1. Always choose highest generation number\n2. Generation 8 > Generation 7\n3. Must recover IncrementByTwo
+end
+' [/step4]
+
+' [step5 {"name":"Execute Recovery", "newPage":"true"}]
+group #LightCoral "Recovery Execution"
+    athens -> athens: Discard local Generation 7 value
+
+    note over athens: Proceed with Generation 8\nIncrementByTwo
+
+    note across: System can now safely proceed\nwith recovery of IncrementByTwo\nNo ambiguity about which value to choose
+end
+' [/step5]
+
+@enduml
