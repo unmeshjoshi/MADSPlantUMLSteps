@@ -1,4 +1,5 @@
 import com.pumlsteps.PlantUmlProcessor
+import com.pumlsteps.presentation.YamlPresentationProcessor
 
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -40,5 +41,21 @@ task generate {
             e.printStackTrace()
         }
 
+    }
+}
+
+task generatePresentationFromYaml {
+    dependsOn generate  // This ensures diagrams are generated before creating the presentation
+    doLast {
+        def yamlFile = file('example-slides.yaml')
+        if (!yamlFile.exists()) {
+            throw new GradleException("example-slides.yaml not found in project root directory")
+        }
+        
+        def processor = new YamlPresentationProcessor(projectDir)
+        def outputFile = new File(projectDir, "presentation.pptx")
+        processor.processYamlToPresentation(yamlFile, outputFile)
+        
+        println "Presentation generated at: ${outputFile.absolutePath}"
     }
 }

@@ -1,0 +1,45 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Cluster as a Single Logical Node"}]
+participant "Alice\n(Client)" as alice
+
+box "Replicated Service" #LightBlue
+participant "Athens" as athens
+participant "Byzantium" as byzantium
+participant "Cyrene" as cyrene
+end box
+
+alice -> athens: Request to Cluster
+activate athens
+note over athens, cyrene #LightBlue
+    The cluster appears as a single entity
+    to Alice, hiding the complexity of
+    internal coordination
+end note
+deactivate athens
+' [/step1]
+
+' [step2 {"name":"Request Processing with Node Failure", "newPage":"true"}]
+participant "Alice\n(Client)" as alice
+
+box "Replicated Service" #LightBlue
+participant "Athens" as athens #Pink
+participant "Byzantium" as byzantium
+participant "Cyrene" as cyrene
+end box
+
+alice -> byzantium: Request to Cluster
+activate byzantium
+note over athens, cyrene #LightBlue
+    Even with Athens down, the cluster
+    continues to appear as a single entity
+    to Alice
+end note
+
+note over athens #Pink: <:fire:> Athens is down
+byzantium --> alice: Response
+deactivate byzantium
+' [/step2]
+
+@enduml

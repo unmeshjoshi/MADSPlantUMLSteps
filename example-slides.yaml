@@ -1,0 +1,32 @@
+title: "Understanding Consensus"
+slides:
+  - type: "text"
+    title: "Introduction to Consensus"
+    bullets:
+      - "Consensus is fundamental to distributed systems"
+      - "Key challenges in achieving agreement"
+      - "Understanding the need for two-phase protocols"
+  
+  - type: "diagram"
+    title: "Single Servers Lack Fault Tolerance"
+    diagramRef: "single_server_problem"
+
+  - type: "diagram"
+    title: "Consensus: Ensuring Consistency in Clustered Environments"
+    diagramRef: "cluster_as_single_node"
+
+  - type: "diagram"
+    title: "Why Immediate Request Execution is Not Always Possible"
+    diagramRef: "single_phase_execution"
+  
+  - type: "diagram"
+    title: "The Need for Two-Phase Execution"
+    diagramRef: "two_phase_execution"
+
+  - type: "text"
+    title: "Key Concepts"
+    bullets:
+      - "Generation numbers for leadership"
+      - "Two-phase commit protocol"
+      - "Handling network partitions"
+      - "Recovery and fault tolerance"

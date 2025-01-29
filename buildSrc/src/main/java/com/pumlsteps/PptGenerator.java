@@ -1,10 +1,10 @@
 package com.pumlsteps;
 
+import org.apache.poi.sl.usermodel.TextParagraph;
 import org.apache.poi.sl.usermodel.VerticalAlignment;
-import org.apache.poi.xslf.usermodel.XMLSlideShow;
-import org.apache.poi.xslf.usermodel.XSLFPictureData;
-import org.apache.poi.xslf.usermodel.XSLFSlide;
-import org.apache.poi.xslf.usermodel.XSLFTextBox;
+import org.apache.poi.xslf.usermodel.*;
+import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
+import org.apache.poi.xslf.usermodel.XSLFTextRun;
 
 import javax.imageio.ImageIO;
 import java.awt.Rectangle;
@@ -63,7 +63,7 @@ public class PptGenerator {
      * @param title       The title for the step.
      * @param imageFile   The image file for the step diagram.
      */
-    private void addStepSlide(String sectionName, String title, File imageFile) {
+    public void addStepSlide(String sectionName, String title, File imageFile) {
         try {
             // Get slide dimensions
             int slideWidth = ppt.getPageSize().width;
@@ -80,17 +80,21 @@ public class PptGenerator {
 
             // Add the title
             XSLFTextBox titleBox = slide.createTextBox();
-            titleBox.setText(title);
             titleBox.setAnchor(new Rectangle(50, 20, slideWidth - 100, 50));
             titleBox.setHorizontalCentered(true);
-            titleBox.getTextParagraphs().get(0).setBulletFontSize(24.0);
+
+            // Create a text run to set font properties
+            XSLFTextRun titleRun = titleBox.addNewTextParagraph().addNewTextRun();
+            titleRun.setText(title);
+            titleRun.setFontFamily("Bitter");
+            titleRun.setFontSize(26.0);
 
 
             // Calculate remaining area for image
-            int imageY = 70;  // Below title
+            int imageY = 50;  // Below title
             int imageHeight = slideHeight - imageY - 20;  // Leave margin at bottom
 
-            double scaleX = (double) (slideWidth - 100) / image.getWidth();
+            double scaleX = (double) (slideWidth - 200) / image.getWidth();
             double scaleY = (double) imageHeight / image.getHeight();
             double scale = Math.min(scaleX, scaleY);
 
@@ -107,6 +111,49 @@ public class PptGenerator {
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Error adding step slide: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Adds a text slide with bullet points.
+     *
+     * @param title The title of the slide
+     * @param bullets List of bullet points to add
+     */
+    public void addTextSlide(String title, List<String> bullets) {
+        try {
+            XSLFSlide slide = ppt.createSlide();
+            
+            // Add title
+            XSLFTextBox titleBox = slide.createTextBox();
+            titleBox.setAnchor(new Rectangle(50, 20, ppt.getPageSize().width - 100, 50));
+            titleBox.setHorizontalCentered(true);
+            
+            // Create a text run to set font properties
+            XSLFTextRun titleRun = titleBox.addNewTextParagraph().addNewTextRun();
+            titleRun.setText(title);
+            titleRun.setFontFamily("Bitter"); // Set the font for the title
+            titleRun.setFontSize(28.0); // Set the
+
+
+            // Add bullet points
+            if (!bullets.isEmpty()) {
+                XSLFTextBox bulletBox = slide.createTextBox();
+                bulletBox.setAnchor(new Rectangle(50, 80, ppt.getPageSize().width - 100, 
+                                                ppt.getPageSize().height - 100));
+
+                for (String bullet : bullets) {
+                    XSLFTextParagraph para = bulletBox.addNewTextParagraph();
+                    para.setBullet(true); // Enable bullet points
+                    para.setBulletFontSize(18.0);
+                    XSLFTextRun run = para.addNewTextRun();
+                    run.setFontFamily("Inter");
+                    run.setText(bullet);
+                    run.setFontSize(18.0);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error adding text slide: " + e.getMessage(), e);
         }
     }
 

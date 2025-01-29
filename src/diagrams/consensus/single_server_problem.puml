@@ -1,0 +1,49 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Single Server Working"}]
+participant "Alice\n(Client)" as alice
+participant "Bob\n(Client)" as bob
+participant "Single Server" as server
+
+alice -> server: Request
+activate server
+server --> alice: Response
+deactivate server
+
+bob -> server: Request
+activate server
+server --> bob: Response
+deactivate server
+
+note over server #LightGreen
+    When server is healthy,
+    all requests are processed
+end note
+
+' [/step1]
+
+' [step2 {"name":"Single Server Failure", "newPage":"true"}]
+participant "Alice\n(Client)" as alice
+participant "Bob\n(Client)" as bob
+participant "Single Server" as server #Pink
+
+note over server #Pink: <:fire:> Server is down
+
+alice -> server: Request
+note right #Pink: Request fails
+server -[#red]-> alice: Service Unavailable
+
+bob -> server: Request
+note right #Pink: Request fails
+server -[#red]-> bob: Service Unavailable
+
+note over server #Pink
+    Single point of failure:
+    When the only server fails,
+    all clients are affected
+end note
+
+' [/step2]
+
+@enduml
