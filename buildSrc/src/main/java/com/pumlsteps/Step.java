@@ -52,4 +52,9 @@ public class Step {
     public String pngFileName() {
         return "step" + getStepNumber() + ".png";
     }
+
+    public String svgFileName() {
+        return "step" + getStepNumber() + ".svg";
+    }
 }
+

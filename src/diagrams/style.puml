@@ -32,6 +32,6 @@ skinparam actor {
   $box()
 }
 
-
+skinparam dpi 600
 
 hide footbox

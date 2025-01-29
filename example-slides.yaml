@@ -8,7 +8,7 @@ slides:
       - "Understanding the need for two-phase protocols"
   
   - type: "diagram"
-    title: "Single Servers Lack Fault Tolerance"
+    title: "Single Server Lacks Fault Tolerance"
     diagramRef: "single_server_problem"
 
   - type: "diagram"
@@ -22,6 +22,10 @@ slides:
   - type: "diagram"
     title: "The Need for Two-Phase Execution"
     diagramRef: "two_phase_execution"
+
+  - type: "diagram"
+    title: "The Commit requests can get lost"
+    diagramRef: "two_phase_lost_commits"
 
   - type: "text"
     title: "Key Concepts"

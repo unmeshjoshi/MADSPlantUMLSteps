@@ -46,6 +46,7 @@ public class StepImageGenerator {
         System.out.println("Processing puml files in directory " + outputDirectory);
         ProcessBuilder processBuilder = new ProcessBuilder(
                 "java", "-jar", plantUmlJarPath,
+                "-tpng", // Specify the output format as SVG
                 outputDirectory.getAbsolutePath()
         );
         Process process = processBuilder.start();
