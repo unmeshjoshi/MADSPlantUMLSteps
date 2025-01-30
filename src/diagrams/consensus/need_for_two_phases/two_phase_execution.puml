@@ -51,22 +51,13 @@ group #LightGreen "Phase 2: Execute"
     end
 ' [/step4]
 
-' [step5 {"name":"Execution Acknowledgement"}]
-    athens -> athens: Executed
-    byzantium -> athens: Executed
-    deactivate byzantium
-    cyrene -> athens: Executed
-    deactivate cyrene
-' [/step5]
-
 ' [step6 {"name":"Client Response"}]
     athens -> client: Success
     deactivate athens
 end
+
+note across: System is now consistent!\nAll nodes have Counter = 6
 ' [/step6]
 
-' [step7 {"name":"Final State"}]
-note across: System is now consistent!\nAll nodes have Counter = 6
-' [/step7]
 
 @enduml

@@ -1,5 +1,6 @@
 import com.pumlsteps.PlantUmlProcessor
 import com.pumlsteps.presentation.YamlPresentationProcessor
+import com.pumlsteps.presentation.HtmlGenerator
 
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -41,6 +42,18 @@ task generate {
             e.printStackTrace()
         }
 
+    }
+}
+
+task generateHtml {
+    dependsOn generate  // This ensures diagrams are generated before creating the presentation
+
+    doLast {
+        def yamlFile = file('example-slides.yaml')
+        def outputHtmlFile = file('presentation.html')
+        
+        new HtmlGenerator().generateHtmlFromYaml(yamlFile, outputHtmlFile)
+        println "HTML presentation generated at: ${outputHtmlFile.absolutePath}"
     }
 }
 

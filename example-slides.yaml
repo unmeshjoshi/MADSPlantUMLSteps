@@ -27,6 +27,11 @@ slides:
     title: "The Commit requests can get lost"
     diagramRef: "two_phase_lost_commits"
 
+  - type: "diagram"
+    title: "The Accept requests can get lost as well"
+    diagramRef: "two_phase_missed_accepts"
+
+
   - type: "text"
     title: "Key Concepts"
     bullets:

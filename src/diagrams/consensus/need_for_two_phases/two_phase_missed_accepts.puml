@@ -1,0 +1,19 @@
+@startuml
+participant Alice
+participant "Athens" as A
+participant "Byzantium" as B
+participant "Cyrene" as C
+
+Alice -> A: increment counter
+A -> A: Accept request
+note over A: Self-accept
+A -> B: Accept request?
+A -[#red]x C: Accept request?
+B --> A: Accepted
+note over A: Got majority (self + Byzantium)\nproceeds to commit
+A -> A: Execute request
+A -> B: Execute request
+A -[#red]x C: Execute request?
+
+note over A, C: C never received any requests.
+@enduml
