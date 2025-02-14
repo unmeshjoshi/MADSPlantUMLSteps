@@ -1,0 +1,5 @@
+title: "Understanding Consensus"
+slides:
+  - type: "diagram"
+    title: "Kubernetes controller flow"
+    diagramRef: "kubernetes_controller_flow"

@@ -1,0 +1,98 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Cluster Components"}]
+participant "Node 1" as n1
+participant "Node 2" as n2
+participant "API Server" as api
+participant "etcd" as etcd
+participant "Controller" as cm
+participant "Scheduler" as sched
+participant "client" as client
+' [/step1]
+
+' [step2 {"name":"Node 1 Registration"}]
+group #LightBlue "Node Registration"
+n1 -> api: Register
+api -> etcd: Store node 1 metadata
+' [/step2]
+
+' [step3 {"name":"Node 2 Registration"}]
+n2 -> api: Register
+api -> etcd: Store node 2 metadata
+note over etcd
+  |= Key |= Value |
+  |/registry/nodes/node1 | {"kind": "Node",\n"metadata": {"name": "node1"}} |
+  |/registry/nodes/node2 | {"kind": "Node",\n"metadata": {"name": "node2"}} |
+end note
+' [/step3]
+
+' [step4 {"name":"Controller Manager Setup", "newPage":"true"}]
+group #LightGreen "Controller Setup"
+cm -> etcd: Watch
+activate cm
+etcd -> cm: Success
+note right of cm: Starts watching resources
+' [/step4]
+
+' [step5 {"name":"Scheduler Setup"}]
+sched -> etcd: Watch for unscheduled pods
+activate sched
+etcd -> sched: Success
+note right of sched: Starts watching pods
+end
+' [/step5]
+
+' [step6 {"name":"ReplicaSet Creation", "newPage":"true"}]
+group #LightYellow "ReplicaSet Creation"
+client -> api: Create ReplicaSet\n(replicas=3)
+api -> etcd: Store ReplicaSet spec
+etcd -> api: Updated
+api -> cm: ReplicaSet created event
+end
+' [/step6]
+
+' [step7 {"name":"Pod Creation by Controller", "newPage":"true"}]
+group #LightPink "Pod Creation by Controller"
+cm -> api: Create Pod 1
+cm -> api: Create Pod 2
+api -> etcd: Store Pod specs
+end
+' [/step7]
+
+' [step8 {"name":"Pod Scheduling"}]
+group #LightCoral "Pod Scheduling"
+etcd -> api: Pods pending
+api -> sched: Unscheduled pods notification
+
+sched -> sched: Schedule pods\nPod1 -> Node1\nPod2 -> Node2\nPod3 -> Node3
+sched -> api: Update Pod specs with node assignments
+api -> etcd: Store updated Pod specs
+deactivate sched
+end
+' [/step8]
+
+' [step9 {"name":"Node 1 Pod Creation", "newPage":"true"}]
+group #LightGray "Pod Creation on Nodes"
+n1 -> api: Poll for assigned pods
+api -> n1: Pod1 assignment
+n1 -> n1: Create Pod1
+' [/step9]
+
+' [step10 {"name":"Node 2 Pod Creation"}]
+n2 -> api: Poll for assigned pods
+api -> n2: Pod2 assignment
+n2 -> n2: Create Pod2
+' [/step10]
+
+
+' [step11 {"name":"Status Updates"}]
+group #LightBlue "Status Updates"
+n1 -> api: Update Pod1 status
+n2 -> api: Update Pod2 status
+api -> etcd: Store status updates
+deactivate cm
+end
+' [/step11]
+
+@enduml 

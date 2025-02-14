@@ -1,0 +1,46 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Multiple Brokers Register"}]
+participant "Broker 1" as b1
+participant "Broker 2" as b2
+participant "Broker 3" as b3
+participant "ZooKeeper" as zk
+b1 -> zk: Register broker (id=1)
+' [/step1]
+
+' [step2]
+b2 -> zk: Register broker (id=2)
+' [/step2]
+
+' [step3]
+b3 -> zk: Register broker (id=3)
+' [/step3]
+
+' [step4]
+b1 -> zk: List /brokers
+' [/step4]
+
+' [step5]
+activate b1
+zk -> b1: Return broker list [1,2,3]
+' [/step5]
+
+' [step6]
+note right of b1: Process existing brokers
+b1 -> zk: Subscribe to /brokers changes
+' [/step6]
+
+' [step7]
+note right of b1: Watches for broker\njoins/leaves
+participant "Broker 4" as b4
+b4 -> zk: Register broker (id=4)
+' [/step7]
+
+' [step8]
+zk -> b1: Broker change callback
+note right of b1: Notified of new\nbroker joining
+deactivate b1
+' [/step8]
+
+@enduml
