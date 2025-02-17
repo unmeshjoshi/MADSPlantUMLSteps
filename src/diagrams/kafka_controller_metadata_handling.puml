@@ -49,7 +49,7 @@ deactivate b1
 end
 ' [/step8]
 
-' [step9]
+' [step9 {"name":"Topic Creation", "newPage":true}]
 group #LightPink "Topic Creation" 
 client -> zk: Create topic "test"\n(3 partitions, RF=3)     
 ' [/step9]

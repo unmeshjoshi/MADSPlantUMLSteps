@@ -33,7 +33,7 @@ public class PptGenerator {
 
         // Add slides for each step in the section
         for (GeneratedStep step : steps) {
-            addStepSlide(sectionName, step.getTitle(), step.getPngFile());
+            addStepSlide(sectionName, step.getTitle(), step.getImageFile());
         }
     }
 

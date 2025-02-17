@@ -1,8 +1,24 @@
 document.addEventListener("DOMContentLoaded", function () {
+    const prevButton = document.getElementById("prev-button");
+    const nextButton = document.getElementById("next-button");
     let currentSlideIndex = 0; // Tracks the current slide
     let currentStepIndex = 0; // Tracks the current step within a slide
 
     const slides = document.querySelectorAll(".slide");
+
+    function updateButtonStates() {
+        // Enable/disable previous button based on current position
+        prevButton.disabled = currentSlideIndex === 0 && currentStepIndex === 0;
+
+        // Get current slide and its steps
+        const currentSlide = slides[currentSlideIndex];
+        const steps = currentSlide.querySelectorAll(".step");
+
+        // Enable/disable next button based on current position
+        const isLastSlide = currentSlideIndex === slides.length - 1;
+        const isLastStep = steps.length > 0 ? currentStepIndex === steps.length - 1 : true;
+        nextButton.disabled = isLastSlide && isLastStep;
+    }
 
     function showSlide(index) {
         slides.forEach((slide, i) => {
@@ -10,6 +26,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         currentStepIndex = 0; // Reset step index when changing slides
         showStep(slides[index]);
+        updateButtonStates();
     }
 
     function showStep(slide) {
@@ -19,6 +36,7 @@ document.addEventListener("DOMContentLoaded", function () {
         steps.forEach((step, i) => {
             step.style.display = i === currentStepIndex ? "block" : "none";
         });
+        updateButtonStates();
     }
 
     function nextStep() {
@@ -37,7 +55,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function prevSlide() {
+    function prevStep() {
         const slide = slides[currentSlideIndex];
         const steps = slide.querySelectorAll(".step");
 
@@ -66,5 +84,5 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Attach the functions to the navigation buttons
     document.getElementById("next-button").addEventListener("click", nextStep);
-    document.getElementById("prev-button").addEventListener("click", prevSlide);
+    document.getElementById("prev-button").addEventListener("click", prevStep);
 });

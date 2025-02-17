@@ -51,7 +51,7 @@ public class PlantUmlProcessor {
             System.out.println("steps = " + generatedSteps.size());
 
             String sectionName = sourcePumlFile.getBaseName();
-            generateStepSlides(sectionName, generatedSteps);
+//            generateStepSlides(sectionName, generatedSteps);
             generateStepHtml(subDir, generatedSteps);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -77,24 +77,140 @@ public class PlantUmlProcessor {
 
         String htmlContent = String.format("""
         <!DOCTYPE html>
-        <html lang="en">
+        <html lang='en'>
         <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
             <title>Step Viewer</title>
+            <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'>
+            <link rel='preconnect' href='https://fonts.googleapis.com'>
+            <link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>
+            <link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap' rel='stylesheet'>
             <style>
-                body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-                img { width: 80%%; max-width: 800px; height: auto; border: 1px solid #ccc; }
-                button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; }
-                button:disabled { background-color: #ccc; cursor: not-allowed; }
+                :root {
+                    --primary: #2563eb;
+                    --primary-light: #dbeafe;
+                    --text: #1e293b;
+                    --text-light: #64748b;
+                    --border: #e2e8f0;
+                    --surface: #ffffff;
+                    --surface-hover: #f8fafc;
+                }
+                body { 
+                    font-family: 'Inter', sans-serif; 
+                    text-align: center; 
+                    margin: 0; 
+                    padding: 0;
+                    min-height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                    color: var(--text);
+                    background: var(--surface);
+                }
+                h1 { margin: 10px 0; }
+                .image-container { 
+                    margin: 10px auto;
+                    padding: 10px;
+                    background: #fff;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: calc(100vh - 120px);
+                    width: 100%%;
+                    max-width: 1200px;
+                }
+                object, img { 
+                    width: 100%%;  /* Use full width of container */
+                    max-width: 800px;  /* Maximum width on larger screens */
+                    height: auto;  /* Maintain aspect ratio */
+                    max-height: 80vh;  /* Prevent image from being too tall */
+                    object-fit: contain;  /* Ensure image fits within bounds */
+                    border: 1px solid #eee;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                /* Media query for smaller screens */
+                @media screen and (max-width: 840px) {
+                    .image-container {
+                        padding: 5px;
+                        height: calc(100vh - 100px);
+                    }
+                    object, img {
+                        max-width: 95%%;  /* Use most of the screen width on mobile */
+                        max-height: 70vh;
+                    }
+                    h1 {
+                        font-size: 1.5em;
+                        margin: 5px 0;
+                    }
+                }
+                .controls {
+                    padding: 24px;
+                    display: flex;
+                    gap: 16px;
+                    justify-content: center;
+                    align-items: center;
+                    background: var(--surface);
+                }
+                button { 
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 12px 24px; 
+                    font-family: 'Inter', sans-serif;
+                    font-size: 14px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    background: var(--surface);
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    color: var(--text);
+                    transition: all 0.2s ease;
+                    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+                }
+                button:hover:not(:disabled) { 
+                    background: var(--surface-hover);
+                    border-color: var(--primary);
+                    color: var(--primary);
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                }
+                button:disabled { 
+                    background-color: var(--surface);
+                    border-color: var(--border);
+                    color: var(--text-light);
+                    cursor: not-allowed;
+                    transform: none;
+                    box-shadow: none;
+                }
+                button i {
+                    font-size: 16px;
+                    transition: transform 0.2s ease;
+                }
+                button:hover:not(:disabled) i.fa-chevron-right {
+                    transform: translateX(2px);
+                }
+                button:hover:not(:disabled) i.fa-chevron-left {
+                    transform: translateX(-2px);
+                }
             </style>
         </head>
         <body>
             <h1>Step Viewer</h1>
-            <img id="diagram" src="step1.png" alt="Step Diagram">
-            <br>
-            <button id="prevButton" onclick="prevStep()" disabled>Previous</button>
-            <button id="nextButton" onclick="nextStep()">Next</button>
+            <div class="image-container">
+                <object id="diagram" type="image/svg+xml" data="step1.svg">
+                    <img src="step1.svg" alt="Step Diagram">
+                </object>
+            </div>
+            <div class='controls'>
+                <button id='prevButton' onclick='prevStep()' disabled>
+                    <i class='fas fa-chevron-left'></i>
+                    <span>Previous</span>
+                </button>
+                <button id='nextButton' onclick='nextStep()'>
+                    <span>Next</span>
+                    <i class='fas fa-chevron-right'></i>
+                </button>
+            </div>
             <script>
                 const totalSteps = %d ;
                 let currentStep = 1;
@@ -103,7 +219,7 @@ public class PlantUmlProcessor {
                 const nextButton = document.getElementById('nextButton');
 
                 function updateDiagram() {
-                    diagramElement.src = `step${currentStep}.png`;
+                    diagramElement.data = `step${currentStep}.svg`;
                     prevButton.disabled = currentStep === 1;
                     nextButton.disabled = currentStep === totalSteps;
                 }

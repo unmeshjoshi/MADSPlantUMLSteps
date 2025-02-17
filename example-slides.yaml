@@ -6,10 +6,14 @@ slides:
       - "Consensus is fundamental to distributed systems"
       - "Key challenges in achieving agreement"
       - "Understanding the need for two-phase protocols"
+    notes: "Emphasize that consensus is not just about agreement, but about maintaining consistency in the face of failures. This sets up the motivation for the following diagrams."
   
   - type: "diagram"
     title: "Single Server Lacks Fault Tolerance"
     diagramRef: "single_server_problem"
+    bullets:
+      - "Consider a single server. It cannot handle failures."
+    notes: "Point out how a single point of failure affects availability. This motivates the need for clustering, which we'll see in the next slides."
 
   - type: "diagram"
     title: "Consensus: Ensuring Consistency in Clustered Environments"

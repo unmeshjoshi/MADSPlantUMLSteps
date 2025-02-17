@@ -4,15 +4,15 @@ import java.io.File;
 
 public class GeneratedStep {
     private final Step sourceStep;
-    private final File pngFile;
+    private final File imageFile;
 
-    public GeneratedStep(Step sourceStep, File pngFile) {
+    public GeneratedStep(Step sourceStep, File imageFile) {
         this.sourceStep = sourceStep;
-        this.pngFile = pngFile;
+        this.imageFile = imageFile;
     }
 
-    public static File pngFile(Step sourceStep, File outputDir) {
-        return new File(outputDir, sourceStep.pngFileName());
+    public static File imageFile(Step sourceStep, File outputDir) {
+        return new File(outputDir, sourceStep.svgFileName());
     }
 
     public static File pumlFile(Step sourceStep, File outputDir) {
@@ -23,7 +23,7 @@ public class GeneratedStep {
         return sourceStep.getTitle();
     }
 
-    public File getPngFile() {
-        return pngFile;
+    public File getImageFile() {
+        return imageFile;
     }
 }

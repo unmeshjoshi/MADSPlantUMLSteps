@@ -22,7 +22,7 @@ public class StepImageGenerator {
         generateStepPngs(outputDir);
 
         return steps.stream()
-                .map(step -> new GeneratedStep(step, GeneratedStep.pngFile(step, outputDir)))
+                .map(step -> new GeneratedStep(step, GeneratedStep.imageFile(step, outputDir)))
                 .collect(Collectors.toList());
 
     }
@@ -45,8 +45,13 @@ public class StepImageGenerator {
     private void generateStepPngs(File outputDirectory) throws IOException {
         System.out.println("Processing puml files in directory " + outputDirectory);
         ProcessBuilder processBuilder = new ProcessBuilder(
-                "java", "-jar", plantUmlJarPath,
-                "-tpng", // Specify the output format as SVG
+                "java",
+                "-DPLANTUML_LIMIT_SIZE=8192",  // Increase maximum diagram size
+                "-jar", plantUmlJarPath,
+                "-tsvg",    // Generate SVG instead of PNG
+                "-SdefaultFontSize=12",  // Set consistent font size
+                "-Sdpi=96",              // Set consistent DPI
+                "-scale 0.8",            // Set smaller scaling
                 outputDirectory.getAbsolutePath()
         );
         Process process = processBuilder.start();
