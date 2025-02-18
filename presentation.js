@@ -1,4 +1,36 @@
 document.addEventListener("DOMContentLoaded", function () {
+    // Handle title notes positioning
+    document.querySelectorAll('.title-notes').forEach(noteEl => {
+        const spanEl = noteEl.querySelector('span');
+        noteEl.addEventListener('mouseenter', () => {
+            const rect = noteEl.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            // Calculate available space on each side
+            const spaceRight = viewportWidth - rect.right;
+            const spaceBottom = viewportHeight - rect.bottom;
+            
+            // Position vertically
+            if (spaceBottom < 200) { // If not enough space below
+                spanEl.style.top = `${rect.top - 10}px`;
+                spanEl.style.transform = 'translateY(-100%)';
+            } else {
+                spanEl.style.top = `${rect.bottom + 10}px`;
+                spanEl.style.transform = 'none';
+            }
+            
+            // Position horizontally
+            if (spaceRight < 420) { // If not enough space to the right (400px width + 20px margin)
+                spanEl.style.left = 'auto';
+                spanEl.style.right = '20px';
+            } else {
+                spanEl.style.left = `${rect.left}px`;
+                spanEl.style.right = 'auto';
+            }
+        });
+    });
+
     const prevButton = document.getElementById("prev-button");
     const nextButton = document.getElementById("next-button");
     let currentSlideIndex = 0; // Tracks the current slide

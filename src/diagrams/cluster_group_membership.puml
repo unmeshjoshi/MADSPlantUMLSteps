@@ -1,0 +1,65 @@
+@startuml
+skinparam Shadowing false
+
+' Cloud representation for the scalable cluster
+skinparam cloud {
+    BackgroundColor #E0F2FF  ' Azure-inspired light blue
+    BorderColor Black
+}
+
+' Node styling
+skinparam node {
+    BackgroundColor White
+    BorderColor Black
+    RoundCorner 20
+}
+
+' Note styling
+skinparam note {
+    BackgroundColor PaleGoldenRod
+    BorderColor Black
+}
+
+title **Managing Group Membership**
+
+cloud "Scalable Cluster" {
+    
+    ' Controller node (Leader)
+    node "<:crown:> Server-1 (Controller)\nMaintains Membership" as S1 #LightGreen
+
+    ' Active nodes
+    node "Server-2\n(ACTIVE)" as S2 #LightGreen
+    node "Server-3\n(ACTIVE)" as S3 #LightGreen
+    node "Server-1000\n(ACTIVE)" as S1000 #LightGreen
+    node "Server-998\n(ACTIVE)" as S998 #LightGreen
+
+    ' Suspect node
+    node "Server-999\n(SUSPECT)" as S999 #Gold
+
+    ' Down node
+    node "Server-4\n(DOWN)" as S4 #Tomato
+
+    ' Aligning servers below the controller
+    S1 -down-> S2 : Heartbeat OK
+    S1 -down-> S3 : Heartbeat OK
+    S1 -down[#red]-> S4 : No Response
+    S1 -down-> S998 : Heartbeat OK
+    S1 -down[#orange]-> S999 : Delayed Response
+    S1 -down-> S1000 : Heartbeat OK
+
+    ' Cluster registry note positioned to the right of the controller
+    note right of S1
+        **Cluster Registry**  
+        | Node ID   | Status   |
+        |-----------|---------|
+        | Server-2  | ACTIVE  |
+        | Server-3  | ACTIVE  |
+        | Server-4  | DOWN    |
+        | ...       | ...     |
+        | Server-998 | ACTIVE  |
+        | Server-999 | SUSPECT |
+        | Server-1000 | ACTIVE  |
+    end note
+}
+@enduml
+ 

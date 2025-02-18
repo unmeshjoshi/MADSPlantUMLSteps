@@ -1,0 +1,53 @@
+title: "Mastering Distributed Systems with Kafka"
+slides:
+  - type: "text"
+    title: "Introduction Kafka's architecture"
+    bullets:
+      - "Apache Kafka is a distributed pub-sub platform"
+      - "It uses Zookeeper as a 'consistent core' to coordinate cluster activities"
+      - "Cluster activities include managing group membership and failure detection"
+    notes: "Emphasize that consensus is not just about agreement, but about maintaining consistency in the face of failures. This sets up the motivation for the following diagrams."
+  
+  - type: "text"
+    title: "Common Requirements for a cluster"
+    bullets:
+      - "Group Membership and Metadata management"
+      - "Failure Detection and Recovery"
+      - "Information Dissemination"
+    
+  - type: "diagram"
+    title: "Managing Group Membership"
+    diagramRef: "cluster_group_membership"
+    notes: "Shows how the leader node tracks membership and detects failures using heartbeats."
+
+  - type: "diagram"
+    title: "Need to Manage Cluster Metadata/Configuration"
+    diagramRef: "cluster_metadata"
+    notes: "Highlights how Kafka partitions and task assignments are managed within the cluster."
+
+  - type: "diagram"
+    title: "Consistency Needs for Metadata Replication"
+    diagramRef: "cluster_metadata_consistency"
+    notes: "Illustrates the importance of keeping metadata in sync when a new leader takes over."
+
+  - type: "diagram"
+    title: "Brokers use Zookeeper for registering"
+    diagramRef: "zookeeper_cluster"
+    notes: "Zookeeper uses consensus mechanism called Zab which givees strong consistency guarantee and fault tolerance."
+
+
+  - type: "diagram"
+    title: "Brokers use Zookeeper for registering"
+    diagramRef: "kafka_broker_registration"
+    notes: "Brokers register with Zookeeper at the startup"
+
+
+  - type: "diagram"
+    title: "One Of The Brokers is elected as the 'Controller'"
+    diagramRef: "kafka_controller_metadata_handling"
+    notes: "Controller is responsible for managing the cluster based on metadata changes in Zookeeper"
+
+  - type: "diagram"
+    title: "Brokers handle LeaderAndIsrRequest"
+    diagramRef: "kafka_handle_leaderIsr_request"
+    notes: "Brokers create log files"

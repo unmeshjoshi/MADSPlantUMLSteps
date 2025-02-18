@@ -2,8 +2,16 @@
 !$border = "#070D4A"
 !$lightyellow = "#FFFFE0"
 !procedure $box()
-  BackgroundColor $back
-  BorderColor $border
+  skinparam Shadowing true
+  skinparam RoundCorner 10
+  skinparam DefaultFontName "Roboto"
+  skinparam DefaultFontSize 14
+  skinparam DefaultFontColor Black
+  skinparam ParticipantBackgroundColor White
+  skinparam ParticipantBorderColor Black
+  skinparam SequenceLifeLineBorderColor Gray
+  skinparam SequenceLifeLineBackgroundColor LightGray
+  skinparam LifelineStrategy solid
 !endprocedure
 
 skinparam shadowing false

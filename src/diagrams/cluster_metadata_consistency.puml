@@ -1,0 +1,50 @@
+@startuml
+skinparam Shadowing false
+
+skinparam cloud {
+    BackgroundColor #E0F2FF
+    BorderColor Black
+}
+
+skinparam node {
+    BackgroundColor White
+    BorderColor Black
+    RoundCorner 20
+}
+
+skinparam note {
+    BackgroundColor PaleGoldenRod
+    BorderColor Black
+}
+
+title **Consistency Needs for Metadata Replication**
+
+cloud "Scalable Cluster" {
+    
+    node "<:crown:> Server-1 (Leader)\nManages Partition Map" as S1 #Tomato
+
+    node "Server-2\nPartitions: 1,4 (v1)" as S2 #LightGreen
+    node "Server-3\nPartitions: 2,5 (v1)" as S3 #LightGreen
+    node "Server-4\nPartitions: 3,6 (v1)" as S4 #LightGreen
+    node "Server-998\nPartitions: 994,997 (v1)" as S998 #LightGreen
+    node "Server-999\nPartitions: 995,998 (v1)" as S999 #LightGreen
+    node "Server-1000\nPartitions: 996,999 (v1)" as S1000 #LightGreen
+
+    note right of S2
+        **Partition Map (v1)**  
+        | Node ID   | Hosted Partitions |
+        |-----------|-----------------|
+        | Server-2  | 1,4 (v1)   |
+        | Server-3  | 2,5 (v1)   |
+        | Server-4  | 3,6 (v1)   |
+        | Server-998 | 994,997 (v1) |
+        | Server-999 | 995,998 (v1) |
+        | Server-1000 | 996,999 (v1) |
+    end note
+
+    note bottom of S2
+        How to ensure metadata copy  
+        is in sync with S3?
+    end note
+}
+@enduml

@@ -1,0 +1,46 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Zookeeper Cluster"}]
+
+rectangle "Zookeeper Cluster" {
+    node "Zookeeper 1\n(Leader)" as zk1 #4A90E2 {
+    }
+
+    node "Zookeeper 2\n(Follower)" as zk2 #9BC2E6 {
+    }
+
+    node "Zookeeper 3\n(Follower)" as zk3 #9BC2E6 {
+    }
+
+' Replication from leader to followers
+zk1 --> zk2 : sync/replicate
+zk1 --> zk3 : sync/replicate
+
+}
+'[/step1]
+
+' [step2]
+rectangle "Data Cluster" {
+    node "Kafka Broker 1" as broker1 #66BB6A
+    node "Kafka Broker 2" as broker2 #66BB6A
+    node "Kafka Broker 3" as broker3 #66BB6A
+    node " ..." as dots #transparent
+    node "Kafka Broker N" as brokerN #66BB6A
+}
+
+broker1 --> zk1 : register
+broker2 --> zk1 : register
+broker3 --> zk1 : register
+dots .. zk1
+brokerN --> zk1 : register
+
+note as N1
+* Zab (Zookeeper Atomic Broadcast) protocol
+  ensures strong consistency across nodes
+* Leader handles all writes
+* Followers serve reads and replicate data
+end note
+' [/step1]
+
+@enduml

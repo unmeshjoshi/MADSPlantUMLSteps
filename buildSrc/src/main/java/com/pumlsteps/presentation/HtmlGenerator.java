@@ -44,7 +44,10 @@ public class HtmlGenerator {
                     .append("<h2>")
                     .append(slide.get("title"))
                     .append("</h2>")
-                    .append(slide.containsKey("notes") ? "<div class='title-notes-indicator'><i class='fas fa-sticky-note'></i></div>" : "")
+                    .append(slide.containsKey("notes") ? String.format(
+                        "<div class='title-notes'><i class='fas fa-sticky-note'></i><span>%s</span></div>",
+                        slide.get("notes")
+                    ) : "")
                     .append("</div>")
                     .append("<div class='content-container'>");
 
@@ -67,7 +70,7 @@ public class HtmlGenerator {
                         String stepIndex = stepName.replaceAll("[^0-9]", ""); // Extract the step number from the filename
                         htmlContent.append("<div class='step' style='display: none;' step_index='")
                                 .append(stepIndex)
-                                .append("'><img src='build/diagrams/")
+                                .append("'><img src='../diagrams/")
                                 .append(diagramRef)
                                 .append("/")
                                 .append(stepName)
@@ -94,15 +97,7 @@ public class HtmlGenerator {
 
                 htmlContent.append("</div>"); // Close diagram-slide-content
             }
-            // Add speaker notes if present
-            if (slide.containsKey("notes")) {
-                htmlContent.append("<div class='speaker-notes'>")
-                        .append("<div class='notes-icon'><i class='fas fa-sticky-note'></i></div>")
-                        .append("<div class='notes-content'>")
-                        .append(slide.get("notes"))
-                        .append("</div>")
-                        .append("</div>");
-            }
+            // Speaker notes are now shown in the title container
             htmlContent.append("</div></div>"); // Close content-container and slide div
         }
 

@@ -1,0 +1,43 @@
+@startuml
+skinparam Shadowing false
+
+skinparam cloud {
+    BackgroundColor #E0F2FF  ' Azure-inspired background for cloud
+    BorderColor Black
+}
+
+skinparam node {
+    BackgroundColor White
+    BorderColor Black
+    RoundCorner 20
+}
+
+skinparam note {
+    BackgroundColor PaleGoldenRod
+    BorderColor Black
+}
+
+title **Scalable Cluster Architecture**
+
+cloud "Scalable Cluster" {
+    frame "Cluster Nodes" {
+        node "<:crown:> Server-1\nPort: 9001" as S1 #LightGreen
+        node "Server-2\nPort: 9002" as S2 #CornflowerBlue
+        node "Server-3\nPort: 9003" as S3 #CornflowerBlue
+        node "Server-998\nPort: 9998" as S998 #CornflowerBlue
+        node "Server-999\nPort: 9999" as S999 #CornflowerBlue
+        node "Server-1000\nPort: 10000" as S1000 #CornflowerBlue
+        node "More Nodes..." as MoreNodes #White
+        MoreNodes ..> S1000 : Scales dynamically
+    }
+}
+
+note right of "Scalable Cluster"
+    **Cluster Requirements:** 
+    - Cluster operations need to be coordinated.
+        - Manage group membership and failure detection.
+        - Nodes join and leave the cluster dynamically.
+        - One node typically acts as the **controller** to coordinate cluster activities.
+end note
+
+@enduml

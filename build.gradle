@@ -49,11 +49,34 @@ task generateHtml {
     dependsOn generate  // This ensures diagrams are generated before creating the presentation
 
     doLast {
-        def yamlFile = file('example-slides.yaml')
-        def outputHtmlFile = file('presentation.html')
+        def presentationDir = file('src/presentation')
+        def buildDir = file('build/presentations')
         
-        new HtmlGenerator().generateHtmlFromYaml(yamlFile, outputHtmlFile)
-        println "HTML presentation generated at: ${outputHtmlFile.absolutePath}"
+        // Create build directory if it doesn't exist
+        buildDir.mkdirs()
+        
+        // Copy required assets to build directory
+        copy {
+            from('.') {
+                include 'styles.css'
+                include 'presentation.js'
+            }
+            into buildDir
+        }
+        
+        // Process each YAML file in the presentation directory
+        presentationDir.eachFile { yamlFile ->
+            if (yamlFile.name.endsWith('.yaml')) {
+                def htmlFileName = yamlFile.name.replace('.yaml', '.html')
+                def htmlFile = new File(buildDir, htmlFileName)
+                // Create new generator instance for each file
+                def generator = new HtmlGenerator()
+                generator.generateHtmlFromYaml(yamlFile, htmlFile)
+                println "Generated ${htmlFile.name} from ${yamlFile.name}"
+            }
+        }
+        
+        println "HTML presentations generated in: ${buildDir.absolutePath}"
     }
 }
 

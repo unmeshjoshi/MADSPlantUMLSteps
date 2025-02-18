@@ -9,53 +9,55 @@ participant "ZooKeeper" as zk
 participant "Admin Client" as client
 ' [/step1]
 
-' [step2 {"name":"Broker1 registers"}]
-group #LightBlue "Broker Registration" 
-b1 -> zk: Register broker (id=1)
-
-' [/step2]
-
-' [step3 {"name":"Broker2 registers"}]
-b2 -> zk: Register broker (id=2)
-' [/step3]
-
-' [step4 {"name":"Broker3 registers"}]
-b3 -> zk: Register broker (id=3)
-end
-' [/step4]
-
-' [step5 {"name":"Broker1 is elected as a controller"}]
+' [step2 {"name":"Brokers run election", "newPage":"true"}]
 group  #LightGreen "Controller Election"
 b1 -> zk: Try create /controller znode
 activate b1
 zk -> b1: Success
+' [/step2]
+
+' [step3]
+b2 -> zk: Try create /controller znode
+activate b2
+b3 -> zk: Try create /controller znode
+activate b3
+'[/step3]
+
+' [step4]
+zk -> b2: Failure
+zk -> b3: Failure
 note right of b1: Becomes Controller
 end
+' [/step4]
+
+' [step5 {"name":"Controller Initialization", "newPage":"true"}]
+group #LightYellow "Controller Initialization" 
+b1 -> b1: Initialize 
 ' [/step5]
 
 ' [step6]
-group #LightYellow "Controller Initialization" 
-b1 -> b1: Initialize 
+b1 -> zk: Load broker metadata
+
 ' [/step6]
 
 ' [step7]
-b1 -> zk: Load broker metadata
-
-' [/step7]
-
-' [step8]
 b1 -> zk: Subscribe to topic changes
 deactivate b1
 end
+' [/step7]
+
+' [step8 {"name":"Topic Creation", "newPage":true}]
+group #LightPink "Topic Creation" 
+client -> AdminUtils: Create topic "test"\n(3 partitions, RF=3)     
 ' [/step8]
 
-' [step9 {"name":"Topic Creation", "newPage":true}]
-group #LightPink "Topic Creation" 
-client -> zk: Create topic "test"\n(3 partitions, RF=3)     
+' [step9]
+AdminUtils -> AdminUtils: AssignPartitionsToBrokers\n(P0: [1,2,3], P1: [2,3,1], P2: [3,1,2])     
 ' [/step9]
 
+
 ' [step10]
-zk -> zk: Store topic metadata
+AdminUtils -> zk: Store topic metadata\n(P0: [1,2,3], P1: [2,3,1], P2: [3,1,2])
 end
 ' [/step10]
 
