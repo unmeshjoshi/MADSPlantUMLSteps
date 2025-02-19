@@ -44,7 +44,7 @@ cloud "Scalable Cluster" {
 
     note bottom of S2
         How to ensure metadata copy  
-        is in sync with S3?
+        is in sync with the old leader?
     end note
 }
 @enduml

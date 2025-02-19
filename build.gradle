@@ -64,6 +64,11 @@ task generateHtml {
             into buildDir
         }
         
+        // Generate version.txt with build timestamp
+        def versionFile = new File(buildDir, 'version.txt')
+        def timestamp = new Date().format("yyyy-MM-dd HH:mm:ss z")
+        versionFile.text = "Built on: ${timestamp}\n"
+        
         // Process each YAML file in the presentation directory
         presentationDir.eachFile { yamlFile ->
             if (yamlFile.name.endsWith('.yaml')) {
