@@ -14,7 +14,9 @@ async function loadVersionInfo() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+    // Initialize features
     loadVersionInfo();
+    
     // Handle title notes positioning
     document.querySelectorAll('.title-notes').forEach(noteEl => {
         const spanEl = noteEl.querySelector('span');
@@ -54,6 +56,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const slides = document.querySelectorAll(".slide");
 
+    function updateProgress() {
+        const totalSlides = slides.length;
+        const progressPercent = ((currentSlideIndex + 1) / totalSlides) * 100;
+        document.querySelector('.progress-indicator').style.width = `${progressPercent}%`;
+
+        // Update section info
+        const currentSlide = slides[currentSlideIndex];
+        const sectionName = currentSlide.getAttribute('data-section');
+        const sectionInfo = document.getElementById('current-section');
+        if (sectionName) {
+            sectionInfo.textContent = sectionName;
+        } else {
+            sectionInfo.textContent = '';
+        }
+    }
+
     function updateButtonStates() {
         // Enable/disable previous button based on current position
         prevButton.disabled = currentSlideIndex === 0 && currentStepIndex === 0;
@@ -66,6 +84,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const isLastSlide = currentSlideIndex === slides.length - 1;
         const isLastStep = steps.length > 0 ? currentStepIndex === steps.length - 1 : true;
         nextButton.disabled = isLastSlide && isLastStep;
+
+        // Update progress bar and section info
+        updateProgress();
     }
 
     function showSlide(index) {
