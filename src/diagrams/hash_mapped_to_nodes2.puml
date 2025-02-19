@@ -44,7 +44,7 @@ note right of "Nodes = 3"
 end note
 
 ' Add additional explanation
-note top of "Nodes = 4"
+note top of "Nodes = 3"
     - Need to move all the keys around as the mapping changes
 end note
 
