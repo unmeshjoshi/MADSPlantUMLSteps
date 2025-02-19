@@ -39,7 +39,7 @@ jobs:
         run: |
           mkdir -p build/presentations
           echo "Build: #${{ github.run_number }} (${{ github.sha }})
-Date: $(date +'%Y-%m-%d %H:%M:%S')" > build/presentations/version.txt
+          Date: $(date +'%Y-%m-%d %H:%M:%S')" > build/presentations/version.txt
 
       - name: Build with Gradle
         run: ./gradlew clean generateHtml
