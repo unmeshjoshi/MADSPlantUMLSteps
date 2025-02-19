@@ -1,0 +1,57 @@
+@startuml
+allowmixing
+
+skinparam Shadowing false
+skinparam RoundCorner 10
+skinparam DefaultFontName "Arial"
+skinparam DefaultFontSize 14
+skinparam DefaultFontColor Black
+skinparam BackgroundColor White
+skinparam sequenceParticipantPadding 10
+
+title **The Need for Partitions**
+
+' Define partitions inside a package
+package "Fixed Partition Count = 12" {
+    rectangle "P1  P2\nP3" as P1
+    rectangle "P5  P6\nP7" as P2
+    rectangle "P9  P10\nP11" as P3
+    rectangle "P4  P8\nP12" as P4 #LightGreen
+}
+
+' Define nodes with specified colors
+node "Node1" as node1 #LightBlue
+node "Node2" as node2 #LightBlue
+node "Node3" as node3 #LightBlue
+node "Node4" as node4 #LightGreen
+
+' Connect partitions to nodes
+P1 -down-> node1
+P2 -down-> node2
+P3 -down-> node3
+P4 -down-> node4
+
+' Add key information as a note
+note right of "Fixed Partition Count = 12"
+    **Hash % n = 12**
+    -------------------
+    | **Name**  | **Hash**   | **Partition** |
+    |-----------|------------|---------------|
+    | Alex      | 533909     | 1             |
+    | Alice     | 1912208    | 0             |
+    | Adam      | 050497     | 1             |
+    | Aron      | 31150      | 2             |
+    | Ben       | 92754      | 2             |
+    | Carl      | 387013     | 1             |
+    | David     | 666620     | 0             |
+end note
+
+' Add additional explanation
+note top of "Fixed Partition Count = 12"
+    - Have Fixed Number of Partitions
+    - Map Partitions to Nodes
+    - Hash % n never changes
+        * Need someone to assign partitions to nodes
+end note
+
+@enduml

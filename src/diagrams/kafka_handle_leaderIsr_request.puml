@@ -11,33 +11,43 @@ participant "Log File" as log #LightGray
 ' [step2]
 controller -> broker : LeaderAndIsrRequest (P0, P1)
 activate broker
+'[/step2]
 
+' [step3]
 group "Broker checks its role"
     broker -> broker : Is this broker the leader?
-    alt If Leader
-        broker -> partition : Create Partition (P0)
-        partition -> log : Create Log File
-        note right of log
-            | Log File |
-            |---------|
-            |   |
-            |   |
-            |   |
-        end note
-    else If Follower
-        broker -> partition : Create Partition (P1)
-        partition -> log : Create Log File
-        note right of log
-            | Log File |
-            |---------|
-            |   |
-            |   |
-            |   |
-        end note
-        broker -> broker : Create Fetcher Task
-    end
+    '[/step3]
+    '[step4]    
+    broker -> partition : Create Partition (P0)
+    partition -> log : Create Log File
+    note right of log
+        | Log File |
+        |---------|
+        |   |
+        |   |
+        |   |
+    end note
+    '[/step4]
+    '[step5]  
+     broker -> broker : Is this broker the follower?
+    '[/step5]
+    '[step6]
+    broker -> partition : Create Partition (P1)
+    '[/step6]
+    '[step7]
+    partition -> log : Create Log File
+    note right of log
+        | Log File |
+        |---------|
+        |   |
+        |   |
+        |   |
+    end note
+    '[/step7]
+    '[step8]
+    broker -> broker : Create Fetcher Task
 end
-
 deactivate broker
-'[/step2]
+'[/step8]
+
 @enduml

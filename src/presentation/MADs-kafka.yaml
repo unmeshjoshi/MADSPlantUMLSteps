@@ -33,20 +33,40 @@ slides:
   - type: "diagram"
     title: "Brokers use Zookeeper for registering"
     diagramRef: "zookeeper_cluster"
-    notes: "Zookeeper uses consensus mechanism called Zab which givees strong consistency guarantee and fault tolerance."
+    notes: "Zookeeper uses consensus mechanism called Zab which gives strong consistency guarantee and fault tolerance."
 
 
   - type: "diagram"
-    title: "Brokers use Zookeeper for registering"
+    title: "Broker Registration Process"
     diagramRef: "kafka_broker_registration"
-    notes: "Brokers register with Zookeeper at the startup"
+    notes: "Brokers register with Zookeeper at startup to join the cluster"
+
+  - type: "diagram"
+    title: "Hash of the key used for mapping to nodes"
+    diagramRef: "hash_mapped_to_nodes"
+    notes: "Shows how consistent hashing maps keys to nodes in a distributed system"
 
 
   - type: "diagram"
-    title: "One Of The Brokers is elected as the 'Controller'"
+    title: "All data needs to be shuffled if one extra node is added"
+    diagramRef: "hash_mapped_to_nodes2"
+    notes: "Illustrates the data redistribution challenge when adding nodes to the cluster"
+
+  - type: "diagram"
+    title: "Number of partitions is fixed"
+    diagramRef: "hash_mapped_to_fixed_partitions"
+    notes: "Controller is responsible for managing the cluster based on metadata changes in Zookeeper"
+
+  - type: "diagram"
+    title: "One of the brokers is chosen as the Controller"
     diagramRef: "kafka_controller_metadata_handling"
     notes: "Controller is responsible for managing the cluster based on metadata changes in Zookeeper"
 
+  - type: "diagram"
+    title: "Topic Creation uses fixed number of partitions"
+    diagramRef: "kafka_topic_creation"
+    notes: "Controller is responsible for managing the cluster based on metadata changes in Zookeeper"
+    
   - type: "diagram"
     title: "Brokers handle LeaderAndIsrRequest"
     diagramRef: "kafka_handle_leaderIsr_request"

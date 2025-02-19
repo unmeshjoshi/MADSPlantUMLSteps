@@ -1,0 +1,53 @@
+@startuml
+allowmixing 
+
+skinparam Shadowing false
+skinparam RoundCorner 10
+skinparam DefaultFontName "Arial"
+skinparam DefaultFontSize 14
+skinparam DefaultFontColor Black
+skinparam BackgroundColor White
+skinparam sequenceParticipantPadding 10
+
+title **The Need for Partitions**
+
+' Define partitions inside a package
+package "Nodes = 3" {
+    rectangle "P1  P2\nP3  P4" as P1
+    rectangle "P5  P6\nP7  P8" as P2
+    rectangle "P9  P10\nP11  P12" as P3
+}
+
+' Define nodes
+node "Node1" as node1
+node "Node2" as node2
+node "Node3" as node3
+
+' Connect partitions to nodes
+P1 -down-> node1
+P2 -down-> node2
+P3 -down-> node3
+
+' Add key information as a note
+note right of "Nodes = 3"
+    **Hash % 3**
+    -------------------
+    | **Name**  | **Hash**   | **Nodes** |
+    |-----------|-----------|-------------|
+    | Alex      | 533909    | 2           |
+    | Alice     | 1912208   | 0           |
+    | Adam      | 050497    | 0           |
+    | Aron      | 31150     | 0           |
+    | Ben       | 92754     | 2           |
+    | Carl      | 387013    | 2           |
+    | David     | 666620    | 0           |
+end note
+
+' Add additional explanation
+note top of "Nodes = 3"
+    - Use hash(key) % 3 to map partitions to nodes
+    - Allows uniform distribution of data across nodes
+    - Allows quick retrieval of data based on the key
+end note
+
+@enduml
