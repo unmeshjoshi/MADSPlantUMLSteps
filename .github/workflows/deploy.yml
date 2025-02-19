@@ -32,6 +32,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Install GraphViz
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
       - name: Build with Gradle
         run: ./gradlew clean generateHtml
 
