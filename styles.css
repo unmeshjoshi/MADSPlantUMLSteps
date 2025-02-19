@@ -348,6 +348,21 @@ button,
     box-shadow: var(--shadow-sm);
 }
 
+.version-info {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    background: var(--surface);
+    padding: 8px 12px;
+    border-radius: 4px;
+    box-shadow: var(--shadow-sm);
+    white-space: pre-line;
+    z-index: 1000;
+}
+
 button:hover:not(:disabled),
 #prev-button:hover:not(:disabled),
 #next-button:hover:not(:disabled) { 

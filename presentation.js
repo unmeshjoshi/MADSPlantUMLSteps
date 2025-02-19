@@ -1,4 +1,20 @@
+async function loadVersionInfo() {
+    try {
+        const response = await fetch('version.txt');
+        if (response.ok) {
+            const versionInfo = await response.text();
+            const versionDiv = document.createElement('div');
+            versionDiv.className = 'version-info';
+            versionDiv.textContent = versionInfo;
+            document.body.appendChild(versionDiv);
+        }
+    } catch (error) {
+        console.error('Failed to load version info:', error);
+    }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
+    loadVersionInfo();
     // Handle title notes positioning
     document.querySelectorAll('.title-notes').forEach(noteEl => {
         const spanEl = noteEl.querySelector('span');
