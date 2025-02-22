@@ -1,0 +1,67 @@
+title: "Understanding Kubernetes Architecture and Components"
+sections:
+  - title: "Introduction"
+    slides:
+      - type: "text"
+        title: "Introduction to Kubernetes Architecture"
+        bullets:
+          - "Kubernetes is a container orchestration platform"
+          - "Key components include Control Plane and Worker Nodes"
+          - "Control Plane manages the cluster state and scheduling decisions"
+        notes: "Emphasize that Kubernetes is a distributed system that needs to maintain consistency across its components."
+      
+      - type: "text"
+        title: "Core Components"
+        bullets:
+          - "API Server: The front-end for the Kubernetes control plane"
+          - "Scheduler: Assigns pods to nodes"
+          - "Controller Manager: Manages various controllers"
+          - "etcd: Distributed key-value store for cluster state"
+
+  - title: "Controllers in Kubernetes"
+    slides:
+      - type: "text"
+        title: "Understanding Controllers"
+        bullets:
+          - "Controllers implement control loops"
+          - "Watch the current state and work to achieve desired state"
+          - "Handle reconciliation and error recovery"
+        notes: "Controllers are the backbone of Kubernetes' self-healing capabilities."
+
+      - type: "diagram"
+        title: "Controller Flow"
+        diagramRef: "kubernetes_controller_flow"
+        notes: "Illustrates how controllers maintain desired state through continuous reconciliation."
+
+  - title: "Scheduling in Kubernetes"
+    slides:
+      - type: "text"
+        title: "Kubernetes Scheduler Overview"
+        bullets:
+          - "Scheduler is responsible for pod placement decisions"
+          - "Uses filtering and scoring to find the best node"
+          - "Considers resource requirements, affinity rules, and constraints"
+        notes: "The scheduler is crucial for efficient resource utilization and workload distribution."
+
+      - type: "diagram"
+        title: "Kubernetes Scheduler Flow"
+        diagramRef: "kubernetes_scheduler"
+        notes: "Shows how the scheduler interacts with the API server and makes scheduling decisions."
+
+  - title: "State Management"
+    slides:
+      - type: "text"
+        title: "Cluster State Management"
+        bullets:
+          - "etcd stores all cluster state"
+          - "Components watch for changes via API server"
+          - "Optimistic concurrency for state updates"
+        notes: "Maintaining consistent cluster state is crucial for reliable operations."
+
+      - type: "text"
+        title: "Handling Failures"
+        bullets:
+          - "Node failures are detected through heartbeats"
+          - "Pod eviction on node failures"
+          - "Controller reconciliation for recovery"
+        notes: "Kubernetes provides robust failure handling mechanisms."

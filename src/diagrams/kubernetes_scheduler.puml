@@ -1,0 +1,57 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Components"}]
+participant Scheduler
+participant PodRegistry
+participant NodeRegistry
+database ETCD
+' [/step1]
+
+' [step2 {"name":"Fetch Pending Pods"}]
+
+    Scheduler -> Scheduler: schedulePendingPods()
+    activate Scheduler
+
+    Scheduler -> PodRegistry: ListPendingPods()
+    activate PodRegistry
+    PodRegistry -> ETCD: Get Pending Pods
+    ETCD --> PodRegistry: Pending Pods List
+    PodRegistry --> Scheduler: Pending Pods
+    deactivate PodRegistry
+' [/step2]
+
+    ' [step3 {"name":"Fetch Available Nodes"}]
+    Scheduler -> NodeRegistry: ListNodes()
+    activate NodeRegistry
+    NodeRegistry -> ETCD: Get Available Nodes
+    ETCD --> NodeRegistry: Nodes List
+    NodeRegistry --> Scheduler: Available Nodes
+    deactivate NodeRegistry
+    ' [/step3]
+
+    ' [step4 {"name":"Node Selection"}]
+
+            Scheduler -> Scheduler: Select Random Node
+            note right: TODO: Implement better\nnode selection policy
+            ' [/step4]
+
+            ' [step5 {"name":"Pod Assignment"}]
+            Scheduler -> PodRegistry: UpdatePod()
+            activate PodRegistry
+            note right
+                Update pod with:
+                - NodeName
+                - Status = PodScheduled
+            end note
+            PodRegistry -> ETCD: Store Updated Pod
+            ETCD --> PodRegistry: Success
+            PodRegistry --> Scheduler: Success
+            deactivate PodRegistry
+
+            Scheduler -> Scheduler: Log scheduling decision
+           
+
+    deactivate Scheduler
+     ' [/step5]
+@enduml
