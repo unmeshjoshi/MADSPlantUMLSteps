@@ -287,21 +287,17 @@ body {
 /* Version info */
 .version-info {
     position: fixed;
-    bottom: 1rem;
-    right: 1rem;
-    background: var(--surface);
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    box-shadow: var(--shadow-md);
+    bottom: 20px;
+    left: 20px;
     font-size: 0.8rem;
     color: var(--text-secondary);
-    opacity: 0.8;
+    opacity: 0.7;
+    background: var(--surface);
+    padding: 8px 12px;
+    border-radius: 4px;
+    box-shadow: var(--shadow-sm);
+    white-space: pre-line;
     z-index: 1000;
-    max-width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-right: calc(120px + 2rem); /* Width of nav buttons + margin */
 }
 
 /* Diagram slide with bullets layout */
@@ -428,84 +424,85 @@ body {
 
 /* Navigation Controls */
 .controls, .nav-buttons {
-    padding: 24px;
     display: flex;
-    gap: 16px;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    background: var(--surface);
+    position: fixed;
+    top: 50%;
+    width: 100%;
+    z-index: 1000;
+    pointer-events: none; /* This ensures clicks pass through the container */
+    padding: 0 20px;
+    box-sizing: border-box;
 }
 
 button,
 #prev-button,
 #next-button { 
-    display: inline-flex;
+    display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 8px;
-    padding: 12px 24px; 
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    background: var(--surface);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.8);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text-primary);
+    box-shadow: var(--shadow-md);
+    color: var(--primary-color);
+    cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    pointer-events: auto; /* Re-enable pointer events for buttons */
+    opacity: 0.7;
 }
 
-.version-info {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    opacity: 0.7;
-    background: var(--surface);
-    padding: 8px 12px;
-    border-radius: 4px;
-    box-shadow: var(--shadow-sm);
-    white-space: pre-line;
-    z-index: 1000;
+#prev-button {
+    transform: translateY(-50%);
+}
+
+#next-button {
+    transform: translateY(-50%);
 }
 
 button:hover:not(:disabled),
 #prev-button:hover:not(:disabled),
 #next-button:hover:not(:disabled) { 
-    background: var(--surface-hover);
-    border-color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.95);
     color: var(--primary-color);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    opacity: 1;
+}
+
+button span,
+#prev-button span,
+#next-button span {
+    display: none; /* Hide text, show only icons */
 }
 
 button:disabled,
 #prev-button:disabled,
-#next-button:disabled { 
-    background-color: var(--surface);
-    border-color: var(--border);
-    color: var(--text-secondary);
+#next-button:disabled {
+    opacity: 0.3;
     cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+    color: var(--text-light);
+    pointer-events: none;
 }
 
 button i,
 #prev-button i,
 #next-button i {
-    font-size: 16px;
+    font-size: 20px;
     transition: transform 0.2s ease;
 }
 
 button:hover:not(:disabled) i.fa-chevron-right,
 #next-button:hover:not(:disabled) i.fa-chevron-right {
-    transform: translateX(2px);
+    transform: translateX(3px);
 }
 
 button:hover:not(:disabled) i.fa-chevron-left,
 #prev-button:hover:not(:disabled) i.fa-chevron-left {
-    transform: translateX(-2px);
+    transform: translateX(-3px);
 }
 
 /* Media query for smaller screens */
@@ -515,7 +512,7 @@ button:hover:not(:disabled) i.fa-chevron-left,
         max-width: 150px;
         font-size: 0.7rem;
         padding: 0.3rem 0.6rem;
-        margin-right: calc(100px + 1rem); /* Smaller margin for mobile */
+        margin-right: 0;
         bottom: 0.5rem;
         right: 0.5rem;
     }
@@ -532,23 +529,24 @@ button:hover:not(:disabled) i.fa-chevron-left,
     .step {
         min-height: 300px; /* Smaller minimum height for mobile */
     }
+    
     .controls, .nav-buttons {
-        padding: 16px;
-        gap: 12px;
+        padding: 0 10px;
     }
-
+    
     button,
     #prev-button,
     #next-button {
-        padding: 10px 16px;
-        font-size: 13px;
+        width: 40px;
+        height: 40px;
     }
-
+    
     button i,
     #prev-button i,
     #next-button i {
-        font-size: 14px;
+        font-size: 16px;
     }
+    
     .slide-container {
         width: 95%;
         height: 90%;
@@ -563,19 +561,8 @@ button:hover:not(:disabled) i.fa-chevron-left,
     }
 
     .step img {
-        max-width: 95%;  /* Use most of the screen width on mobile */
+        max-width: 95%;
         max-height: 70vh;
-    }
-
-    .title-container h2 {
-        font-size: 24px;
-    }
-
-    .content-container ul,
-    .content-container ol {
-        font-size: 20px;
-        padding-left: 25px;
-        width: 90%;
     }
 }
 
@@ -586,7 +573,6 @@ button:hover:not(:disabled) i.fa-chevron-left,
         max-width: 120px;
         font-size: 0.65rem;
         padding: 0.2rem 0.4rem;
-        margin-right: calc(80px + 0.5rem); /* Even smaller margin */
     }
 
     /* Section info for very small screens */
@@ -594,17 +580,38 @@ button:hover:not(:disabled) i.fa-chevron-left,
         max-width: 50%;
         font-size: 0.7rem;
     }
-
-    /* Adjust navigation buttons */
-    button span,
-    #prev-button span,
-    #next-button span {
-        display: none; /* Hide button text, show only icons */
+    
+    /* Adjust navigation buttons position */
+    .controls, .nav-buttons {
+        padding: 0 5px;
     }
-
+    
     button,
     #prev-button,
     #next-button {
-        padding: 8px;
+        width: 36px;
+        height: 36px;
+    }
+    
+    button i,
+    #prev-button i,
+    #next-button i {
+        font-size: 14px;
+    }
+    
+    .step img {
+        max-width: 95%;
+        max-height: 70vh;
+    }
+    
+    .title-container h2 {
+        font-size: 24px;
+    }
+
+    .content-container ul,
+    .content-container ol {
+        font-size: 20px;
+        padding-left: 25px;
+        width: 90%;
     }
 }
