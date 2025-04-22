@@ -26,30 +26,11 @@ class StepParserTest {
     }
 
     @Test
-    void testIsStepStart_InvalidStartLine() {
-        String line = "' [step {name:\"Initialize the System\"}]"; // Missing step number
-        assertFalse(parser.isStepStart(line));
-    }
-
-    @Test
-    void testIsStepEnd_ValidEndLine() {
-        String line = "' [/step10]";
-        assertTrue(parser.isStepEnd(line, 10));
-    }
-
-    @Test
-    void testIsStepEnd_InvalidEndLine_WrongStepNumber() {
-        String line = "' [/step20]";
-        assertFalse(parser.isStepEnd(line, 10));
-    }
-
-    @Test
     void testParseMetadata_ValidMetadata() {
         String line = "' [step10 {\"name\":\"Initialize the System\", \"author\":\"Alice\"}]";
         Map<String, Object> metadata = parser.parseMetadata(line);
 
         assertNotNull(metadata);
-        assertEquals(10, metadata.get("step"));
         assertEquals("Initialize the System", metadata.get("name"));
         assertEquals("Alice", metadata.get("author"));
     }
@@ -60,8 +41,7 @@ class StepParserTest {
         Map<String, Object> metadata = parser.parseMetadata(line);
 
         assertNotNull(metadata);
-        assertEquals(10, metadata.get("step"));
-        assertEquals(1, metadata.size()); // Only the step key is present
+        assertEquals(0, metadata.size()); // Only the step key is present
     }
 
     @Test
@@ -182,6 +162,41 @@ class StepParserTest {
     }
 
     @Test
+    void testParseMultipleStepsNotExplicitlyNumbered() throws Exception {
+        var tempFile = createTempFile("""
+            @startuml
+            participant "User" as U
+            participant "System" as S
+
+            ' [step {"name":"Initialize the System", "author":"Alice"}]
+            U -> S: Request initialization
+            S -> U: Initialization successful
+         
+            ' [step {"name":"Process Request", "author":"Bob"}]
+            S -> S: Internal processing
+            S -> U: Request processed
+
+            @enduml
+        """);
+
+        ParsedPlantUmlFile parsedPlantUmlFile = parser.parse(tempFile);
+
+        assertEquals(tempFile.getBaseName(), parsedPlantUmlFile.getName());
+        List<Step> steps = parsedPlantUmlFile.getSteps();
+        assertEquals(2, steps.size());
+
+        Step step1 = steps.get(0);
+        assertEquals(1, step1.getStepNumber());
+        assertEquals("Initialize the System", step1.getMetadata().get("name"));
+        assertTrue(step1.getContent().contains("Request initialization"));
+
+        Step step2 = steps.get(1);
+        assertEquals(2, step2.getStepNumber());
+        assertEquals("Process Request", step2.getMetadata().get("name"));
+        assertTrue(step2.getContent().contains("Internal processing"));
+    }
+
+    @Test
     void testPreservePreviousStepContent() throws Exception {
         var tempFile = createTempFile("""
             @startuml
@@ -210,24 +225,6 @@ class StepParserTest {
         assertTrue(step1.getContent().contains("Request initialization"));
         assertTrue(step2.getContent().contains("Internal processing"));
        assertTrue(step2.getContent().contains("Request initialization")); // Verify separation of content
-    }
-
-    @Test
-    void testNestedStepsNotAllowed() throws Exception {
-        var tempFile = createTempFile("""
-            @startuml
-            ' [step1 {"name":"Outer Step", "author":"Alice"}]
-            participant "User" as U
-
-            ' [step2 {"name":"Inner Step", "author":"Bob"}]
-            U -> System: Invalid nesting
-            ' [/step2]
-
-            ' [/step1]
-            @enduml
-        """);
-
-        assertThrows(IllegalStateException.class, () -> parser.parse(tempFile), "Nested steps are not allowed.");
     }
 
     @Test

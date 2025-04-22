@@ -1,0 +1,122 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Two concurrent transactions begin"}]
+actor "User 1" as U1
+actor "User 2" as U2
+participant "Driver 1" as D1
+participant "Driver 2" as D2
+participant "Txn 1" as T1 #LightBlue
+participant "Txn 2" as T2 #LightGreen
+participant "DeltaLog" as DL
+participant "Storage" as S
+
+note across: Two users initiate concurrent write operations on the same Delta table
+
+== Two concurrent transactions begin ==
+U1 -> D1 : Start write (User 1)
+U2 -> D2 : Start write (User 2)
+
+D1 -> T1 : Create OptimisticTransaction
+D2 -> T2 : Create OptimisticTransaction
+' [/step1]
+
+' [step2 {"name":"Both read current version", "newPage":"true"}]
+note across #LightCyan: Both transactions start by reading the same snapshot version\nfrom the table's transaction log
+
+== Both read current version ==
+T1 -> DL : getLatestSnapshot()
+DL -> S : listFiles(_delta_log/)
+note right of S #LightGrey
+  _delta_log/
+    00000000000000000000v.json
+end note
+S --> DL : latest version = v
+DL --> T1 : Snapshot at version v
+
+T2 -> DL : getLatestSnapshot()
+DL -> S : listFiles(_delta_log/)
+S --> DL : latest version = v
+DL --> T2 : Snapshot at version v
+' [/step2]
+
+' [step3 {"name":"Both prepare their actions", "newPage":"true"}]
+note across #LightYellow: Each transaction prepares its changes locally\nbased on the same starting snapshot
+
+== Both prepare their actions ==
+T1 -> T1 : Prepare AddFile, RemoveFile, etc.
+T2 -> T2 : Prepare AddFile, RemoveFile, etc.
+' [/step3]
+
+' [step4 {"name":"Race to commit version v+1", "newPage":"true"}]
+note across #LightGreen: Transaction 1 commits first by creating a new commit file\nin the Delta log with version v+1
+
+== Race to commit version v+1 ==
+par
+    T1 -> S : write(commitFile(v+1), overwrite=false) **ATOMIC**
+    note right: Storage guarantees\natomic file creation
+    S --> T1 : Success
+    note right of S #LightBlue
+      _delta_log/
+        00000000000000000000v.json
+        00000000000000000000(v+1).json
+        {
+          "commitInfo": {...},
+          "add": [...],
+          "remove": [...]
+        }
+    end note
+    T1 -> D1 : Commit successful
+end
+' [/step4]
+
+' [step5 {"name":"Transaction 2 encounters conflict", "newPage":"true"}]
+note across #LightPink: Transaction 2 attempts to commit but discovers\nTransaction 1 already created version v+1\nThe atomic file creation operation prevents duplicate versions
+
+== Transaction 2 encounters conflict ==
+par
+    T2 -[#red]x S : write(commitFile(v+1), overwrite=false) **ATOMIC**
+    note right #pink: Atomic operation fails!\nFile already exists
+    note right of S #LightGrey
+      _delta_log/
+        00000000000000000000v.json
+        00000000000000000000(v+1).json <- FILE EXISTS!
+                                          Cannot create duplicate
+    end note
+    S -[#red]-> T2 : FileAlreadyExists
+end
+
+' [step6 {"name":"Transaction 2 resolution", "newPage":"true"}]
+par  
+
+note across #LightSalmon: Transaction 2 must decide: retry with new version\nor abort if there are conflicts with Transaction 1's changes
+
+== Transaction 2 resolution ==
+    alt No conflict
+        T2 -> S : write(commitFile(v+2), overwrite=false) **ATOMIC**
+        S --> T2 : Success
+        note right of S #LightGreen
+          _delta_log/
+            00000000000000000000v.json
+            00000000000000000000(v+1).json
+            00000000000000000000(v+2).json
+            {
+              "commitInfo": {...},
+              "add": [...],
+              "remove": [...]
+            }
+        end note
+        T2 -> D2 : Commit successful
+    else Conflict detected
+        T2 -[#red]> D2 : Abort with ConcurrentWriteException
+        note right #pink: Optimistic concurrency\ncontrol in action
+        note right of S #LightGrey
+          _delta_log/
+            00000000000000000000v.json
+            00000000000000000000(v+1).json
+            (No v+2 file created - transaction aborted)
+        end note
+    end
+end
+
+@enduml

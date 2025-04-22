@@ -1,0 +1,116 @@
+@startuml
+!include ../style.puml
+
+' [step1 {"name":"Prepare Files"}]
+actor "User" as U
+participant "DeltaTable" as DT #LightBlue
+participant "DeltaLog" as DL #LightGreen
+participant "Client" as C
+participant "Server 1" as S1 #LightBlue
+participant "Server 2" as S2 #LightGreen
+participant "Server 3" as S3 #LightYellow
+
+note across: DeltaTable and DeltaLog prepare their files\nand send requests to Client
+
+== Prepare Files ==
+U -> DT : Write data
+activate DT
+DT -> DT : Prepare parquet file
+note right of DT #LightGrey
+  data/part-0000.parquet
+  (Parquet data)
+end note
+
+' [/step1]
+
+' [step2 {"name":"Client Determines Target Servers", "newPage":"true"}]
+note across #LightCyan: Client hashes file paths to determine\ntarget servers for each file
+
+== Client Determines Target Servers ==
+DT -> C : putObject("data/part-0000.parquet", parquetData)
+activate C
+
+C -> C : Hash paths to determine servers
+note right of C #LightGrey
+  parquetServer = hash("data/part-0000.parquet") % 3
+  (e.g., parquet -> Server 2)
+end note
+' [/step2]
+
+' [step3 {"name":"Client Sends to Target Servers", "newPage":"true"}]
+note across #LightYellow: Client sends each file to its target server
+
+== Client Sends to Target Servers ==
+C -> S2 : putObject("data/part-0000.parquet", parquetData)
+activate S2
+
+' [/step3]
+
+' [step4 {"name":"Atomic Writes on Target Servers", "newPage":"true"}]
+note across #LightGreen: Each server performs atomic write operation\nfor its assigned files
+
+== Atomic Writes on Target Servers ==
+par
+    S2 -> S2 : Atomic write parquet file
+    note right of S2 #LightGreen
+      Storage:
+        data/
+          part-0000.parquet
+          (Parquet data file)
+    end note
+    S2 --> C : Success
+end
+
+activate DL
+DL -> DL : Prepare commit file
+note right of DL #LightGrey
+  _delta_log/00000000000000000000.json
+  {
+    "commitInfo": {...},
+    "add": [
+      {
+        "path": "data/part-0000.parquet",
+        "size": 1234,
+        "stats": {...}
+      }
+    ]
+  }
+end note
+
+DL -> C : putObject("_delta_log/00000000000000000000.json", commitJson)
+
+par
+    S1 -> S1 : Atomic write commit file
+    note right of S1 #LightBlue
+      Storage:
+        _delta_log/
+          00000000000000000000.json
+          (Commit file)
+    end note
+    S1 --> C : Success
+end
+' [/step4]
+
+' [step5 {"name":"Transaction Completion", "newPage":"true"}]
+C -> C : Hash paths to determine servers
+note right of C #LightGrey
+  commitServer = hash("_delta_log/00000000000000000000.json") % 3
+  (e.g., commit -> Server 1)
+end note
+
+
+C -> S1 : putObject("_delta_log/00000000000000000000.json", commitJson)
+activate S1
+
+note across #LightSalmon: Both atomic writes must succeed\nfor the transaction to complete
+
+== Transaction Completion ==
+C --> DT : Write successful
+C --> DL : Commit successful
+deactivate C
+deactivate S1
+deactivate S2
+deactivate DL
+' [/step5]
+
+@enduml
