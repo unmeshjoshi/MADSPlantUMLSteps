@@ -2,10 +2,9 @@ package com.pumlsteps.presentation;
 
 import java.util.List;
 
-public class PresentationConfig {
+public class SectionConfig {
     private String title;
     private List<SlideConfig> slides;
-    private List<SectionConfig> sections;
 
     public String getTitle() {
         return title;
@@ -21,13 +20,5 @@ public class PresentationConfig {
 
     public void setSlides(List<SlideConfig> slides) {
         this.slides = slides;
-    }
-    
-    public List<SectionConfig> getSections() {
-        return sections;
-    }
-    
-    public void setSections(List<SectionConfig> sections) {
-        this.sections = sections;
     }
 }

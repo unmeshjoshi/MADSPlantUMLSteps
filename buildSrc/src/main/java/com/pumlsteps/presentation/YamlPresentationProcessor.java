@@ -25,9 +25,23 @@ public class YamlPresentationProcessor {
             // Create PPT
             PptGenerator generator = new PptGenerator();
 
-            // Process each slide
-            for (SlideConfig slide : config.getSlides()) {
-                handleSlide(slide, generator);
+            // Process slides directly if available
+            if (config.getSlides() != null && !config.getSlides().isEmpty()) {
+                for (SlideConfig slide : config.getSlides()) {
+                    handleSlide(slide, generator);
+                }
+            }
+            
+            // Process sections if available
+            if (config.getSections() != null && !config.getSections().isEmpty()) {
+                for (SectionConfig section : config.getSections()) {
+                    // Process each slide in the section
+                    if (section.getSlides() != null) {
+                        for (SlideConfig slide : section.getSlides()) {
+                            handleSlide(slide, generator);
+                        }
+                    }
+                }
             }
 
             // Save the presentation

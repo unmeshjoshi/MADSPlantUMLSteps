@@ -7,6 +7,7 @@ public class SlideConfig {
     private String type;  // "text", "diagram", etc.
     private List<String> bullets;
     private String diagramRef;
+    private String notes;
 
     public String getTitle() {
         return title;
@@ -38,5 +39,13 @@ public class SlideConfig {
 
     public void setDiagramRef(String diagramRef) {
         this.diagramRef = diagramRef;
+    }
+    
+    public String getNotes() {
+        return notes;
+    }
+    
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 }

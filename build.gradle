@@ -88,15 +88,25 @@ task generateHtml {
 task generatePresentationFromYaml {
     dependsOn generate  // This ensures diagrams are generated before creating the presentation
     doLast {
-        def yamlFile = file('example-slides.yaml')
-        if (!yamlFile.exists()) {
-            throw new GradleException("example-slides.yaml not found in project root directory")
+        def presentationDir = file('src/presentation')
+        def buildDir = file('build/presentations')
+        
+        // Create build directory if it doesn't exist
+        buildDir.mkdirs()
+        
+        // Process each YAML file in the presentation directory
+        presentationDir.eachFile { yamlFile ->
+            if (yamlFile.name.endsWith('.yaml')) {
+                def outputFileName = yamlFile.name.replace('.yaml', '.pptx')
+                def outputFile = new File(buildDir, outputFileName)
+                
+                def processor = new YamlPresentationProcessor(projectDir)
+                processor.processYamlToPresentation(yamlFile, outputFile)
+                
+                println "Generated ${outputFile.name} from ${yamlFile.name}"
+            }
         }
         
-        def processor = new YamlPresentationProcessor(projectDir)
-        def outputFile = new File(projectDir, "presentation.pptx")
-        processor.processYamlToPresentation(yamlFile, outputFile)
-        
-        println "Presentation generated at: ${outputFile.absolutePath}"
+        println "PowerPoint presentations generated in: ${buildDir.absolutePath}"
     }
 }
