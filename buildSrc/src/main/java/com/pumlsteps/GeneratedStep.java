@@ -10,9 +10,17 @@ public class GeneratedStep {
         this.sourceStep = sourceStep;
         this.imageFile = imageFile;
     }
+    
+    public static File imageFile(Step sourceStep, File outputDir, StepImageGenerator.ImageFormat format) {
+        if (format == StepImageGenerator.ImageFormat.SVG) {
+            return new File(outputDir, sourceStep.svgFileName());
+        } else {
+            return new File(outputDir, sourceStep.pngFileName());
+        }
+    }
 
     public static File imageFile(Step sourceStep, File outputDir) {
-        return new File(outputDir, sourceStep.svgFileName());
+        return imageFile(sourceStep, outputDir, StepImageGenerator.ImageFormat.PNG);
     }
 
     public static File pumlFile(Step sourceStep, File outputDir) {

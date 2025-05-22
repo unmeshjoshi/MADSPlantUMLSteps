@@ -15,7 +15,7 @@ plugins {
 }
 
 // Gradle task to generate diagrams for all .puml files in the source directory
-task generate {
+task generateSvgDiagrams {
     doLast {
         def plantUmlJarPath = './plantuml-1.2024.8.jar'
         def sourceDir = file('src/diagrams')
@@ -41,12 +41,65 @@ task generate {
             println "Error: ${e.message}"
             e.printStackTrace()
         }
-
     }
 }
 
+task generatePngDiagrams {
+    doLast {
+        def plantUmlJarPath = './plantuml-1.2024.8.jar'
+        def sourceDir = file('src/diagrams')
+        def outputDir = file('build/diagrams-png')
+        outputDir.mkdirs()
+
+        if (!sourceDir.exists() || !sourceDir.isDirectory()) {
+            throw new GradleException("Source directory not found: ${sourceDir.absolutePath}")
+        }
+
+        // Copy style.puml to each output directory
+        def styleFile = new File(sourceDir, 'style.puml')
+        if (styleFile.exists()) {
+            Files.copy(styleFile.toPath(), new File(outputDir, 'style.puml').toPath(), StandardCopyOption.REPLACE_EXISTING)
+        } else {
+            println "style.puml not found in source directory. Skipping style file copying."
+        }
+
+        // Generate PNG diagrams for PowerPoint
+        sourceDir.eachFileRecurse(FILES) { file ->
+            if (file.name.endsWith('.puml') && !file.name.equals('style.puml')) {
+                def relativePath = sourceDir.toPath().relativize(file.toPath()).toString()
+                def baseFileName = file.name.substring(0, file.name.lastIndexOf('.'))
+                
+                // Create a subdirectory based on the file name
+                def subDirName = ""
+                if (relativePath.contains('/')) {
+                    subDirName = relativePath.substring(0, relativePath.lastIndexOf('/'))
+                }
+                def outputSubDir = new File(outputDir, subDirName.isEmpty() ? baseFileName : subDirName + '/' + baseFileName)
+                outputSubDir.mkdirs()
+                
+                println "Processing PNG file = ${file.absolutePath}"
+                
+                // Use StepImageGenerator directly to generate PNG files
+                def stepParser = new com.pumlsteps.StepParser()
+                def parsedPumlFile = stepParser.parse(new com.pumlsteps.PumlFile(file))
+                def imageGenerator = new com.pumlsteps.StepImageGenerator(plantUmlJarPath)
+                def steps = parsedPumlFile.getSteps()
+                
+                // Generate PNG images
+                imageGenerator.generateDiagrams(steps, outputSubDir, com.pumlsteps.StepImageGenerator.ImageFormat.PNG)
+                println "PNG steps = ${steps.size()}"
+            }
+        }
+    }
+}
+
+// For backward compatibility
+task generate {
+    dependsOn generateSvgDiagrams
+}
+
 task generateHtml {
-    dependsOn generate  // This ensures diagrams are generated before creating the presentation
+    dependsOn generateSvgDiagrams  // This ensures SVG diagrams are generated before creating the HTML
 
     doLast {
         def presentationDir = file('src/presentation')
@@ -86,7 +139,7 @@ task generateHtml {
 }
 
 task generatePresentationFromYaml {
-    dependsOn generate  // This ensures diagrams are generated before creating the presentation
+    // No need to depend on generatePngDiagrams as we generate PNGs on-the-fly
     doLast {
         def presentationDir = file('src/presentation')
         def buildDir = file('build/presentations')
@@ -100,6 +153,7 @@ task generatePresentationFromYaml {
                 def outputFileName = yamlFile.name.replace('.yaml', '.pptx')
                 def outputFile = new File(buildDir, outputFileName)
                 
+                // Create a YamlPresentationProcessor that will generate PNG files on-the-fly
                 def processor = new YamlPresentationProcessor(projectDir)
                 processor.processYamlToPresentation(yamlFile, outputFile)
                 
@@ -108,5 +162,16 @@ task generatePresentationFromYaml {
         }
         
         println "PowerPoint presentations generated in: ${buildDir.absolutePath}"
+    }
+}
+
+task generatePresentation {
+    dependsOn generatePresentationFromYaml
+    dependsOn generateHtml
+    
+    doLast {
+        println "\nGeneration complete!\n"
+        println "HTML presentations (with SVG diagrams) are in: ${file('build/presentations').absolutePath}"
+        println "PowerPoint presentations (with on-the-fly PNG diagrams) are in: ${file('build/presentations').absolutePath}"
     }
 }

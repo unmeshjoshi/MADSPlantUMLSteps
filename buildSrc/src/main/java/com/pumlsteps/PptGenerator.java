@@ -69,11 +69,15 @@ public class PptGenerator {
             int slideWidth = ppt.getPageSize().width;
             int slideHeight = ppt.getPageSize().height;
 
-            // Load the image to get its dimensions
-            assert imageFile.exists();
-
-            BufferedImage image = ImageIO.read(imageFile);
-
+            System.out.println("Adding slide with image: " + imageFile.getAbsolutePath());
+            System.out.println("Image exists: " + imageFile.exists());
+            System.out.println("Image size: " + imageFile.length() + " bytes");
+            
+            // Verify the image exists
+            if (!imageFile.exists()) {
+                System.err.println("ERROR: Image file does not exist: " + imageFile.getAbsolutePath());
+                return; // Skip this slide if the image doesn't exist
+            }
 
             // Create a new slide
             XSLFSlide slide = ppt.createSlide();
@@ -89,7 +93,15 @@ public class PptGenerator {
             titleRun.setFontFamily("Bitter");
             titleRun.setFontSize(26.0);
 
-
+            // Read the PNG image
+            System.out.println("Attempting to read image file: " + imageFile.getAbsolutePath());
+            BufferedImage image = ImageIO.read(imageFile);
+            if (image == null) {
+                System.err.println("ERROR: Failed to read image, ImageIO.read returned null for: " + imageFile.getAbsolutePath());
+                return; // Skip this slide if the image can't be read
+            }
+            System.out.println("Successfully read image with dimensions: " + image.getWidth() + "x" + image.getHeight());
+            
             // Calculate remaining area for image
             int imageY = 50;  // Below title
             int imageHeight = slideHeight - imageY - 20;  // Leave margin at bottom
@@ -106,8 +118,15 @@ public class PptGenerator {
             int yPosition = (slideHeight - scaledHeight) / 2;
 
             // Add the image
-            XSLFPictureData pictureData = ppt.addPicture(Files.readAllBytes(imageFile.toPath()), XSLFPictureData.PictureType.PNG);
+            System.out.println("Adding image to PowerPoint: " + imageFile.getAbsolutePath() + ", size: " + imageFile.length() + " bytes");
+            byte[] imageBytes = Files.readAllBytes(imageFile.toPath());
+            System.out.println("Read " + imageBytes.length + " bytes from image file");
+            
+            XSLFPictureData pictureData = ppt.addPicture(imageBytes, XSLFPictureData.PictureType.PNG);
+            System.out.println("Added picture data to PowerPoint, ID: " + pictureData.getIndex());
+            
             slide.createPicture(pictureData).setAnchor(new Rectangle(xPosition, yPosition, scaledWidth, scaledHeight));
+            System.out.println("Successfully added image to slide");
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Error adding step slide: " + e.getMessage(), e);

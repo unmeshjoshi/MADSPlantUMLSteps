@@ -3,28 +3,38 @@ package com.pumlsteps;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class StepImageGenerator {
     private final String plantUmlJarPath;
+    
+    public enum ImageFormat {
+        PNG, SVG
+    }
 
     public StepImageGenerator(String plantUmlJarPath) {
         this.plantUmlJarPath = plantUmlJarPath;
     }
 
-    public List<GeneratedStep> generateDiagrams(List<Step> steps, File outputDir) throws IOException {
+    public List<GeneratedStep> generateDiagrams(List<Step> steps, File outputDir, ImageFormat format) throws IOException {
         // First create all GeneratedSteps and write PUML files
 
         //generate all the step puml files.
         generateStepPumlFiles(steps, outputDir);
-        // Then generate all PNGs together
-        generateStepPngs(outputDir);
+        // Then generate all images together
+        generateStepImages(outputDir, format);
 
         return steps.stream()
-                .map(step -> new GeneratedStep(step, GeneratedStep.imageFile(step, outputDir)))
+                .map(step -> new GeneratedStep(step, GeneratedStep.imageFile(step, outputDir, format)))
                 .collect(Collectors.toList());
 
+    }
+    
+    // For backward compatibility
+    public List<GeneratedStep> generateDiagrams(List<Step> steps, File outputDir) throws IOException {
+        return generateDiagrams(steps, outputDir, ImageFormat.PNG);
     }
 
     void generateStepPumlFiles(List<Step> steps, File outputDir) {
@@ -42,18 +52,31 @@ public class StepImageGenerator {
         }
     }
 
-    private void generateStepPngs(File outputDirectory) throws IOException {
+    private void generateStepImages(File outputDirectory, ImageFormat format) throws IOException {
         System.out.println("Processing puml files in directory " + outputDirectory);
-        ProcessBuilder processBuilder = new ProcessBuilder(
-                "java",
-                "-DPLANTUML_LIMIT_SIZE=8192",  // Increase maximum diagram size
-                "-jar", plantUmlJarPath,
-                "-tsvg",    // Generate SVG instead of PNG
-                "-SdefaultFontSize=12",  // Set consistent font size
-                "-Sdpi=96",              // Set consistent DPI
-                "-scale 0.8",            // Set smaller scaling
-                outputDirectory.getAbsolutePath()
-        );
+        
+        List<String> command = new ArrayList<>();
+        command.add("java");
+        command.add("-DPLANTUML_LIMIT_SIZE=8192");  // Increase maximum diagram size
+        command.add("-jar");
+        command.add(plantUmlJarPath);
+        
+        // Add format-specific options
+        if (format == ImageFormat.SVG) {
+            command.add("-tsvg");    // Generate SVG files
+            command.add("-SdefaultFontSize=12");  // Set consistent font size
+            command.add("-Sdpi=96");              // Standard DPI for web
+            command.add("-scale 0.8");            // Smaller scaling for SVG
+        } else {
+            // Default is PNG
+            command.add("-SdefaultFontSize=12");  // Set consistent font size
+            command.add("-Sdpi=300");             // Higher DPI for better quality
+            command.add("-scale 1.0");            // Full scale for better visibility
+        }
+        
+        command.add(outputDirectory.getAbsolutePath());
+        
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
         Process process = processBuilder.start();
 
         try {

@@ -59,7 +59,8 @@ public class PlantUmlProcessor {
     }
 
     private List<GeneratedStep> generateStepDiagrams(ParsedPlantUmlFile parsedPumlFile, File subDir) throws IOException {
-        return stepImageGenerator.generateDiagrams(parsedPumlFile.getSteps(), subDir);
+        // Generate SVG files for HTML viewing
+        return stepImageGenerator.generateDiagrams(parsedPumlFile.getSteps(), subDir, StepImageGenerator.ImageFormat.SVG);
     }
 
     private ParsedPlantUmlFile parseSteps(PumlFile sourcePumlFile) throws IOException {
