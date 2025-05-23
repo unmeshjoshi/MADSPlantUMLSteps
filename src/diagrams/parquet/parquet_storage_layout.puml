@@ -1,4 +1,4 @@
-@startuml parquet_storage_layout
+@startuml
 !include ../../style.puml
 
 ' [step1 {"name":"Components"}]
@@ -59,8 +59,6 @@ end
 
 ' [step4 {"name":"Row Group Processing", "newPage":"true"}]
 group #LightYellow "Parallel Row Group Processing"
-
-' [step4.1 {"name":"Row Group 1 Processing"}]
 Reader -> Reader: Parse footer for RG1 location
 note right: RG1 spans Block 1,2
 
@@ -73,9 +71,8 @@ Reader -> D12: Request Block 2
 activate D12
 D12 --> Reader: Block 2 data
 deactivate D12
-' [/step4.1]
 
-' [step4.2 {"name":"Row Group 2 Processing"}]
+' [step5 {"name":"Row Group 2 Processing"}]
 Reader -> Reader: Parse footer for RG2 location
 note right: RG2 spans Block 3,4
 
@@ -88,9 +85,9 @@ Reader -> D22: Request Block 4
 activate D22
 D22 --> Reader: Block 4 data
 deactivate D22
-' [/step4.2]
+' [/step5]
 
-' [step4.3 {"name":"Row Group 3 Processing"}]
+' [step6 {"name":"Row Group 3 Processing"}]
 Reader -> Reader: Parse footer for RG3 location
 note right: RG3 in Block 5
 
@@ -99,10 +96,9 @@ activate D13
 D13 --> Reader: Block 5 data
 deactivate D13
 end
-' [/step4.3]
-' [/step4]
+' [/step6]
 
-' [step5 {"name":"Storage Layout"}]
+' [step7 {"name":"Storage Layout"}]
 group #LightPink "Storage Layout"
 note over D11, D23
   |= Server |= Disk |= Blocks | Row Groups |
@@ -114,6 +110,6 @@ note over D11, D23
   | Server 2 | Disk 2.3 | Block 6 | - |
 end note
 end
-' [/step5]
+' [/step7]
 
 @enduml 

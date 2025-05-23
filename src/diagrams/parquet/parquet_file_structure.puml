@@ -1,4 +1,4 @@
-@startuml parquet_file_structure
+@startuml
 !include ../../style.puml
 
 title Parquet File Structure

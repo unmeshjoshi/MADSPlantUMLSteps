@@ -1,4 +1,4 @@
-@startuml row_vs_column_storage
+@startuml
 !include ../../style.puml
 
 title Row-based vs Column-based Storage

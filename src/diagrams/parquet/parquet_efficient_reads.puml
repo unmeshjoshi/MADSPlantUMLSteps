@@ -1,4 +1,4 @@
-@startuml parquet_efficient_reads
+@startuml
 !include ../../style.puml
 
 title Parquet Efficient Reads with Row Groups and Predicate Pushdown
@@ -34,8 +34,6 @@ end
 
 ' [step4 {"name":"Row Group Processing", "newPage":"true"}]
 group #LightYellow "Row Group Processing"
-
-' [step4.1 {"name":"Process Row Group 1"}]
 Reader -> Storage: Request Row Group 1
 activate Storage
 Storage --> Reader: Row Group 1 data
@@ -47,14 +45,13 @@ RG1 -> RG1: Check page statistics
 RG1 -> RG1: Skip pages where max age ≤ 30
 RG1 --> Reader: Matching records
 deactivate RG1
-' [/step4.1]
 
-' [step4.2 {"name":"Skip Row Group 2"}]
+' [step5 {"name":"Skip Row Group 2"}]
 Reader -> Storage: Skip Row Group 2
 note right: Statistics show no matching records
-' [/step4.2]
+' [/step5]
 
-' [step4.3 {"name":"Process Row Group 3"}]
+' [step6 {"name":"Process Row Group 3"}]
 Reader -> Storage: Request Row Group 3
 activate Storage
 Storage --> Reader: Row Group 3 data
@@ -67,15 +64,14 @@ RG3 -> RG3: Skip pages where max age ≤ 30
 RG3 --> Reader: Matching records
 deactivate RG3
 end
-' [/step4.3]
-' [/step4]
+' [/step6]
 
-' [step5 {"name":"Results Processing"}]
+' [step7 {"name":"Results Processing"}]
 group #LightPink "Results Processing"
 Reader -> Reader: Combine results from RG1 and RG3
 Reader --> Client: Return matching user records
 deactivate Reader
 end
-' [/step5]
+' [/step7]
 
 @enduml 
