@@ -1,6 +1,9 @@
-import com.pumlsteps.PlantUmlProcessor
 import com.pumlsteps.presentation.YamlPresentationProcessor
 import com.pumlsteps.presentation.HtmlGenerator
+import com.pumlsteps.StepImageGenerator
+import com.pumlsteps.StepParser
+import com.pumlsteps.PumlFile
+import com.pumlsteps.FileSystemUtil
 
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -20,27 +23,15 @@ task generateSvgDiagrams {
         def plantUmlJarPath = './plantuml-1.2024.8.jar'
         def sourceDir = file('src/diagrams')
         def outputDir = file('build/diagrams')
+        
+        // Create output directory if it doesn't exist
         outputDir.mkdirs()
-
-        if (!sourceDir.exists() || !sourceDir.isDirectory()) {
-            throw new GradleException("Source directory not found: ${sourceDir.absolutePath}")
-        }
-
-        // Copy style.puml to each output directory
-        def styleFile = new File(sourceDir, 'style.puml')
-        if (styleFile.exists()) {
-            Files.copy(styleFile.toPath(), new File(outputDir, 'style.puml').toPath(), StandardCopyOption.REPLACE_EXISTING)
-        } else {
-            println "style.puml not found in source directory. Skipping style file copying."
-        }
-
-        try {
-            def processor = new PlantUmlProcessor(plantUmlJarPath)
-            processor.process(sourceDir, outputDir)
-        } catch (Exception e) {
-            println "Error: ${e.message}"
-            e.printStackTrace()
-        }
+        
+        // Use StepImageGenerator to process all diagrams at once
+        def imageGenerator = new StepImageGenerator(plantUmlJarPath)
+        imageGenerator.generateImagesForDirectory(sourceDir, outputDir, StepImageGenerator.ImageFormat.SVG)
+        
+        println "SVG diagrams generated in: ${outputDir.absolutePath}"
     }
 }
 
@@ -49,53 +40,16 @@ task generatePngDiagrams {
         def plantUmlJarPath = './plantuml-1.2024.8.jar'
         def sourceDir = file('src/diagrams')
         def outputDir = file('build/diagrams-png')
+        
+        // Create output directory if it doesn't exist
         outputDir.mkdirs()
-
-        if (!sourceDir.exists() || !sourceDir.isDirectory()) {
-            throw new GradleException("Source directory not found: ${sourceDir.absolutePath}")
-        }
-
-        // Copy style.puml to each output directory
-        def styleFile = new File(sourceDir, 'style.puml')
-        if (styleFile.exists()) {
-            Files.copy(styleFile.toPath(), new File(outputDir, 'style.puml').toPath(), StandardCopyOption.REPLACE_EXISTING)
-        } else {
-            println "style.puml not found in source directory. Skipping style file copying."
-        }
-
-        // Generate PNG diagrams for PowerPoint
-        sourceDir.eachFileRecurse(FILES) { file ->
-            if (file.name.endsWith('.puml') && !file.name.equals('style.puml')) {
-                def relativePath = sourceDir.toPath().relativize(file.toPath()).toString()
-                def baseFileName = file.name.substring(0, file.name.lastIndexOf('.'))
-                
-                // Create a subdirectory based on the file name
-                def subDirName = ""
-                if (relativePath.contains('/')) {
-                    subDirName = relativePath.substring(0, relativePath.lastIndexOf('/'))
-                }
-                def outputSubDir = new File(outputDir, subDirName.isEmpty() ? baseFileName : subDirName + '/' + baseFileName)
-                outputSubDir.mkdirs()
-                
-                println "Processing PNG file = ${file.absolutePath}"
-                
-                // Use StepImageGenerator directly to generate PNG files
-                def stepParser = new com.pumlsteps.StepParser()
-                def parsedPumlFile = stepParser.parse(new com.pumlsteps.PumlFile(file))
-                def imageGenerator = new com.pumlsteps.StepImageGenerator(plantUmlJarPath)
-                def steps = parsedPumlFile.getSteps()
-                
-                // Generate PNG images
-                imageGenerator.generateDiagrams(steps, outputSubDir, com.pumlsteps.StepImageGenerator.ImageFormat.PNG)
-                println "PNG steps = ${steps.size()}"
-            }
-        }
+        
+        // Use StepImageGenerator to process all diagrams at once
+        def imageGenerator = new StepImageGenerator(plantUmlJarPath)
+        imageGenerator.generateImagesForDirectory(sourceDir, outputDir, StepImageGenerator.ImageFormat.PNG)
+        
+        println "PNG diagrams generated in: ${outputDir.absolutePath}"
     }
-}
-
-// For backward compatibility
-task generate {
-    dependsOn generateSvgDiagrams
 }
 
 task generateHtml {
@@ -128,7 +82,7 @@ task generateHtml {
                 def htmlFileName = yamlFile.name.replace('.yaml', '.html')
                 def htmlFile = new File(buildDir, htmlFileName)
                 // Create new generator instance for each file
-                def generator = new HtmlGenerator()
+                def generator = new com.pumlsteps.presentation.HtmlGenerator()
                 generator.generateHtmlFromYaml(yamlFile, htmlFile)
                 println "Generated ${htmlFile.name} from ${yamlFile.name}"
             }
@@ -139,22 +93,34 @@ task generateHtml {
 }
 
 task generatePresentationFromYaml {
-    // No need to depend on generatePngDiagrams as we generate PNGs on-the-fly
+    dependsOn generatePngDiagrams  // Depend on SVG diagrams
+    
     doLast {
+        def plantUmlJarPath = './plantuml-1.2024.8.jar'
         def presentationDir = file('src/presentation')
         def buildDir = file('build/presentations')
+        def diagramsDir = file('build/diagrams-png')
         
         // Create build directory if it doesn't exist
         buildDir.mkdirs()
         
+        // Create a central directory for all PNG files within the build directory
+        def centralPngDir = file('build/diagrams-png')
+        centralPngDir.mkdirs()
+        println "Using central PNG directory for all presentations: ${centralPngDir.absolutePath}"
         // Process each YAML file in the presentation directory
         presentationDir.eachFile { yamlFile ->
             if (yamlFile.name.endsWith('.yaml')) {
                 def outputFileName = yamlFile.name.replace('.yaml', '.pptx')
                 def outputFile = new File(buildDir, outputFileName)
                 
-                // Create a YamlPresentationProcessor that will generate PNG files on-the-fly
-                def processor = new YamlPresentationProcessor(projectDir)
+                // Create a YamlPresentationProcessor that will use pre-generated SVG files
+                def processor = new YamlPresentationProcessor(projectDir, plantUmlJarPath)
+                
+                // Set the central PNG directory
+                processor.setCentralPngDirectory(centralPngDir)
+                
+                // Process the YAML file to create the presentation
                 processor.processYamlToPresentation(yamlFile, outputFile)
                 
                 println "Generated ${outputFile.name} from ${yamlFile.name}"

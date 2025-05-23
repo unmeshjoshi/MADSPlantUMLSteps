@@ -1,4 +1,6 @@
 @startuml
+!include ../../../style.puml
+
 participant Alice
 participant "Athens" as A
 participant "Byzantium" as B

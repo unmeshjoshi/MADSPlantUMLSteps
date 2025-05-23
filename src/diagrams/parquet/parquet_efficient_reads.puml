@@ -1,0 +1,81 @@
+@startuml parquet_efficient_reads
+!include ../../style.puml
+
+title Parquet Efficient Reads with Row Groups and Predicate Pushdown
+
+' [step1 {"name":"Components"}]
+actor Client
+participant "Parquet Reader" as Reader
+participant "Storage Layer" as Storage
+participant "Row Group 1" as RG1
+participant "Row Group 2" as RG2
+participant "Row Group 3" as RG3
+' [/step1]
+
+' [step2 {"name":"Initial Query"}]
+group #LightBlue "Initial Query"
+Client -> Reader: Query: "Find users with age > 30\nin last 6 months"
+activate Reader
+end
+' [/step2]
+
+' [step3 {"name":"Footer Processing"}]
+group #LightGreen "Footer Processing"
+Reader -> Storage: Read footer (last 8 bytes + metadata)
+activate Storage
+Storage --> Reader: Footer with row group metadata
+deactivate Storage
+
+Reader -> Reader: Parse footer to get row group locations
+Reader -> Reader: Check column statistics in footer
+note right: Statistics show age > 30 only in RG1 and RG3
+end
+' [/step3]
+
+' [step4 {"name":"Row Group Processing", "newPage":"true"}]
+group #LightYellow "Row Group Processing"
+
+' [step4.1 {"name":"Process Row Group 1"}]
+Reader -> Storage: Request Row Group 1
+activate Storage
+Storage --> Reader: Row Group 1 data
+deactivate Storage
+
+Reader -> RG1: Process Row Group 1
+activate RG1
+RG1 -> RG1: Check page statistics
+RG1 -> RG1: Skip pages where max age ≤ 30
+RG1 --> Reader: Matching records
+deactivate RG1
+' [/step4.1]
+
+' [step4.2 {"name":"Skip Row Group 2"}]
+Reader -> Storage: Skip Row Group 2
+note right: Statistics show no matching records
+' [/step4.2]
+
+' [step4.3 {"name":"Process Row Group 3"}]
+Reader -> Storage: Request Row Group 3
+activate Storage
+Storage --> Reader: Row Group 3 data
+deactivate Storage
+
+Reader -> RG3: Process Row Group 3
+activate RG3
+RG3 -> RG3: Check page statistics
+RG3 -> RG3: Skip pages where max age ≤ 30
+RG3 --> Reader: Matching records
+deactivate RG3
+end
+' [/step4.3]
+' [/step4]
+
+' [step5 {"name":"Results Processing"}]
+group #LightPink "Results Processing"
+Reader -> Reader: Combine results from RG1 and RG3
+Reader --> Client: Return matching user records
+deactivate Reader
+end
+' [/step5]
+
+@enduml 

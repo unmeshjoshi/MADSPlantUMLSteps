@@ -1,0 +1,162 @@
+title: "Understanding Apache Parquet"
+slides:
+  - type: "text"
+    title: "Introduction to Apache Parquet"
+    bullets:
+      - "Columnar storage format for efficient data processing"
+      - "Open-source file format designed for big data"
+      - "Optimized for both storage and query performance"
+    notes: "Start with the high-level overview of what Parquet is and why it's important in the big data ecosystem."
+
+  - type: "text"
+    title: "Why Parquet?"
+    bullets:
+      - "Columnar storage enables better compression"
+      - "Efficient query performance for analytical workloads"
+      - "Schema evolution support"
+      - "Compatible with multiple data processing frameworks"
+    notes: "Explain the key benefits that make Parquet a popular choice for data storage."
+
+  - type: "text"
+    title: "Parquet File Layout"
+    bullets:
+      - "Row Groups: Horizontal partitions (~128 MiB each)"
+      - "Column Chunks: One per column within each Row Group"
+      - "Pages: Default ~1 MiB per page within column chunks"
+      - "Footer: Thrift-serialized metadata at file end"
+    notes: "Explain the hierarchical structure of Parquet files."
+
+  - type: "text"
+    title: "Row Group Details"
+    bullets:
+      - "Example: 1 GiB file → 8 row groups of ~128 MiB each"
+      - "Each row group contains column chunks for all columns"
+      - "7 columns → 7 column chunks per row group"
+      - "Each column chunk divided into ~128 pages"
+    notes: "Break down the composition of row groups and their contents."
+
+  - type: "text"
+    title: "Page Structure"
+    bullets:
+      - "Data Pages: Contains repetition/definition levels + actual values"
+      - "Dictionary Pages: Used when dictionary encoding is enabled"
+      - "Default size: ~1 MiB per page"
+      - "Example: 7 columns × 128 pages ≈ 896 pages per row group"
+    notes: "Explain the different types of pages and their organization."
+
+  - type: "diagram"
+    title: "Parquet Storage and Reading Process"
+    diagramRef: "parquet_storage_layout"
+    bullets:
+      - "Footer contains complete metadata about row groups and blocks"
+      - "Row groups distributed across multiple servers and disks"
+      - "Parallel processing of row groups using metadata"
+      - "Efficient block-level reads from distributed storage"
+    notes: "Show how Parquet files are stored and read in a distributed environment."
+
+  - type: "diagram"
+    title: "Efficient Reads with Row Groups"
+    diagramRef: "parquet_efficient_reads"
+    bullets:
+      - "Predicate pushdown using row group statistics"
+      - "Skip entire row groups when possible"
+      - "Page-level filtering within row groups"
+      - "Parallel processing of row groups"
+    notes: "Demonstrate how Parquet's structure enables efficient reads."
+
+  - type: "text"
+    title: "File Reading Process"
+    bullets:
+      - "Two range reads required for metadata:"
+      - "1. Last 8 bytes (4B footer length + 4B 'PAR1' magic)"
+      - "2. Footer itself (~32 KiB)"
+      - "Footer contains complete metadata about row groups and columns"
+    notes: "Explain how Parquet files are read and metadata is accessed."
+
+  - type: "text"
+    title: "Storage Layer Integration"
+    bullets:
+      - "DFS Blocks: Fixed-size (e.g., HDFS 128 MiB, replication ×3)"
+      - "Parquet Row Groups: Independent of DFS block size"
+      - "Readers map RG offsets to DFS blocks at read-time"
+      - "ParquetInputFormat: One split per row group"
+    notes: "Explain how Parquet integrates with different storage systems."
+
+  - type: "text"
+    title: "Storage Backend Support"
+    bullets:
+      - "HDFS: NameNode manages block locations"
+      - "S3A/Object Stores: HTTP Range requests"
+      - "Ceph: Direct TCP to OSDs via CRUSH"
+      - "MinIO: REST API with Reed-Solomon reconstruction"
+    notes: "Cover different storage backends and their specific implementations."
+
+  - type: "text"
+    title: "Custom Object Store Implementation"
+    bullets:
+      - "Distributed upload with user-defined part sizes"
+      - "Manifest-based part tracking"
+      - "Round-robin distribution across servers"
+      - "JSON manifest for part-to-server mapping"
+    notes: "Explain how custom object stores can be implemented for Parquet."
+
+  - type: "text"
+    title: "Key Metrics & Configuration"
+    bullets:
+      - "Row Groups: ~128 MiB → ~896 pages (7 columns × ~128 pages)"
+      - "Pages: Default ~1 MiB; mix of dictionary/data pages"
+      - "Blocks: 128 MiB HDFS blocks"
+      - "Manifest: <objectKey>.manifest.json for part tracking"
+    notes: "Summarize important metrics and configuration parameters."
+
+  - type: "diagram"
+    title: "Row vs Column Storage"
+    diagramRef: "row_vs_column_storage"
+    bullets:
+      - "Traditional row-based storage vs Parquet's columnar approach"
+      - "How columnar storage enables better compression"
+    notes: "Visualize the difference between row and column storage to help understand the fundamental concept."
+
+  - type: "text"
+    title: "Parquet File Structure"
+    bullets:
+      - "File header and footer"
+      - "Row groups for parallel processing"
+      - "Column chunks within row groups"
+      - "Page headers and data pages"
+    notes: "Break down the internal structure of a Parquet file to understand how data is organized."
+
+  - type: "diagram"
+    title: "Parquet File Organization"
+    diagramRef: "parquet_file_structure"
+    bullets:
+      - "How data is organized in a Parquet file"
+      - "Understanding row groups and column chunks"
+    notes: "Show the hierarchical structure of a Parquet file."
+
+  - type: "text"
+    title: "Key Features"
+    bullets:
+      - "Predicate pushdown for efficient filtering"
+      - "Dictionary encoding for repeated values"
+      - "Run-length encoding for compression"
+      - "Delta encoding for sorted data"
+    notes: "Explain the advanced features that make Parquet efficient."
+
+  - type: "text"
+    title: "Best Practices"
+    bullets:
+      - "Choosing appropriate row group size"
+      - "Selecting optimal compression codecs"
+      - "Partitioning strategies"
+      - "Schema design considerations"
+    notes: "Provide practical guidance for using Parquet effectively."
+
+  - type: "text"
+    title: "Use Cases"
+    bullets:
+      - "Data warehousing and analytics"
+      - "Machine learning pipelines"
+      - "Data lake storage"
+      - "ETL processes"
+    notes: "Show real-world applications where Parquet excels." 

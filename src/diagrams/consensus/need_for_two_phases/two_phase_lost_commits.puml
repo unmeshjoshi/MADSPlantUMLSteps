@@ -1,5 +1,5 @@
 @startuml
-!include ../style.puml
+!include ../../../style.puml
 
 ' [step1 {"name":"Initial Setup"}]
 participant "Alice\n(Client)" as client

@@ -1,5 +1,5 @@
 @startuml
-!include ../style.puml
+!include ../../style.puml
 
 ' [step1 {"name":"Cluster as a Single Logical Node"}]
 participant "Alice\n(Client)" as alice

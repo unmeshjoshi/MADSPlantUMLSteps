@@ -65,18 +65,69 @@ public class HtmlGenerator {
 
     private void generateDiagramContainer(StringBuilder htmlContent, String diagramRef) {
         htmlContent.append("<div class='diagram-container'>");
+        
+        // First check if the diagram is directly in the diagrams directory
         File diagramDir = new File("build/diagrams/" + diagramRef);
         File[] stepFiles = diagramDir.listFiles((dir, name) -> name.endsWith(".svg"));
+        String relativePath = "../diagrams/" + diagramRef + "/";
+        
+        // If not found, check if it's in a subdirectory (e.g., consensus/single_server_problem)
+        if (stepFiles == null || stepFiles.length == 0) {
+            // Try to find the directory by searching in subdirectories
+            File diagramsRoot = new File("build/diagrams");
+            for (File subdir : diagramsRoot.listFiles(File::isDirectory)) {
+                // Check if the diagram is directly in this subdirectory
+                File potentialDir = new File(subdir, diagramRef);
+                if (potentialDir.exists() && potentialDir.isDirectory()) {
+                    diagramDir = potentialDir;
+                    stepFiles = diagramDir.listFiles((dir, name) -> name.endsWith(".svg"));
+                    if (stepFiles != null && stepFiles.length > 0) {
+                        System.out.println("Found SVG files for " + diagramRef + " in subdirectory: " + subdir.getName());
+                        relativePath = "../diagrams/" + subdir.getName() + "/" + diagramRef + "/";
+                        break;
+                    }
+                }
+                
+                // Check in deeper subdirectories (e.g., consensus/need_for_two_phases/single_phase_execution)
+                File[] subdirContents = subdir.listFiles(File::isDirectory);
+                if (subdirContents != null) {
+                    for (File deeperSubdir : subdirContents) {
+                        // Check if the diagram is in a subdirectory of this deeper subdirectory
+                        File potentialDeeperDir = new File(deeperSubdir, diagramRef);
+                        if (potentialDeeperDir.exists() && potentialDeeperDir.isDirectory()) {
+                            diagramDir = potentialDeeperDir;
+                            stepFiles = diagramDir.listFiles((dir, name) -> name.endsWith(".svg"));
+                            if (stepFiles != null && stepFiles.length > 0) {
+                                System.out.println("Found SVG files for " + diagramRef + " in deeper subdirectory: " + 
+                                    subdir.getName() + "/" + deeperSubdir.getName() + "/" + diagramRef);
+                                relativePath = "../diagrams/" + subdir.getName() + "/" + deeperSubdir.getName() + "/" + diagramRef + "/";
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // If we found files, no need to continue searching
+                if (stepFiles != null && stepFiles.length > 0) {
+                    break;
+                }
+            }
+        }
 
-        if (stepFiles != null) {
+        if (stepFiles != null && stepFiles.length > 0) {
+            System.out.println("Found " + stepFiles.length + " SVG files for " + diagramRef);
             for (File stepFile : stepFiles) {
                 String stepName = stepFile.getName();
                 String stepIndex = stepName.replaceAll("[^0-9]", "");
+                // If there's no step index (e.g., for files like single_phase_execution.svg), use "1"
+                if (stepIndex.isEmpty()) {
+                    stepIndex = "1";
+                }
+                
                 htmlContent.append("<div class='step' style='display: none;' step_index='")
                         .append(stepIndex)
-                        .append("'><img src='../diagrams/")
-                        .append(diagramRef)
-                        .append("/")
+                        .append("'><img src='")
+                        .append(relativePath)
                         .append(stepName)
                         .append("' alt='")
                         .append(diagramRef)
@@ -84,6 +135,12 @@ public class HtmlGenerator {
                         .append(stepName)
                         .append("'></div>");
             }
+        } else {
+            System.err.println("WARNING: No SVG files found for diagram: " + diagramRef + " in " + diagramDir.getAbsolutePath());
+            // Add a placeholder message in the HTML
+            htmlContent.append("<div class='step' style='display: block;'><p class='error-message'>No diagrams found for: ")
+                    .append(diagramRef)
+                    .append("</p></div>");
         }
         htmlContent.append("</div>");
     }
@@ -92,7 +149,6 @@ public class HtmlGenerator {
         Object sectionsObj = yamlData.get("sections");
         if (sectionsObj != null) {
             List<Map<String, Object>> sections = (List<Map<String, Object>>) sectionsObj;
-            // Process each section to ensure slides are properly handled
             for (Map<String, Object> section : sections) {
                 Object slidesObj = section.get("slides");
                 if (slidesObj instanceof List) {
@@ -102,7 +158,6 @@ public class HtmlGenerator {
             return sections;
         }
         
-        // Handle legacy format
         List<Map<String, Object>> sections = new ArrayList<>();
         Map<String, Object> defaultSection = new HashMap<>();
         defaultSection.put("title", "Presentation");
@@ -143,7 +198,6 @@ public class HtmlGenerator {
         for (Map<String, Object> section : sections) {
             String sectionTitle = (String) section.get("title");
             if (sectionTitle != null) {
-                // Add a section separator slide
                 htmlContent.append("<div class='slide section-separator' data-section='").append(sectionTitle).append("'>")
                         .append("<div class='section-title'>")
                         .append("<h1>").append(sectionTitle).append("</h1>")
@@ -172,11 +226,11 @@ public class HtmlGenerator {
                 } else if ("diagram".equals(slide.get("type"))) {
                     generateDiagramContent(htmlContent, slide);
                 }
-                htmlContent.append("</div></div>"); // Close content-container and slide div
+                htmlContent.append("</div></div>"); 
             }
         }
 
-        htmlContent.append("</div>"); // close slide-container
+        htmlContent.append("</div>"); 
         appendNavigationControls(htmlContent);
         
         htmlContent.append("<script src='presentation.js'></script>")

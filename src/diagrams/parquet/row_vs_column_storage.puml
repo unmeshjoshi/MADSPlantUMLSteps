@@ -1,0 +1,114 @@
+@startuml row_vs_column_storage
+!include ../../style.puml
+
+title Row-based vs Column-based Storage
+
+' [step1 {"name":"Row-based Storage"}]
+rectangle "Row-based Storage" as RowStorage {
+  rectangle "Row 1" as Row1 {
+    rectangle "ID: 1" as ID1
+    rectangle "Name: Alice" as Name1
+    rectangle "Age: 25" as Age1
+    rectangle "City: New York" as City1
+  }
+  
+  rectangle "Row 2" as Row2 {
+    rectangle "ID: 2" as ID2
+    rectangle "Name: Bob" as Name2
+    rectangle "Age: 30" as Age2
+    rectangle "City: San Francisco" as City2
+  }
+  
+  rectangle "Row 3" as Row3 {
+    rectangle "ID: 3" as ID3
+    rectangle "Name: Charlie" as Name3
+    rectangle "Age: 35" as Age3
+    rectangle "City: Chicago" as City3
+  }
+}
+
+note bottom of RowStorage
+  Row-based storage:
+  - Stores all fields of a record together
+  - Optimized for record retrieval
+  - Less efficient for analytical queries
+  - Common in OLTP databases
+end note
+' [/step1]
+
+' [step2 {"name":"Column-based Storage", "newPage":"true"}]
+rectangle "Column-based Storage (Parquet)" as ColStorage {
+  rectangle "ID Column" as IDCol {
+    rectangle "1" as ColID1
+    rectangle "2" as ColID2
+    rectangle "3" as ColID3
+  }
+  
+  rectangle "Name Column" as NameCol {
+    rectangle "Alice" as ColName1
+    rectangle "Bob" as ColName2
+    rectangle "Charlie" as ColName3
+  }
+  
+  rectangle "Age Column" as AgeCol {
+    rectangle "25" as ColAge1
+    rectangle "30" as ColAge2
+    rectangle "35" as ColAge3
+  }
+  
+  rectangle "City Column" as CityCol {
+    rectangle "New York" as ColCity1
+    rectangle "San Francisco" as ColCity2
+    rectangle "Chicago" as ColCity3
+  }
+}
+
+note bottom of ColStorage
+  Column-based storage:
+  - Stores all values of a column together
+  - Better compression (similar values together)
+  - Efficient for analytical queries
+  - Only reads needed columns
+end note
+' [/step2]
+
+' [step3 {"name":"Query Comparison"}]
+rectangle "Query: SELECT AVG(Age) FROM Users" as Query
+
+note right of Query
+  Row-based storage:
+  - Must read all rows completely
+  - Processes unnecessary data (ID, Name, City)
+  
+  Column-based storage:
+  - Only reads Age column
+  - Skips other columns completely
+  - Much less I/O and processing
+end note
+' [/step3]
+
+' [step4 {"name":"Compression Benefits"}]
+rectangle "Compression Benefits" as Compression {
+  rectangle "Row Storage Compression" as RowComp {
+    rectangle "Mixed data types" as Mixed
+    rectangle "Lower compression ratio" as LowComp
+  }
+  
+  rectangle "Column Storage Compression" as ColComp {
+    rectangle "Similar data types together" as Similar
+    rectangle "Higher compression ratio" as HighComp
+    rectangle "Type-specific encodings" as TypeEnc
+  }
+}
+
+note bottom of Compression
+  Column-based compression advantages:
+  - Similar values stored together
+  - Type-specific compression algorithms
+  - Dictionary encoding for repeated values
+  - Run-length encoding for sequences
+  - Delta encoding for sorted numeric data
+end note
+' [/step4]
+
+@enduml

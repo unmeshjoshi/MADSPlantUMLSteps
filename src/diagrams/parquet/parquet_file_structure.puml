@@ -1,0 +1,161 @@
+@startuml parquet_file_structure
+!include ../../style.puml
+
+title Parquet File Structure
+
+' [step1 {"name":"File Overview"}]
+rectangle "Parquet File" as ParquetFile {
+  rectangle "File Header" as Header {
+    rectangle "PAR1 Magic Number (4 bytes)" as HeaderMagic
+  }
+  
+  rectangle "Data Section" as DataSection
+  
+  rectangle "File Footer" as Footer {
+    rectangle "File Metadata" as FileMetadata
+    rectangle "Footer Length (4 bytes)" as FooterLength
+    rectangle "PAR1 Magic Number (4 bytes)" as FooterMagic
+  }
+}
+
+note bottom of Header
+  Every Parquet file starts with
+  the magic number "PAR1"
+end note
+
+note bottom of Footer
+  Footer contains schema, row group metadata,
+  column chunk locations, and statistics
+end note
+' [/step1]
+
+' [step2 {"name":"Data Section Details", "newPage":"true"}]
+rectangle "Data Section Details" as DataDetails {
+  rectangle "Row Group 1" as RG1 {
+    rectangle "Column Chunk 1-1" as CC11 {
+      rectangle "Page 1-1-1" as P111
+      rectangle "Page 1-1-2" as P112
+      rectangle "..." as P11x
+    }
+    
+    rectangle "Column Chunk 1-2" as CC12 {
+      rectangle "Page 1-2-1" as P121
+      rectangle "Page 1-2-2" as P122
+      rectangle "..." as P12x
+    }
+    
+    rectangle "..." as CC1x
+  }
+  
+  rectangle "Row Group 2" as RG2 {
+    rectangle "Column Chunk 2-1" as CC21 {
+      rectangle "Page 2-1-1" as P211
+      rectangle "Page 2-1-2" as P212
+      rectangle "..." as P21x
+    }
+    
+    rectangle "Column Chunk 2-2" as CC22 {
+      rectangle "Page 2-2-1" as P221
+      rectangle "Page 2-2-2" as P222
+      rectangle "..." as P22x
+    }
+    
+    rectangle "..." as CC2x
+  }
+  
+  rectangle "..." as RGx
+}
+
+note bottom of DataDetails
+  - Row Groups: ~128 MiB each
+  - Column Chunks: One per column per row group
+  - Pages: ~1 MiB each
+end note
+' [/step2]
+
+' [step3 {"name":"Page Structure"}]
+rectangle "Page Structure" as PageStructure {
+  rectangle "Dictionary Page (optional)" as DictPage {
+    rectangle "Page Header" as DictHeader
+    rectangle "Dictionary Values" as DictValues
+  }
+  
+  rectangle "Data Page" as DataPage {
+    rectangle "Page Header" as DataHeader
+    rectangle "Definition Levels" as DefLevels
+    rectangle "Repetition Levels" as RepLevels
+    rectangle "Encoded Values" as Values
+  }
+}
+
+note bottom of DictPage
+  Dictionary pages appear once per column chunk
+  and contain unique values used for encoding
+end note
+
+note bottom of DataPage
+  - Definition levels: Handle NULL values
+  - Repetition levels: Handle nested data
+  - Encoded values: Actual data (possibly dictionary-encoded)
+end note
+' [/step3]
+
+' [step4 {"name":"Footer Details", "newPage":"true"}]
+rectangle "Footer Details" as FooterDetails {
+  rectangle "File Metadata" as FileMetadataDetails {
+    rectangle "Version" as Version
+    rectangle "Schema" as Schema
+    rectangle "Number of Rows" as NumRows
+    rectangle "Row Group Metadata" as RGMetadata {
+      rectangle "Row Group 1 Metadata" as RG1Meta {
+        rectangle "Total Byte Size" as RG1Size
+        rectangle "Number of Rows" as RG1Rows
+        rectangle "Column Chunk Metadata" as CC1Meta
+      }
+      rectangle "Row Group 2 Metadata" as RG2Meta
+      rectangle "..." as RGxMeta
+    }
+    rectangle "Key-Value Metadata" as KVMeta
+  }
+}
+
+note bottom of Schema
+  Full schema definition including:
+  - Column names
+  - Data types
+  - Nesting structure
+end note
+
+note bottom of CC1Meta
+  For each column chunk:
+  - File offset
+  - Size in bytes
+  - Statistics (min/max values)
+  - Encoding information
+end note
+' [/step4]
+
+' [step5 {"name":"Reading Process"}]
+rectangle "Reading Process" as ReadProcess {
+  rectangle "Step 1: Read last 8 bytes" as Step1
+  rectangle "Step 2: Read footer using length" as Step2
+  rectangle "Step 3: Parse schema and metadata" as Step3
+  rectangle "Step 4: Determine row groups to read" as Step4
+  rectangle "Step 5: Read only required columns" as Step5
+}
+
+Step1 -down-> Step2
+Step2 -down-> Step3
+Step3 -down-> Step4
+Step4 -down-> Step5
+
+note bottom of ReadProcess
+  Efficient reading process:
+  1. Small initial read to get footer location
+  2. Read and parse footer (~32 KiB)
+  3. Use metadata to determine which row groups and columns to read
+  4. Skip irrelevant data entirely
+end note
+' [/step5]
+
+@enduml

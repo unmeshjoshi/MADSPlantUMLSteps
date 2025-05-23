@@ -1,0 +1,119 @@
+@startuml parquet_storage_layout
+!include ../../style.puml
+
+' [step1 {"name":"Components"}]
+participant "Parquet Reader" as Reader
+participant "Metadata Manager" as MM
+
+' Server 1 components
+participant "Server 1" as S1
+participant "Disk 1.1" as D11
+participant "Disk 1.2" as D12
+participant "Disk 1.3" as D13
+
+' Server 2 components
+participant "Server 2" as S2
+participant "Disk 2.1" as D21
+participant "Disk 2.2" as D22
+participant "Disk 2.3" as D23
+' [/step1]
+
+' [step2 {"name":"Metadata Management"}]
+group #LightBlue "Metadata Management"
+note right of MM
+  Maintains mappings:
+  - Footer location
+  - Row Group → Block mappings
+  - Block → Server/Disk mappings
+  - Page → Block mappings
+end note
+
+MM -> D11: Store footer
+activate D11
+D11 --> MM: Footer stored
+deactivate D11
+
+MM -> MM: Update mappings
+note right of MM
+  Footer contains:
+  - Row group offsets
+  - Column statistics
+  - Block locations
+end note
+end
+' [/step2]
+
+' [step3 {"name":"Initial Read"}]
+group #LightGreen "Initial Read"
+Reader -> MM: Request file metadata
+activate MM
+MM --> Reader: Return mappings
+deactivate MM
+
+Reader -> D11: Read footer
+activate D11
+D11 --> Reader: Footer with metadata
+deactivate D11
+end
+' [/step3]
+
+' [step4 {"name":"Row Group Processing", "newPage":"true"}]
+group #LightYellow "Parallel Row Group Processing"
+
+' [step4.1 {"name":"Row Group 1 Processing"}]
+Reader -> Reader: Parse footer for RG1 location
+note right: RG1 spans Block 1,2
+
+Reader -> D11: Request Block 1
+activate D11
+D11 --> Reader: Block 1 data
+deactivate D11
+
+Reader -> D12: Request Block 2
+activate D12
+D12 --> Reader: Block 2 data
+deactivate D12
+' [/step4.1]
+
+' [step4.2 {"name":"Row Group 2 Processing"}]
+Reader -> Reader: Parse footer for RG2 location
+note right: RG2 spans Block 3,4
+
+Reader -> D21: Request Block 3
+activate D21
+D21 --> Reader: Block 3 data
+deactivate D21
+
+Reader -> D22: Request Block 4
+activate D22
+D22 --> Reader: Block 4 data
+deactivate D22
+' [/step4.2]
+
+' [step4.3 {"name":"Row Group 3 Processing"}]
+Reader -> Reader: Parse footer for RG3 location
+note right: RG3 in Block 5
+
+Reader -> D13: Request Block 5
+activate D13
+D13 --> Reader: Block 5 data
+deactivate D13
+end
+' [/step4.3]
+' [/step4]
+
+' [step5 {"name":"Storage Layout"}]
+group #LightPink "Storage Layout"
+note over D11, D23
+  |= Server |= Disk |= Blocks | Row Groups |
+  | Server 1 | Disk 1.1 | Block 1, Footer | RG1 (part) |
+  | Server 1 | Disk 1.2 | Block 2 | RG1 (part) |
+  | Server 1 | Disk 1.3 | Block 5 | RG3 |
+  | Server 2 | Disk 2.1 | Block 3 | RG2 (part) |
+  | Server 2 | Disk 2.2 | Block 4 | RG2 (part) |
+  | Server 2 | Disk 2.3 | Block 6 | - |
+end note
+end
+' [/step5]
+
+@enduml 
