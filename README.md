@@ -85,29 +85,48 @@ skinparam sequence {
 The project provides several Gradle tasks:
 
 ```bash
-# Generate diagrams and HTML viewers
-./gradlew clean generate
+# Generate SVG diagrams
+./gradlew svg
+
+# Generate PNG diagrams
+./gradlew png
 
 # Generate HTML presentations from YAML configs
-./gradlew generateHtml
+./gradlew html
+
+# Generate PowerPoint presentations from YAML configs
+./gradlew ppt
+
+# Generate all formats (SVG, PNG, HTML, and PowerPoint)
+./gradlew all
 ```
 
-The `generate` task will:
-- Generate `.puml` and `.svg` files for each step
-- Create an `index.html` file in each diagram's output directory for interactive viewing
-- Create a global `index.html` in the build/diagrams directory linking to all diagrams
-- Copy the `style.puml` file to the output directory
+The available tasks are:
 
-The `generateHtml` task will:
-- Process YAML configuration files in the `src/presentation` directory
-- Generate HTML presentations based on these configurations
+- `svg`: Generates SVG diagrams from PlantUML files
+  - Creates `.puml` and `.svg` files for each step
+  - Copies the `style.puml` file to the output directory
 
-> **Note:** The PowerPoint presentation generation (`generatePresentationFromYaml` task) is currently under development and not fully functional.
+- `png`: Generates PNG versions of the diagrams
+  - Useful for PowerPoint presentations where SVG support may be limited
+
+- `html`: Generates HTML presentations from YAML configuration files
+  - Processes YAML files in the `src/presentation` directory
+  - Creates interactive HTML presentations with navigation controls
+  - Includes a diagram viewer with step-by-step navigation
+  - Outputs HTML files to the `build/presentations` directory
+
+- `ppt`: Generates PowerPoint presentations from YAML configuration files
+  - Creates professional slides with consistent styling
+  - Includes diagram steps with proper titles and numbering
+  - Organized by sections for better navigation
+
+- `all`: Runs all the above tasks in the correct sequence
 
 ### 4. View Results
-- Open the `build/diagrams/index.html` file in a browser to access all diagrams
-- Navigate to `build/diagrams/<diagram_name>/index.html` to view a specific diagram's step-by-step viewer
-- For HTML presentations, check the files generated in the `build/presentations` directory
+- For SVG diagrams, navigate to the `build/diagrams` directory and explore the folders
+- For HTML presentations, open the files generated in the `build/presentations` directory
+- For PowerPoint presentations, check the `.pptx` files in the `build/presentations` directory
 
 ## Customization
 
@@ -170,10 +189,15 @@ The HTML presentations generated from YAML configurations include:
 - Speaker notes
 - Navigation controls
 
-### PowerPoint Output *(In Progress)*
-PowerPoint presentation generation is currently under development. When completed, it will include:
-- One slide per step
-- Step names as slide titles
-- Consistent formatting across slides
-- All diagrams consolidated into a single presentation
+### PowerPoint Presentations
+The PowerPoint presentations include professional features:
+- **Professional Design**: Consistent styling with modern color scheme and typography
+- **Enhanced Slide Structure**:
+  - Section divider slides with accent styling
+  - Text slides with proper bullet formatting and adaptive font sizing
+  - Image slides with optimized layout and framing
+- **Smart Step Numbers**: Shows step numbers in titles for multi-step diagrams, but omits them for single-step diagrams
+- **Visual Hierarchy**: Properly formatted titles, bullets, and content with appropriate spacing
+- **Navigation Aids**: Includes slide numbers and consistent styling throughout the presentation
+- **Optimized Images**: Properly scaled and positioned diagrams with professional framing
 
