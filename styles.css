@@ -310,24 +310,28 @@ body {
     justify-content: flex-start;
     gap: 0; /* Let margins control spacing */
     padding: 1.5rem;
+    overflow: hidden; /* Prevent outer container overflow */
 }
 
 .diagram-container {
     width: 100%;
-    flex: 0 1 auto; /* Don't grow, can shrink, auto basis */
+    flex: 1 1 auto; /* Allow growing to fill available space */
     display: flex;
-    align-items: center;
+    align-items: flex-start; /* Align to top to prevent centering cutting off content */
     justify-content: center;
     min-height: 0; /* Allows container to shrink */
     margin-bottom: 1.5rem; /* Space between diagram and bullets */
-    max-height: 60vh; /* Default height when bullets exist */
+    overflow-y: auto; /* Add scrolling for tall images */
+    max-height: 70vh; /* Set a fixed maximum height */
 }
 
 /* When no bullets are present */
 .diagram-slide-content.full-size .diagram-container {
     flex: 1; /* Take all available space */
-    max-height: none; /* Remove height restriction */
+    max-height: 80vh; /* Set a maximum height - slightly larger when no bullets */
     margin-bottom: 0; /* Remove bottom margin */
+    overflow-y: auto; /* Maintain scrolling when needed */
+    height: auto; /* Let height adjust based on content */
 }
 
 .diagram-bullets {
@@ -402,10 +406,10 @@ body {
 }
 
 .step img {
-    max-width: 75%;  /* Standard presentation content width */
-    max-height: 85%;  /* Prevent vertical overflow while leaving room for margins */
-    width: auto;
-    height: auto;
+    width: 95%;       /* Set a fixed width percentage */
+    min-width: 95%;   /* Ensure minimum width */
+    max-width: 95%;   /* Cap maximum width */
+    height: auto;     /* Allow height to adjust based on content */
     object-fit: contain;
     border: 1px solid var(--border-dark);
     border-radius: 12px;
@@ -561,7 +565,8 @@ button:hover:not(:disabled) i.fa-chevron-left,
     }
 
     .step img {
-        max-width: 95%;
+        max-width: 100%;
+        width: 100%;
         max-height: 70vh;
     }
 }
@@ -600,7 +605,8 @@ button:hover:not(:disabled) i.fa-chevron-left,
     }
     
     .step img {
-        max-width: 95%;
+        max-width: 100%;
+        width: 100%;
         max-height: 70vh;
     }
     

@@ -1,0 +1,14 @@
+<article class='slide' data-section='{{sectionTitle}}' role='region' aria-label='Slide: {{slideTitle}}'>
+    <header class='title-container'>
+        <h2>{{slideTitle}}</h2>
+        {{#hasNotes}}
+        <div class='title-notes' role='note'>
+            <i class='fas fa-sticky-note' aria-hidden='true'></i>
+            <span>{{notes}}</span>
+        </div>
+        {{/hasNotes}}
+    </header>
+    <main class='content-container'>
+        {{content}}
+    </main>
+</article>

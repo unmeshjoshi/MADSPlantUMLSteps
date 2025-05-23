@@ -10,61 +10,58 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class HtmlGenerator {
-    private void generateBulletList(StringBuilder htmlContent, List<String> bullets) {
+    private String generateBulletList(List<String> bullets) {
         if (bullets == null || bullets.isEmpty()) {
-            return;
+            return "";
         }
-        htmlContent.append("<ul>");
+        
+        StringBuilder html = new StringBuilder("<ul>");
         for (String bullet : bullets) {
-            htmlContent.append("<li>").append(bullet).append("</li>");
+            html.append("<li>").append(bullet).append("</li>");
         }
-        htmlContent.append("</ul>");
+        html.append("</ul>");
+        return html.toString();
+    }
+    
+    private String loadTemplate(String templateName) throws IOException {
+        return TemplateLoader.loadTemplate(templateName + ".html");
+    }
+    
+    private String renderTemplate(String templateName, Map<String, Object> data) throws IOException {
+        String template = loadTemplate(templateName);
+        return TemplateLoader.processTemplate(template, data);
     }
 
-    private void appendHtmlHeader(StringBuilder htmlContent, String title) {
-        htmlContent.append("<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'>")
-                .append("<meta name='viewport' content='width=device-width, initial-scale=1.0'>")
-                .append("<title>").append(title).append("</title>")
-                .append("<link rel=\"stylesheet\" href=\"styles.css\">")
-                .append("<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">")
-                .append("<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>")
-                .append("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap\" rel=\"stylesheet\">")
-                .append("<link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css\" rel=\"stylesheet\">")
-                .append("</head><body>");
-    }
-
-    private void appendNavigationControls(StringBuilder htmlContent) {
-        htmlContent.append("<div class='controls'>")
-                .append("<button id='prev-button' onclick='prevStep()' disabled>")
-                .append("<i class='fas fa-chevron-left'></i>")
-                .append("<span>Previous</span>")
-                .append("</button>")
-                .append("<button id='next-button' onclick='nextStep()'>")
-                .append("<span>Next</span>")
-                .append("<i class='fas fa-chevron-right'></i>")
-                .append("</button>")
-                .append("</div>");
-    }
-
-    private void generateDiagramContent(StringBuilder htmlContent, Map<String, Object> slide) {
-        String fullSizeClass = !slide.containsKey("bullets") ? " full-size" : "";
-        htmlContent.append("<div class='diagram-slide-content" + fullSizeClass + "'>");
+    private String generateDiagramContent(Map<String, Object> slide) throws IOException {
+        Map<String, Object> data = new HashMap<>();
         
-        generateDiagramContainer(htmlContent, (String) slide.get("diagramRef"));
+        // Generate diagram container content
+        String diagramContent = generateDiagramContainer((String) slide.get("diagramRef"));
+        data.put("diagramContent", diagramContent);
         
+        // Handle bullets if present
+        boolean hasBullets = false;
         if (slide.containsKey("bullets")) {
-            htmlContent.append("<div class='diagram-bullets'>");
-            generateBulletList(htmlContent, (List<String>) slide.get("bullets"));
-            htmlContent.append("</div>");
+            List<String> bullets = (List<String>) slide.get("bullets");
+            // Only set hasBullets true if there's at least one non-empty bullet
+            if (bullets != null) {
+                hasBullets = bullets.stream().anyMatch(bullet -> bullet != null && !bullet.trim().isEmpty());
+                data.put("bullets", bullets);
+            }
         }
         
-        htmlContent.append("</div>");
+        // Set fullSize based on whether there are actual bullets
+        data.put("fullSize", !hasBullets);
+        data.put("hasBullets", hasBullets);
+        
+        return renderTemplate("diagram_content", data);
     }
 
-    private void generateDiagramContainer(StringBuilder htmlContent, String diagramRef) {
-        htmlContent.append("<div class='diagram-container'>");
+    private String generateDiagramContainer(String diagramRef) {
+        StringBuilder htmlContent = new StringBuilder();
         
         // First check if the diagram is directly in the diagrams directory
         File diagramDir = new File("build/diagrams/" + diagramRef);
@@ -124,15 +121,16 @@ public class HtmlGenerator {
                     stepIndex = "1";
                 }
                 
+                // Create more descriptive alt text with diagram name and step number
+                String altText = diagramRef.replace("_", " ") + " - Step " + stepIndex;
+                
                 htmlContent.append("<div class='step' style='display: none;' step_index='")
                         .append(stepIndex)
                         .append("'><img src='")
                         .append(relativePath)
                         .append(stepName)
                         .append("' alt='")
-                        .append(diagramRef)
-                        .append(" ")
-                        .append(stepName)
+                        .append(altText)
                         .append("'></div>");
             }
         } else {
@@ -142,7 +140,8 @@ public class HtmlGenerator {
                     .append(diagramRef)
                     .append("</p></div>");
         }
-        htmlContent.append("</div>");
+        
+        return htmlContent.toString();
     }
 
     private List<Map<String, Object>> getSectionsFromYaml(Map<String, Object> yamlData) {
@@ -185,57 +184,61 @@ public class HtmlGenerator {
         Map<String, Object> yamlData = yaml.loadAs(new FileReader(yamlFile), Map.class);
         StringBuilder htmlContent = new StringBuilder();
         
-        appendHtmlHeader(htmlContent, (String) yamlData.get("title"));
-        htmlContent.append("<div class='slide-container'>")
-                .append("<div class='progress-bar'><div class='progress-indicator'></div></div>")
-                .append("<div class='section-info' id='current-section'></div>");
-
+        // Prepare header data
+        Map<String, Object> headerData = new HashMap<>();
+        headerData.put("title", yamlData.get("title"));
+        
+        // Get sections and calculate total slides
         List<Map<String, Object>> sections = getSectionsFromYaml(yamlData);
         int totalSlides = countTotalSlides(sections);
-
-        htmlContent.append("<div id='presentation-data' data-total-slides='").append(totalSlides).append("'></div>");
-
+        headerData.put("totalSlides", totalSlides);
+        
+        // Render header template
+        htmlContent.append(renderTemplate("header", headerData));
+        
+        // Process each section and its slides
         for (Map<String, Object> section : sections) {
             String sectionTitle = (String) section.get("title");
             if (sectionTitle != null) {
-                htmlContent.append("<div class='slide section-separator' data-section='").append(sectionTitle).append("'>")
-                        .append("<div class='section-title'>")
-                        .append("<h1>").append(sectionTitle).append("</h1>")
-                        .append("</div>")
-                        .append("</div>");
+                Map<String, Object> sectionData = new HashMap<>();
+                sectionData.put("sectionTitle", sectionTitle);
+                htmlContent.append(renderTemplate("section", sectionData));
             }
 
             List<Map<String, Object>> sectionSlides = (List<Map<String, Object>>) section.get("slides");
             if (sectionSlides == null) continue;
 
             for (Map<String, Object> slide : sectionSlides) {
-                htmlContent.append("<div class='slide' data-section='").append(sectionTitle).append("'>")
-                        .append("<div class='title-container'>")
-                        .append("<h2>")
-                        .append(slide.get("title"))
-                        .append("</h2>")
-                        .append(slide.containsKey("notes") ? String.format(
-                                "<div class='title-notes'><i class='fas fa-sticky-note'></i><span>%s</span></div>",
-                                slide.get("notes")
-                        ) : "")
-                        .append("</div>")
-                        .append("<div class='content-container'>");
-
-                if ("text".equals(slide.get("type"))) {
-                    generateBulletList(htmlContent, (List<String>) slide.get("bullets"));
-                } else if ("diagram".equals(slide.get("type"))) {
-                    generateDiagramContent(htmlContent, slide);
+                Map<String, Object> slideData = new HashMap<>();
+                slideData.put("sectionTitle", sectionTitle);
+                slideData.put("slideTitle", slide.get("title"));
+                
+                // Handle notes if present
+                if (slide.containsKey("notes")) {
+                    slideData.put("hasNotes", true);
+                    slideData.put("notes", slide.get("notes"));
                 }
-                htmlContent.append("</div></div>"); 
+                
+                // Generate content based on slide type
+                String content;
+                if ("text".equals(slide.get("type"))) {
+                    content = generateBulletList((List<String>) slide.get("bullets"));
+                } else if ("diagram".equals(slide.get("type"))) {
+                    content = generateDiagramContent(slide);
+                } else {
+                    content = "";
+                }
+                
+                slideData.put("content", content);
+                htmlContent.append(renderTemplate("slide", slideData));
             }
         }
 
-        htmlContent.append("</div>"); 
-        appendNavigationControls(htmlContent);
-        
-        htmlContent.append("<script src='presentation.js'></script>")
-                .append("</body></html>");
+        // Add navigation controls and footer
+        htmlContent.append(renderTemplate("navigation", new HashMap<>()));
+        htmlContent.append(renderTemplate("footer", new HashMap<>()));
 
+        // Write the final HTML content to file
         try (FileWriter writer = new FileWriter(outputHtmlFile)) {
             writer.write(htmlContent.toString());
         }

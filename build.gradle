@@ -18,7 +18,9 @@ plugins {
 }
 
 // Gradle task to generate diagrams for all .puml files in the source directory
-task generateSvgDiagrams {
+task svg {
+    description = 'Generates SVG diagrams from PlantUML files'
+    group = 'Documentation'
     doLast {
         def plantUmlJarPath = './plantuml-1.2024.8.jar'
         def sourceDir = file('src/diagrams')
@@ -31,11 +33,13 @@ task generateSvgDiagrams {
         def imageGenerator = new StepImageGenerator(plantUmlJarPath)
         imageGenerator.generateImagesForDirectory(sourceDir, outputDir, StepImageGenerator.ImageFormat.SVG)
         
-        println "SVG diagrams generated in: ${outputDir.absolutePath}"
+        println "✓ SVG diagrams generated in: ${outputDir.absolutePath}"
     }
 }
 
-task generatePngDiagrams {
+task png {
+    description = 'Generates PNG diagrams from PlantUML files'
+    group = 'Documentation'
     doLast {
         def plantUmlJarPath = './plantuml-1.2024.8.jar'
         def sourceDir = file('src/diagrams')
@@ -48,12 +52,14 @@ task generatePngDiagrams {
         def imageGenerator = new StepImageGenerator(plantUmlJarPath)
         imageGenerator.generateImagesForDirectory(sourceDir, outputDir, StepImageGenerator.ImageFormat.PNG)
         
-        println "PNG diagrams generated in: ${outputDir.absolutePath}"
+        println "✓ PNG diagrams generated in: ${outputDir.absolutePath}"
     }
 }
 
-task generateHtml {
-    dependsOn generateSvgDiagrams  // This ensures SVG diagrams are generated before creating the HTML
+task html {
+    description = 'Generates HTML presentations with embedded SVG diagrams'
+    group = 'Documentation'
+    dependsOn svg  // This ensures SVG diagrams are generated before creating the HTML
 
     doLast {
         def presentationDir = file('src/presentation')
@@ -88,12 +94,14 @@ task generateHtml {
             }
         }
         
-        println "HTML presentations generated in: ${buildDir.absolutePath}"
+        println "✓ HTML presentations generated in: ${buildDir.absolutePath}"
     }
 }
 
-task generatePresentationFromYaml {
-    dependsOn generatePngDiagrams  // Depend on SVG diagrams
+task ppt {
+    description = 'Generates PowerPoint presentations from YAML files with PNG diagrams'
+    group = 'Documentation'
+    dependsOn png  // Depend on PNG diagrams
     
     doLast {
         def plantUmlJarPath = './plantuml-1.2024.8.jar'
@@ -127,17 +135,21 @@ task generatePresentationFromYaml {
             }
         }
         
-        println "PowerPoint presentations generated in: ${buildDir.absolutePath}"
+        println "✓ PowerPoint presentations generated in: ${buildDir.absolutePath}"
     }
 }
 
-task generatePresentation {
-    dependsOn generatePresentationFromYaml
-    dependsOn generateHtml
+task all {
+    description = 'Generates all presentation formats (HTML and PowerPoint)'
+    group = 'Documentation'
+    dependsOn ppt
+    dependsOn html
     
     doLast {
-        println "\nGeneration complete!\n"
+        println "\n✓ Generation complete!\n"
         println "HTML presentations (with SVG diagrams) are in: ${file('build/presentations').absolutePath}"
-        println "PowerPoint presentations (with on-the-fly PNG diagrams) are in: ${file('build/presentations').absolutePath}"
+        println "PowerPoint presentations (with PNG diagrams) are in: ${file('build/presentations').absolutePath}"
+        println "\nRun with: ./gradlew [task]"
+        println "Available tasks: svg, png, html, ppt, all"
     }
 }

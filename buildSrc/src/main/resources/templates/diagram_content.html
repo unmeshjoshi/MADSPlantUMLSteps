@@ -1,0 +1,14 @@
+<div class='diagram-slide-content{{#fullSize}} full-size{{/fullSize}}'>
+    <div class='diagram-container'>
+        {{diagramContent}}
+    </div>
+    {{#hasBullets}}
+    <div class='diagram-bullets'>
+        <ul>
+            {{#bullets}}
+            {{#.}}<li>{{.}}</li>{{/.}}
+            {{/bullets}}
+        </ul>
+    </div>
+    {{/hasBullets}}
+</div>

@@ -1,6 +1,7 @@
 package com.pumlsteps;
 
 import org.apache.poi.sl.usermodel.PictureData;
+import org.apache.poi.sl.usermodel.ShapeType;
 import org.apache.poi.sl.usermodel.VerticalAlignment;
 import org.apache.poi.xslf.usermodel.*;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
@@ -22,6 +23,28 @@ import java.util.Locale;
 public class PptGenerator {
     private XMLSlideShow ppt;
     private File pngDirectory;
+    
+    // Professional color scheme
+    private static final class ColorScheme {
+        // Primary colors
+        static final java.awt.Color PRIMARY = new java.awt.Color(0, 90, 156);      // Deep blue
+        static final java.awt.Color SECONDARY = new java.awt.Color(242, 105, 36);  // Orange accent
+        static final java.awt.Color TERTIARY = new java.awt.Color(64, 64, 64);     // Dark gray
+        
+        // Background colors
+        static final java.awt.Color BACKGROUND_LIGHT = new java.awt.Color(250, 250, 250);
+        static final java.awt.Color BACKGROUND_DARK = new java.awt.Color(27, 38, 59);
+        
+        // Text colors
+        static final java.awt.Color TEXT_DARK = new java.awt.Color(33, 33, 33);
+        static final java.awt.Color TEXT_LIGHT = new java.awt.Color(250, 250, 250);
+        
+        // Accent colors for charts and highlights
+        static final java.awt.Color ACCENT1 = new java.awt.Color(77, 166, 255);
+        static final java.awt.Color ACCENT2 = new java.awt.Color(255, 190, 77);
+        static final java.awt.Color ACCENT3 = new java.awt.Color(145, 211, 79);
+        static final java.awt.Color ACCENT4 = new java.awt.Color(255, 128, 128);
+    }
 
     /**
      * Creates a new PowerPoint generator.
@@ -96,12 +119,45 @@ public class PptGenerator {
     private void addSeparatorSlide(String sectionName) {
         try {
             XSLFSlide slide = ppt.createSlide();
+            int slideWidth = ppt.getPageSize().width;
+            int slideHeight = ppt.getPageSize().height;
+            
+            // Create a gradient background for a more professional look
+            XSLFAutoShape bgShape = slide.createAutoShape();
+            bgShape.setShapeType(ShapeType.RECT);
+            bgShape.setAnchor(new Rectangle(0, 0, slideWidth, slideHeight));
+            bgShape.setFillColor(ColorScheme.BACKGROUND_DARK);
+            
+            // Add a subtle accent bar on the left side
+            XSLFAutoShape accentBar = slide.createAutoShape();
+            accentBar.setShapeType(ShapeType.RECT);
+            accentBar.setAnchor(new Rectangle(0, 0, 20, slideHeight));
+            accentBar.setFillColor(ColorScheme.SECONDARY);
+            
+            // Create a text box with enhanced styling
             XSLFTextBox textBox = slide.createTextBox();
-            textBox.setText(sectionName);
-            textBox.setAnchor(new Rectangle(50, 150, 860, 240)); // Center text in the slide
+            textBox.setAnchor(new Rectangle(80, slideHeight/2 - 120, slideWidth - 160, 240));
             textBox.setHorizontalCentered(true);
             textBox.setVerticalAlignment(VerticalAlignment.MIDDLE);
-            textBox.getTextParagraphs().get(0).setBulletFontSize(36.0);
+            
+            // Create a paragraph with proper styling
+            XSLFTextParagraph paragraph = textBox.addNewTextParagraph();
+            paragraph.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.CENTER);
+            
+            // Create a text run with enhanced styling
+            XSLFTextRun run = paragraph.addNewTextRun();
+            run.setText(sectionName.toUpperCase()); // Use uppercase for section names
+            run.setFontFamily("Calibri Light"); // Use a lighter font weight for modern look
+            run.setFontSize(52.0); // Larger font for section title
+            run.setBold(true);
+            run.setFontColor(ColorScheme.TEXT_LIGHT);
+            
+            // Add a small decorative line under the text
+            XSLFAutoShape underline = slide.createAutoShape();
+            underline.setShapeType(ShapeType.RECT);
+            int lineWidth = Math.min(600, sectionName.length() * 25); // Scale with text length
+            underline.setAnchor(new Rectangle((slideWidth - lineWidth)/2, slideHeight/2 + 80, lineWidth, 5));
+            underline.setFillColor(ColorScheme.SECONDARY);
         } catch (Exception e) {
             throw new RuntimeException("Error adding separator slide: " + e.getMessage(), e);
         }
@@ -604,35 +660,133 @@ public class PptGenerator {
         try {
             XSLFSlide slide = ppt.createSlide();
             
-            // Add title
-            XSLFTextBox titleBox = slide.createTextBox();
-            titleBox.setAnchor(new Rectangle(50, 20, ppt.getPageSize().width - 100, 50));
-            titleBox.setHorizontalCentered(true);
+            // Get slide dimensions
+            int slideWidth = ppt.getPageSize().width;
+            int slideHeight = ppt.getPageSize().height;
             
-            // Create a text run to set font properties
-            XSLFTextRun titleRun = titleBox.addNewTextParagraph().addNewTextRun();
+            // Add subtle background elements for visual interest
+            addSlideBackground(slide);
+            
+            // Add a thin accent bar at the top
+            XSLFAutoShape topAccent = slide.createAutoShape();
+            topAccent.setShapeType(ShapeType.RECT);
+            topAccent.setAnchor(new Rectangle(0, 0, slideWidth, 12));
+            topAccent.setFillColor(ColorScheme.PRIMARY);
+            
+            // Add title with improved styling
+            XSLFTextBox titleBox = slide.createTextBox();
+            titleBox.setAnchor(new Rectangle(60, 30, slideWidth - 120, 80));
+            
+            // Create a text run with enhanced font properties
+            XSLFTextParagraph titlePara = titleBox.addNewTextParagraph();
+            titlePara.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.LEFT);
+            XSLFTextRun titleRun = titlePara.addNewTextRun();
             titleRun.setText(title);
-            titleRun.setFontFamily("Bitter"); // Set the font for the title
-            titleRun.setFontSize(28.0); // Set the font size
-
-            // Add bullet points
+            titleRun.setFontFamily("Calibri Light"); // More professional font
+            titleRun.setFontSize(36.0); // Larger font size
+            titleRun.setBold(true); // Make title bold
+            titleRun.setFontColor(ColorScheme.PRIMARY); // Use primary color for title
+            
+            // Add a small accent line under the title
+            XSLFAutoShape titleUnderline = slide.createAutoShape();
+            titleUnderline.setShapeType(ShapeType.RECT);
+            titleUnderline.setAnchor(new Rectangle(60, 105, 100, 3));
+            titleUnderline.setFillColor(ColorScheme.SECONDARY);
+            
+            // Add bullet points with improved layout
             if (!bullets.isEmpty()) {
                 XSLFTextBox bulletBox = slide.createTextBox();
-                bulletBox.setAnchor(new Rectangle(50, 80, ppt.getPageSize().width - 100, 
-                                                ppt.getPageSize().height - 100));
-
-                for (String bullet : bullets) {
+                // Position bullet points with better spacing
+                bulletBox.setAnchor(new Rectangle(60, 125, slideWidth - 120, slideHeight - 160));
+                
+                // Calculate ideal font size based on number of bullets
+                double fontSize = calculateIdealFontSize(bullets.size());
+                
+                for (int i = 0; i < bullets.size(); i++) {
+                    String bullet = bullets.get(i);
                     XSLFTextParagraph para = bulletBox.addNewTextParagraph();
                     para.setBullet(true); // Enable bullet points
-                    para.setBulletFontSize(18.0);
+                    para.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.LEFT);
+                    para.setIndent(20.0); // Add indent for better visual hierarchy
+                    para.setLeftMargin(30.0); // Add left margin for better readability
+                    para.setBulletFontSize(fontSize); // Match bullet size to text
+                    
+                    // Use different bullet characters for visual interest
+                    // Use a custom bullet symbol based on level
+                    para.setBulletCharacter("➤"); // Arrow bullet character
+                    // Note: setBulletColor not available in this version of Apache POI
+                    
+                    // Add more space between paragraphs, less within paragraphs
+                    para.setLineSpacing(115.0); // Add more space between lines
+                    if (i > 0) {
+                        para.setSpaceBefore(10.0); // Space before paragraphs
+                    }
+                    
                     XSLFTextRun run = para.addNewTextRun();
-                    run.setFontFamily("Inter");
+                    run.setFontFamily("Calibri"); // Match title font for consistency
                     run.setText(bullet);
-                    run.setFontSize(18.0);
+                    run.setFontSize(fontSize); // Appropriate font size
+                    run.setFontColor(ColorScheme.TEXT_DARK); // Better contrast
                 }
             }
+            
+            // Add subtle footer with slide number
+            addSlideFooter(slide, slide.getSlideNumber());
+            
         } catch (Exception e) {
             throw new RuntimeException("Error adding text slide: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Adds a consistent background to slides for a professional look
+     */
+    private void addSlideBackground(XSLFSlide slide) {
+        int slideWidth = ppt.getPageSize().width;
+        int slideHeight = ppt.getPageSize().height;
+        
+        // Add main background
+        XSLFAutoShape background = slide.createAutoShape();
+        background.setShapeType(ShapeType.RECT);
+        background.setAnchor(new Rectangle(0, 0, slideWidth, slideHeight));
+        background.setFillColor(ColorScheme.BACKGROUND_LIGHT);
+    }
+    
+    /**
+     * Adds a consistent footer to slides
+     */
+    private void addSlideFooter(XSLFSlide slide, int slideNumber) {
+        int slideWidth = ppt.getPageSize().width;
+        int slideHeight = ppt.getPageSize().height;
+        
+        // Add slide number
+        XSLFTextBox slideNumberBox = slide.createTextBox();
+        slideNumberBox.setAnchor(new Rectangle(slideWidth - 80, slideHeight - 40, 60, 30));
+        XSLFTextParagraph slideNumPara = slideNumberBox.addNewTextParagraph();
+        slideNumPara.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.RIGHT);
+        XSLFTextRun slideNumRun = slideNumPara.addNewTextRun();
+        slideNumRun.setText(String.format("%d", slideNumber));
+        slideNumRun.setFontFamily("Calibri");
+        slideNumRun.setFontSize(12.0);
+        slideNumRun.setFontColor(ColorScheme.TERTIARY);
+    }
+    
+    /**
+     * Calculates the ideal font size based on the number of bullet points.
+     * 
+     * @param bulletCount Number of bullet points
+     * @return The recommended font size
+     */
+    private double calculateIdealFontSize(int bulletCount) {
+        // Base font size for fewer bullets
+        if (bulletCount <= 3) {
+            return 28.0;
+        } else if (bulletCount <= 5) {
+            return 24.0;
+        } else if (bulletCount <= 8) {
+            return 20.0;
+        } else {
+            return 18.0; // Minimum size for many bullets
         }
     }
 
@@ -654,19 +808,34 @@ public class PptGenerator {
                 return; // Skip this slide if the image doesn't exist
             }
 
-            // Create a new slide
+            // Create a new slide with the standard background
             XSLFSlide slide = ppt.createSlide();
+            addSlideBackground(slide);
+            
+            // Add top accent bar for consistency with text slides
+            XSLFAutoShape topAccent = slide.createAutoShape();
+            topAccent.setShapeType(ShapeType.RECT);
+            topAccent.setAnchor(new Rectangle(0, 0, slideWidth, 12));
+            topAccent.setFillColor(ColorScheme.PRIMARY);
 
-            // Add the title
+            // Add the title with consistent styling
             XSLFTextBox titleBox = slide.createTextBox();
-            titleBox.setAnchor(new Rectangle(50, 20, slideWidth - 100, 50));
-            titleBox.setHorizontalCentered(true);
-
-            // Create a text run to set font properties
-            XSLFTextRun titleRun = titleBox.addNewTextParagraph().addNewTextRun();
+            titleBox.setAnchor(new Rectangle(60, 30, slideWidth - 120, 60));
+            
+            XSLFTextParagraph titlePara = titleBox.addNewTextParagraph();
+            titlePara.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.LEFT);
+            XSLFTextRun titleRun = titlePara.addNewTextRun();
             titleRun.setText(title);
-            titleRun.setFontFamily("Bitter");
-            titleRun.setFontSize(26.0);
+            titleRun.setFontFamily("Calibri Light");
+            titleRun.setFontSize(32.0);
+            titleRun.setBold(true);
+            titleRun.setFontColor(ColorScheme.PRIMARY);
+            
+            // Add a small accent line under the title
+            XSLFAutoShape titleUnderline = slide.createAutoShape();
+            titleUnderline.setShapeType(ShapeType.RECT);
+            titleUnderline.setAnchor(new Rectangle(60, 90, 100, 3));
+            titleUnderline.setFillColor(ColorScheme.SECONDARY);
 
             // Read the PNG file and get its dimensions
             BufferedImage img = ImageIO.read(pngFile);
@@ -679,9 +848,9 @@ public class PptGenerator {
             int imgHeight = img.getHeight();
 
             // Calculate the scale factor to fit the image in the slide
-            double scaleWidth = (double) (slideWidth - 100) / imgWidth;
-            double scaleHeight = (double) (slideHeight - 150) / imgHeight;
-            double scale = Math.min(scaleWidth, scaleHeight);
+            double scaleWidth = (double) (slideWidth - 140) / imgWidth; // Wider margins
+            double scaleHeight = (double) (slideHeight - 180) / imgHeight;
+            double scale = Math.min(scaleWidth, scaleHeight) * 0.9; // Slightly smaller for visual breathing room
 
             // Calculate the scaled dimensions
             int scaledWidth = (int) (imgWidth * scale);
@@ -689,12 +858,28 @@ public class PptGenerator {
 
             // Calculate the position to center the image
             int imgX = (slideWidth - scaledWidth) / 2;
-            int imgY = 80 + (slideHeight - 150 - scaledHeight) / 2;
+            int imgY = 110 + (slideHeight - 200 - scaledHeight) / 2;
 
-            // Add the image to the slide
+            // Create a background frame for the image
+            XSLFAutoShape imageFrame = slide.createAutoShape();
+            imageFrame.setShapeType(ShapeType.RECT);
+            int frameMargin = 10;
+            imageFrame.setAnchor(new Rectangle(imgX - frameMargin, imgY - frameMargin, 
+                                              scaledWidth + (frameMargin * 2), 
+                                              scaledHeight + (frameMargin * 2)));
+            imageFrame.setFillColor(java.awt.Color.WHITE);
+            
+            // Add a subtle shadow or border to the frame
+            imageFrame.setLineColor(new java.awt.Color(230, 230, 230));
+            imageFrame.setLineWidth(1.5);
+
+            // Add the image to the slide, positioned above the frame
             XSLFPictureData pictureData = ppt.addPicture(pngFile, PictureData.PictureType.PNG);
             XSLFPictureShape picture = slide.createPicture(pictureData);
             picture.setAnchor(new Rectangle(imgX, imgY, scaledWidth, scaledHeight));
+            
+            // Add subtle footer with slide number
+            addSlideFooter(slide, slide.getSlideNumber());
 
             System.out.println("Successfully added PNG image to slide: " + title);
         } catch (Exception e) {
