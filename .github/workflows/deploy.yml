@@ -42,7 +42,10 @@ jobs:
           Date: $(date +'%Y-%m-%d %H:%M:%S')" > build/presentations/version.txt
 
       - name: Build with Gradle
-        run: ./gradlew clean generateHtml
+        run: ./gradlew clean html
+
+      - name: Copy index.html to build directory
+        run: cp index.html build/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
