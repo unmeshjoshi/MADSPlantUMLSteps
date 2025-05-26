@@ -44,10 +44,7 @@ jobs:
 
       - name: Build with Gradle
         run: ./gradlew clean html
-
-      - name: Copy index.html to build directory
-        run: cp index.html build/
-
+        
       - name: List build directory contents
         run: |
           echo "Build directory contents:"
