@@ -10,6 +10,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
 jobs:
   build-and-deploy:
@@ -47,8 +48,17 @@ jobs:
       - name: Copy index.html to build directory
         run: cp index.html build/
 
+      - name: List build directory contents
+        run: |
+          echo "Build directory contents:"
+          ls -la build/
+          echo "Presentations directory contents:"
+          ls -la build/presentations/ || echo "No presentations directory"
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        with:
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
