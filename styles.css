@@ -624,3 +624,301 @@ button:hover:not(:disabled) i.fa-chevron-left,
         width: 90%;
     }
 }
+
+/* Professional Presentation Features */
+
+/* Presentation Toolbar */
+.presentation-toolbar {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 8px 16px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border);
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toolbar-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border);
+}
+
+.toolbar-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.toolbar-btn.active {
+    background: var(--primary-color);
+    color: white;
+    box-shadow: var(--shadow-md);
+}
+
+.slide-counter {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    padding: 8px 12px;
+    background: var(--surface-alt);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    min-width: 60px;
+    text-align: center;
+}
+
+/* Fullscreen Mode Enhancements */
+.fullscreen-mode .presentation-toolbar {
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+}
+
+.fullscreen-mode .toolbar-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen-mode .toolbar-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen-mode .slide-counter {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen-mode .progress-bar {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen-mode .section-info {
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen-mode .version-info {
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Exit Fullscreen Button */
+.exit-fullscreen-btn {
+    transition: all 0.2s ease;
+}
+
+.exit-fullscreen-btn:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: scale(1.1);
+}
+
+/* Laser Pointer Animations */
+@keyframes laserClick {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+.laser-pointer {
+    animation: laserPulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes laserPulse {
+    0% {
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.2);
+    }
+}
+
+/* Drawing Canvas */
+.drawing-canvas {
+    cursor: crosshair;
+    background: transparent;
+}
+
+/* Ensure canvas is visible when drawing mode is active */
+body.drawing-mode .drawing-canvas {
+    display: block !important;
+    pointer-events: auto !important;
+}
+
+/* Enhanced Navigation in Fullscreen */
+.fullscreen-mode .controls,
+.fullscreen-mode .nav-buttons {
+    opacity: 0.7;
+}
+
+.fullscreen-mode .controls:hover,
+.fullscreen-mode .nav-buttons:hover {
+    opacity: 1;
+}
+
+.fullscreen-mode button,
+.fullscreen-mode #prev-button,
+.fullscreen-mode #next-button {
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen-mode button:hover:not(:disabled),
+.fullscreen-mode #prev-button:hover:not(:disabled),
+.fullscreen-mode #next-button:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+}
+
+/* Responsive Toolbar */
+@media screen and (max-width: 768px) {
+    .presentation-toolbar {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        transform: none;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        padding: 6px 12px;
+    }
+    
+    .toolbar-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .slide-counter {
+        font-size: 12px;
+        padding: 6px 8px;
+        min-width: 50px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .presentation-toolbar {
+        gap: 8px;
+    }
+    
+    .toolbar-group {
+        gap: 4px;
+    }
+    
+    .toolbar-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+    
+    .slide-counter {
+        font-size: 11px;
+        padding: 4px 6px;
+    }
+}
+
+/* Professional Touch Enhancements */
+.slide {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.slide:not([style*="display: block"]) {
+    opacity: 0;
+    transform: translateX(20px);
+}
+
+.slide[style*="display: block"] {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Enhanced Step Transitions */
+.step {
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.step:not([style*="display: block"]) {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+.step[style*="display: block"] {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Professional Focus States */
+.toolbar-btn:focus,
+button:focus,
+#prev-button:focus,
+#next-button:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Keyboard key styling */
+kbd {
+    background: var(--surface-alt);
+    border: 1px solid var(--border-dark);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--text-primary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    display: inline-block;
+    margin: 0 2px;
+}
+
+/* Hide toolbar in print */
+@media print {
+    .presentation-toolbar,
+    .exit-fullscreen-btn,
+    .laser-pointer,
+    .drawing-canvas,
+    .controls,
+    .nav-buttons {
+        display: none !important;
+    }
+}

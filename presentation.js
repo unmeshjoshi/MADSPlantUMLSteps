@@ -1,157 +1,592 @@
-async function loadVersionInfo() {
-    try {
-        const response = await fetch('version.txt');
-        if (response.ok) {
-            const versionInfo = await response.text();
-            const versionDiv = document.createElement('div');
-            versionDiv.className = 'version-info';
-            versionDiv.textContent = versionInfo;
-            document.body.appendChild(versionDiv);
-        }
-    } catch (error) {
-        console.error('Failed to load version info:', error);
+class PresentationViewer {
+    constructor() {
+        this.currentSlideIndex = 0;
+        this.currentStepIndex = 0;
+        this.slides = [];
+        this.isFullscreen = false;
+        this.isDrawingMode = false;
+        this.isLaserMode = false;
+        this.drawings = [];
+        this.currentPath = null;
+        this.laserPointer = null;
+        
+        this.init();
     }
-}
 
-document.addEventListener("DOMContentLoaded", function () {
-    // Initialize features
-    loadVersionInfo();
-    
-    // Handle title notes positioning
-    document.querySelectorAll('.title-notes').forEach(noteEl => {
-        const spanEl = noteEl.querySelector('span');
-        noteEl.addEventListener('mouseenter', () => {
-            const rect = noteEl.getBoundingClientRect();
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-            
-            // Calculate available space on each side
-            const spaceRight = viewportWidth - rect.right;
-            const spaceBottom = viewportHeight - rect.bottom;
-            
-            // Position vertically
-            if (spaceBottom < 200) { // If not enough space below
-                spanEl.style.top = `${rect.top - 10}px`;
-                spanEl.style.transform = 'translateY(-100%)';
-            } else {
-                spanEl.style.top = `${rect.bottom + 10}px`;
-                spanEl.style.transform = 'none';
+    async init() {
+        await this.loadVersionInfo();
+        this.setupElements();
+        this.setupEventListeners();
+        this.setupKeyboardShortcuts();
+        this.setupDrawingCanvas();
+        this.setupLaserPointer();
+        this.setupFullscreenControls();
+        this.initializePresentation();
+    }
+
+    async loadVersionInfo() {
+        try {
+            const response = await fetch('version.txt');
+            if (response.ok) {
+                const versionInfo = await response.text();
+                const versionDiv = document.createElement('div');
+                versionDiv.className = 'version-info';
+                versionDiv.textContent = versionInfo;
+                document.body.appendChild(versionDiv);
             }
-            
-            // Position horizontally
-            if (spaceRight < 420) { // If not enough space to the right (400px width + 20px margin)
-                spanEl.style.left = 'auto';
-                spanEl.style.right = '20px';
-            } else {
-                spanEl.style.left = `${rect.left}px`;
-                spanEl.style.right = 'auto';
+        } catch (error) {
+            console.error('Failed to load version info:', error);
+        }
+    }
+
+    setupElements() {
+        this.slides = document.querySelectorAll(".slide");
+        this.prevButton = document.getElementById("prev-button");
+        this.nextButton = document.getElementById("next-button");
+        this.progressIndicator = document.querySelector('.progress-indicator');
+        this.sectionInfo = document.getElementById('current-section');
+        
+        // Create toolbar
+        this.createToolbar();
+        
+        // Handle title notes positioning
+        this.setupTitleNotes();
+    }
+
+    createToolbar() {
+        const toolbar = document.createElement('div');
+        toolbar.className = 'presentation-toolbar';
+        toolbar.innerHTML = `
+            <div class="toolbar-group">
+                <button id="fullscreen-btn" class="toolbar-btn" title="Toggle Fullscreen (F)">
+                    <i class="fas fa-expand"></i>
+                </button>
+                <button id="laser-btn" class="toolbar-btn" title="Laser Pointer (L)">
+                    <i class="fas fa-dot-circle"></i>
+                </button>
+                <button id="draw-btn" class="toolbar-btn" title="Drawing Mode (D)">
+                    <i class="fas fa-pen"></i>
+                </button>
+                <button id="clear-btn" class="toolbar-btn" title="Clear Drawings (C)">
+                    <i class="fas fa-eraser"></i>
+                </button>
+            </div>
+            <div class="toolbar-group">
+                <span class="slide-counter">
+                    <span id="current-slide-num">1</span> / <span id="total-slides">${this.slides.length}</span>
+                </span>
+            </div>
+        `;
+        
+        document.body.appendChild(toolbar);
+        
+        // Store references
+        this.fullscreenBtn = document.getElementById('fullscreen-btn');
+        this.laserBtn = document.getElementById('laser-btn');
+        this.drawBtn = document.getElementById('draw-btn');
+        this.clearBtn = document.getElementById('clear-btn');
+        this.currentSlideNum = document.getElementById('current-slide-num');
+    }
+
+    setupDrawingCanvas() {
+        // Create canvas overlay for drawings
+        this.canvas = document.createElement('canvas');
+        this.canvas.className = 'drawing-canvas';
+        this.canvas.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+            display: none;
+        `;
+        document.body.appendChild(this.canvas);
+        
+        this.ctx = this.canvas.getContext('2d');
+        this.resizeCanvas();
+        
+        // Setup drawing properties
+        this.ctx.strokeStyle = '#ff4444';
+        this.ctx.lineWidth = 3;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+    }
+
+    setupLaserPointer() {
+        this.laserPointer = document.createElement('div');
+        this.laserPointer.className = 'laser-pointer';
+        this.laserPointer.style.cssText = `
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ff0000 0%, #ff0000 30%, transparent 70%);
+            box-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000;
+            pointer-events: none;
+            z-index: 9998;
+            display: none;
+            transform: translate(-50%, -50%);
+        `;
+        document.body.appendChild(this.laserPointer);
+    }
+
+    setupFullscreenControls() {
+        // Create fullscreen exit button
+        this.exitFullscreenBtn = document.createElement('button');
+        this.exitFullscreenBtn.className = 'exit-fullscreen-btn';
+        this.exitFullscreenBtn.innerHTML = '<i class="fas fa-times"></i>';
+        this.exitFullscreenBtn.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            cursor: pointer;
+            z-index: 10000;
+            display: none;
+            font-size: 16px;
+        `;
+        document.body.appendChild(this.exitFullscreenBtn);
+        
+        this.exitFullscreenBtn.addEventListener('click', () => this.exitFullscreen());
+    }
+
+    setupEventListeners() {
+        // Navigation buttons
+        this.nextButton.addEventListener("click", () => this.nextStep());
+        this.prevButton.addEventListener("click", () => this.prevStep());
+        
+        // Toolbar buttons
+        this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+        this.laserBtn.addEventListener('click', () => this.toggleLaserMode());
+        this.drawBtn.addEventListener('click', () => this.toggleDrawingMode());
+        this.clearBtn.addEventListener('click', () => this.clearDrawings());
+        
+        // Drawing events - need to be on document for proper event handling
+        document.addEventListener('mousedown', (e) => this.startDrawing(e));
+        document.addEventListener('mousemove', (e) => this.draw(e));
+        document.addEventListener('mouseup', () => this.stopDrawing());
+        
+        // Touch events for mobile drawing
+        document.addEventListener('touchstart', (e) => this.startDrawing(e.touches[0]));
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            this.draw(e.touches[0]);
+        });
+        document.addEventListener('touchend', () => this.stopDrawing());
+        
+        // Laser pointer events
+        document.addEventListener('mousemove', (e) => this.updateLaserPointer(e));
+        document.addEventListener('click', (e) => this.laserClick(e));
+        
+        // Window events
+        window.addEventListener('resize', () => this.resizeCanvas());
+        document.addEventListener('fullscreenchange', () => this.handleFullscreenChange());
+    }
+
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Prevent default for our shortcuts
+            switch(e.key.toLowerCase()) {
+                case 'f':
+                    e.preventDefault();
+                    this.toggleFullscreen();
+                    break;
+                case 'l':
+                    e.preventDefault();
+                    this.toggleLaserMode();
+                    break;
+                case 'd':
+                    e.preventDefault();
+                    this.toggleDrawingMode();
+                    break;
+                case 'c':
+                    e.preventDefault();
+                    this.clearDrawings();
+                    break;
+                case 'escape':
+                    e.preventDefault();
+                    this.exitAllModes();
+                    break;
+                case 'arrowleft':
+                    e.preventDefault();
+                    this.prevStep();
+                    break;
+                case 'arrowright':
+                case ' ':
+                    e.preventDefault();
+                    this.nextStep();
+                    break;
             }
         });
-    });
+    }
 
-    const prevButton = document.getElementById("prev-button");
-    const nextButton = document.getElementById("next-button");
-    let currentSlideIndex = 0; // Tracks the current slide
-    let currentStepIndex = 0; // Tracks the current step within a slide
+    setupTitleNotes() {
+        document.querySelectorAll('.title-notes').forEach(noteEl => {
+            const spanEl = noteEl.querySelector('span');
+            noteEl.addEventListener('mouseenter', () => {
+                const rect = noteEl.getBoundingClientRect();
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                
+                const spaceRight = viewportWidth - rect.right;
+                const spaceBottom = viewportHeight - rect.bottom;
+                
+                if (spaceBottom < 200) {
+                    spanEl.style.top = `${rect.top - 10}px`;
+                    spanEl.style.transform = 'translateY(-100%)';
+                } else {
+                    spanEl.style.top = `${rect.bottom + 10}px`;
+                    spanEl.style.transform = 'none';
+                }
+                
+                if (spaceRight < 420) {
+                    spanEl.style.left = 'auto';
+                    spanEl.style.right = '20px';
+                } else {
+                    spanEl.style.left = `${rect.left}px`;
+                    spanEl.style.right = 'auto';
+                }
+            });
+        });
+    }
 
-    const slides = document.querySelectorAll(".slide");
+    // Fullscreen functionality
+    toggleFullscreen() {
+        if (!this.isFullscreen) {
+            this.enterFullscreen();
+        } else {
+            this.exitFullscreen();
+        }
+    }
 
-    function updateProgress() {
-        const totalSlides = slides.length;
-        const progressPercent = ((currentSlideIndex + 1) / totalSlides) * 100;
-        document.querySelector('.progress-indicator').style.width = `${progressPercent}%`;
+    enterFullscreen() {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+            elem.msRequestFullscreen();
+        }
+    }
+
+    exitFullscreen() {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    }
+
+    handleFullscreenChange() {
+        this.isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+        
+        if (this.isFullscreen) {
+            this.fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+            this.fullscreenBtn.title = 'Exit Fullscreen (F)';
+            this.exitFullscreenBtn.style.display = 'block';
+            document.body.classList.add('fullscreen-mode');
+        } else {
+            this.fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+            this.fullscreenBtn.title = 'Enter Fullscreen (F)';
+            this.exitFullscreenBtn.style.display = 'none';
+            document.body.classList.remove('fullscreen-mode');
+        }
+    }
+
+    // Laser pointer functionality
+    toggleLaserMode() {
+        this.isLaserMode = !this.isLaserMode;
+        
+        if (this.isLaserMode) {
+            this.laserBtn.classList.add('active');
+            this.laserPointer.style.display = 'block';
+            document.body.style.cursor = 'none';
+            // Disable drawing mode if active
+            if (this.isDrawingMode) {
+                this.toggleDrawingMode();
+            }
+        } else {
+            this.laserBtn.classList.remove('active');
+            this.laserPointer.style.display = 'none';
+            document.body.style.cursor = 'default';
+        }
+    }
+
+    updateLaserPointer(e) {
+        if (this.isLaserMode) {
+            this.laserPointer.style.left = e.clientX + 'px';
+            this.laserPointer.style.top = e.clientY + 'px';
+        }
+    }
+
+    laserClick(e) {
+        if (this.isLaserMode && !this.isDrawingMode) {
+            // Prevent laser clicks on toolbar buttons
+            if (e.target.closest('.presentation-toolbar') || 
+                e.target.closest('.controls') || 
+                e.target.closest('.exit-fullscreen-btn')) {
+                return;
+            }
+            
+            // Create click effect
+            const clickEffect = document.createElement('div');
+            clickEffect.style.cssText = `
+                position: fixed;
+                left: ${e.clientX - 15}px;
+                top: ${e.clientY - 15}px;
+                width: 30px;
+                height: 30px;
+                border: 3px solid #ff0000;
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 9999;
+                animation: laserClick 0.6s ease-out forwards;
+            `;
+            document.body.appendChild(clickEffect);
+            
+            setTimeout(() => clickEffect.remove(), 600);
+        }
+    }
+
+    // Drawing functionality
+    toggleDrawingMode() {
+        this.isDrawingMode = !this.isDrawingMode;
+        
+        if (this.isDrawingMode) {
+            this.drawBtn.classList.add('active');
+            document.body.classList.add('drawing-mode');
+            this.canvas.style.display = 'block';
+            this.canvas.style.pointerEvents = 'auto';
+            document.body.style.cursor = 'crosshair';
+            
+            // Ensure canvas is properly sized
+            this.resizeCanvas();
+            
+            // Disable laser mode if active
+            if (this.isLaserMode) {
+                this.toggleLaserMode();
+            }
+            
+            console.log('Drawing mode enabled. Canvas size:', this.canvas.width, 'x', this.canvas.height);
+            console.log('Canvas element:', this.canvas);
+            console.log('Canvas context:', this.ctx);
+        } else {
+            this.drawBtn.classList.remove('active');
+            document.body.classList.remove('drawing-mode');
+            this.canvas.style.display = 'none';
+            this.canvas.style.pointerEvents = 'none';
+            document.body.style.cursor = 'default';
+            console.log('Drawing mode disabled');
+        }
+    }
+
+    startDrawing(e) {
+        if (!this.isDrawingMode) return;
+        
+        // Prevent drawing on toolbar buttons
+        if (e.target.closest('.presentation-toolbar') || 
+            e.target.closest('.controls') || 
+            e.target.closest('.exit-fullscreen-btn')) {
+            return;
+        }
+        
+        e.preventDefault();
+        this.isDrawing = true;
+        
+        const x = e.clientX || e.pageX;
+        const y = e.clientY || e.pageY;
+        
+        this.currentPath = {
+            points: [{ x, y }],
+            color: this.ctx.strokeStyle,
+            width: this.ctx.lineWidth
+        };
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y);
+        
+        console.log('Started drawing at:', x, y);
+    }
+
+    draw(e) {
+        if (!this.isDrawing || !this.isDrawingMode) return;
+        
+        e.preventDefault();
+        
+        const x = e.clientX || e.pageX;
+        const y = e.clientY || e.pageY;
+        
+        const point = { x, y };
+        this.currentPath.points.push(point);
+        
+        this.ctx.lineTo(x, y);
+        this.ctx.stroke();
+    }
+
+    stopDrawing() {
+        if (!this.isDrawing) return;
+        
+        this.isDrawing = false;
+        if (this.currentPath && this.currentPath.points.length > 1) {
+            this.drawings.push(this.currentPath);
+            console.log('Saved drawing with', this.currentPath.points.length, 'points');
+        }
+        this.currentPath = null;
+    }
+
+    clearDrawings() {
+        this.drawings = [];
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    redrawCanvas() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.drawings.forEach(path => {
+            if (path.points.length < 2) return;
+            
+            this.ctx.strokeStyle = path.color;
+            this.ctx.lineWidth = path.width;
+            this.ctx.beginPath();
+            this.ctx.moveTo(path.points[0].x, path.points[0].y);
+            
+            for (let i = 1; i < path.points.length; i++) {
+                this.ctx.lineTo(path.points[i].x, path.points[i].y);
+            }
+            this.ctx.stroke();
+        });
+    }
+
+    resizeCanvas() {
+        const oldDrawings = [...this.drawings];
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        
+        // Restore drawing properties
+        this.ctx.strokeStyle = '#ff4444';
+        this.ctx.lineWidth = 3;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        
+        // Redraw existing drawings
+        this.drawings = oldDrawings;
+        this.redrawCanvas();
+    }
+
+    exitAllModes() {
+        if (this.isLaserMode) this.toggleLaserMode();
+        if (this.isDrawingMode) this.toggleDrawingMode();
+        if (this.isFullscreen) this.exitFullscreen();
+    }
+
+    // Navigation functionality (enhanced from original)
+    updateProgress() {
+        const totalSlides = this.slides.length;
+        const progressPercent = ((this.currentSlideIndex + 1) / totalSlides) * 100;
+        this.progressIndicator.style.width = `${progressPercent}%`;
 
         // Update section info
-        const currentSlide = slides[currentSlideIndex];
+        const currentSlide = this.slides[this.currentSlideIndex];
         const sectionName = currentSlide.getAttribute('data-section');
-        const sectionInfo = document.getElementById('current-section');
         if (sectionName) {
-            sectionInfo.textContent = sectionName;
+            this.sectionInfo.textContent = sectionName;
         } else {
-            sectionInfo.textContent = '';
+            this.sectionInfo.textContent = '';
         }
+        
+        // Update slide counter
+        this.currentSlideNum.textContent = this.currentSlideIndex + 1;
     }
 
-    function updateButtonStates() {
-        // Enable/disable previous button based on current position
-        prevButton.disabled = currentSlideIndex === 0 && currentStepIndex === 0;
+    updateButtonStates() {
+        this.prevButton.disabled = this.currentSlideIndex === 0 && this.currentStepIndex === 0;
 
-        // Get current slide and its steps
-        const currentSlide = slides[currentSlideIndex];
+        const currentSlide = this.slides[this.currentSlideIndex];
         const steps = currentSlide.querySelectorAll(".step");
 
-        // Enable/disable next button based on current position
-        const isLastSlide = currentSlideIndex === slides.length - 1;
-        const isLastStep = steps.length > 0 ? currentStepIndex === steps.length - 1 : true;
-        nextButton.disabled = isLastSlide && isLastStep;
+        const isLastSlide = this.currentSlideIndex === this.slides.length - 1;
+        const isLastStep = steps.length > 0 ? this.currentStepIndex === steps.length - 1 : true;
+        this.nextButton.disabled = isLastSlide && isLastStep;
 
-        // Update progress bar and section info
-        updateProgress();
+        this.updateProgress();
     }
 
-    function showSlide(index) {
-        slides.forEach((slide, i) => {
+    showSlide(index) {
+        this.slides.forEach((slide, i) => {
             slide.style.display = i === index ? "block" : "none";
         });
-        currentStepIndex = 0; // Reset step index when changing slides
-        showStep(slides[index]);
-        updateButtonStates();
+        this.currentStepIndex = 0;
+        this.showStep(this.slides[index]);
+        this.updateButtonStates();
+        
+        // Clear drawings when changing slides
+        this.clearDrawings();
     }
 
-    function showStep(slide) {
+    showStep(slide) {
         const steps = Array.from(slide.querySelectorAll(".step"))
-            .sort((a, b) => parseInt(a.getAttribute("step_index")) - parseInt(b.getAttribute("step_index"))); // Sort steps by step_index
+            .sort((a, b) => parseInt(a.getAttribute("step_index")) - parseInt(b.getAttribute("step_index")));
 
         steps.forEach((step, i) => {
-            step.style.display = i === currentStepIndex ? "block" : "none";
+            step.style.display = i === this.currentStepIndex ? "block" : "none";
         });
-        updateButtonStates();
+        this.updateButtonStates();
     }
 
-    function nextStep() {
-        const slide = slides[currentSlideIndex];
+    nextStep() {
+        const slide = this.slides[this.currentSlideIndex];
         const steps = slide.querySelectorAll(".step");
 
-        if (currentStepIndex < steps.length - 1) {
-            currentStepIndex++;
-            showStep(slide);
+        if (this.currentStepIndex < steps.length - 1) {
+            this.currentStepIndex++;
+            this.showStep(slide);
         } else {
-            // Move to the next slide if no more steps
-            if (currentSlideIndex < slides.length - 1) {
-                currentSlideIndex++;
-                showSlide(currentSlideIndex);
+            if (this.currentSlideIndex < this.slides.length - 1) {
+                this.currentSlideIndex++;
+                this.showSlide(this.currentSlideIndex);
             }
         }
     }
 
-    function prevStep() {
-        const slide = slides[currentSlideIndex];
+    prevStep() {
+        const slide = this.slides[this.currentSlideIndex];
         const steps = slide.querySelectorAll(".step");
 
-        if (currentStepIndex > 0) {
-            currentStepIndex--;
-            showStep(slide);
+        if (this.currentStepIndex > 0) {
+            this.currentStepIndex--;
+            this.showStep(slide);
         } else {
-            // Move to the previous slide if on the first step
-            if (currentSlideIndex > 0) {
-                currentSlideIndex--;
-                showSlide(currentSlideIndex);
+            if (this.currentSlideIndex > 0) {
+                this.currentSlideIndex--;
+                this.showSlide(this.currentSlideIndex);
 
-                // Show the last step of the new current slide if it has steps
-                const newSlide = slides[currentSlideIndex];
+                const newSlide = this.slides[this.currentSlideIndex];
                 const newSteps = newSlide.querySelectorAll(".step");
                 if (newSteps.length > 0) {
-                    currentStepIndex = newSteps.length - 1;
-                    showStep(newSlide);
+                    this.currentStepIndex = newSteps.length - 1;
+                    this.showStep(newSlide);
                 }
             }
         }
     }
 
-    // Initialize by showing the first slide
-    showSlide(currentSlideIndex);
+    initializePresentation() {
+        this.showSlide(this.currentSlideIndex);
+    }
+}
 
-    // Attach the functions to the navigation buttons
-    document.getElementById("next-button").addEventListener("click", nextStep);
-    document.getElementById("prev-button").addEventListener("click", prevStep);
+// Initialize the presentation viewer when DOM is loaded
+document.addEventListener("DOMContentLoaded", function () {
+    window.presentationViewer = new PresentationViewer();
+    console.log('PresentationViewer initialized:', window.presentationViewer);
 });
