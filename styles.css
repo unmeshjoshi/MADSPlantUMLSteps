@@ -395,7 +395,7 @@ body {
 .step {
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start; /* Align to top instead of center */
     width: 100%;
     height: 100%;
     max-height: 100%; /* Ensure step doesn't exceed parent container */
@@ -404,25 +404,28 @@ body {
     padding: 10px;
     /* Ensure step container maintains size */
     min-height: 500px;
-    overflow: hidden; /* Prevent content from overflowing */
+    overflow-y: auto; /* Allow vertical scrolling for tall diagrams */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
 .step img {
-    width: 95%;       /* Set a fixed width percentage */
-    min-width: 95%;   /* Ensure minimum width */
+    width: 95%;       /* Use full width for better readability */
     max-width: 95%;   /* Cap maximum width */
     height: auto;     /* Allow height to adjust based on content */
-    max-height: calc(100% - 5rem); /* Ensure image fits within step container minus padding, margin, and border */
-    object-fit: contain;
+    /* Remove max-height to allow full diagram display */
+    /* Remove object-fit to allow natural scaling */
     border: 1px solid var(--border-dark);
     border-radius: 12px;
     box-shadow: var(--shadow-lg);
     transition: all 0.3s ease;
-    object-position: center;
     background: var(--surface);
     padding: 1.5rem;
     /* Add margin for better vertical spacing */
     margin: 1rem 0;
+    /* Center the image */
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .step img:hover {
@@ -535,6 +538,7 @@ button:hover:not(:disabled) i.fa-chevron-left,
 
     .step {
         min-height: 300px; /* Smaller minimum height for mobile */
+        overflow-y: auto; /* Ensure scrolling works on mobile */
     }
     
     .controls, .nav-buttons {
@@ -569,8 +573,8 @@ button:hover:not(:disabled) i.fa-chevron-left,
 
     .step img {
         max-width: 100%;
-        width: 100%;
-        max-height: calc(100% - 3rem); /* Ensure mobile images fit within step container */
+        width: 95%; /* Use full width on mobile too */
+        /* Remove max-height to allow full diagram display on mobile */
     }
 }
 
@@ -609,8 +613,8 @@ button:hover:not(:disabled) i.fa-chevron-left,
     
     .step img {
         max-width: 100%;
-        width: 100%;
-        max-height: calc(100% - 3rem); /* Ensure very small screen images fit within step container */
+        width: 95%; /* Use full width on very small screens too */
+        /* Remove max-height to allow full diagram display on very small screens */
     }
     
     .title-container h2 {
