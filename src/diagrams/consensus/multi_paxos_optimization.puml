@@ -1,0 +1,130 @@
+@startuml
+!include ../../style.puml
+
+title **Basic Paxos vs Multi-Paxos: Efficiency Comparison**
+
+' [step1 {"name":"Basic Paxos for Multiple Values"}]
+group #LightCoral "Basic Paxos: Each Value Requires Full Protocol"
+
+participant "Client" as client1
+participant "Athens" as athens1
+participant "Byzantium" as byzantium1
+participant "Cyrene" as cyrene1
+
+note across: **Request 1: Set X=1**
+
+client1 -> athens1: Set X=1
+athens1 -> byzantium1: prepare(ballot=1)
+athens1 -> cyrene1: prepare(ballot=1)
+byzantium1 --> athens1: promise(1)
+cyrene1 --> athens1: promise(1)
+athens1 -> byzantium1: accept(1, X=1)
+athens1 -> cyrene1: accept(1, X=1)
+byzantium1 --> athens1: accepted
+cyrene1 --> athens1: accepted
+athens1 -> client1: Success
+
+note across: **Request 2: Set Y=2**
+
+client1 -> athens1: Set Y=2
+athens1 -> byzantium1: prepare(ballot=2)
+athens1 -> cyrene1: prepare(ballot=2)
+byzantium1 --> athens1: promise(2)
+cyrene1 --> athens1: promise(2)
+athens1 -> byzantium1: accept(2, Y=2)
+athens1 -> cyrene1: accept(2, Y=2)
+byzantium1 --> athens1: accepted
+cyrene1 --> athens1: accepted
+athens1 -> client1: Success
+
+note across #pink: **Problem: 4 round trips per request!**
+end
+' [/step1]
+
+' [step2 {"name":"Multi-Paxos Optimization", "newPage":"true"}]
+group #LightGreen "Multi-Paxos: Leader Election + Direct Accepts"
+
+participant "Client" as client2
+participant "Athens\n(Leader)" as athens2 #LightBlue
+participant "Byzantium" as byzantium2
+participant "Cyrene" as cyrene2
+
+note across: **One-time Leader Election**
+
+athens2 -> byzantium2: prepare(ballot=100)
+athens2 -> cyrene2: prepare(ballot=100)
+byzantium2 --> athens2: promise(100)
+cyrene2 --> athens2: promise(100)
+
+note over athens2 #lightblue: **Elected as Leader**\nCan skip Phase 1 for future requests
+
+note across: **Request 1: Set X=1 (Skip Phase 1)**
+
+client2 -> athens2: Set X=1
+athens2 -> byzantium2: accept(100, X=1)
+athens2 -> cyrene2: accept(100, X=1)
+byzantium2 --> athens2: accepted
+cyrene2 --> athens2: accepted
+athens2 -> client2: Success
+
+note across: **Request 2: Set Y=2 (Skip Phase 1)**
+
+client2 -> athens2: Set Y=2
+athens2 -> byzantium2: accept(100, Y=2)
+athens2 -> cyrene2: accept(100, Y=2)
+byzantium2 --> athens2: accepted
+cyrene2 --> athens2: accepted
+athens2 -> client2: Success
+
+note across #lightgreen: **Optimization: Only 2 round trips per request!**
+end
+' [/step2]
+
+' [step3 {"name":"Performance Comparison", "newPage":"true"}]
+note as comparison
+**Performance Comparison**
+
+**Basic Paxos vs Multi-Paxos:**
+• Round trips per request: 4 vs 2
+• Messages per request: 8 vs 4  
+• Leader election: Every request vs Once
+• Latency: High vs Low
+• Throughput: Low vs High
+
+**Multi-Paxos Assumptions:**
+✓ Stable leader (no failures)
+✓ No competing proposers
+✓ Network is reliable
+
+**When leader fails:**
+- Must re-elect new leader
+- Temporary return to basic Paxos
+- Resume optimized mode with new leader
+end note
+' [/step3]
+
+' [step4 {"name":"Real-World Usage", "newPage":"true"}]
+note as usage
+**Real-World Usage Patterns**
+
+**Google Chubby/Spanner:**
+- Uses Multi-Paxos for metadata storage
+- Leader lease mechanism for stability
+- Automatic leader re-election on failure
+
+**Apache Kafka (Controller):**
+- Uses ZooKeeper (Zab protocol, similar to Multi-Paxos)
+- Single controller manages cluster metadata
+- Controller election when current fails
+
+**etcd (Raft):**
+- Similar optimization to Multi-Paxos
+- Strong leader model
+- All writes go through leader
+
+**Key Insight:** Most production systems use the optimized
+approach rather than basic consensus for every operation.
+end note
+' [/step4]
+
+@enduml 

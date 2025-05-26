@@ -1,0 +1,74 @@
+@startuml
+!include ../../style.puml
+
+' [step1 {"name":"Three Node Cluster"}]
+title **Quorum Overlap: Why Any Two Majorities Must Share a Node**
+
+rectangle "3-Node Cluster" {
+    node "Athens" as athens #LightBlue
+    node "Byzantium" as byzantium #LightGreen  
+    node "Cyrene" as cyrene #LightYellow
+}
+
+note top of athens : Node 1
+note top of byzantium : Node 2
+note top of cyrene : Node 3
+' [/step1]
+
+' [step2 {"name":"Possible Majorities", "newPage":"true"}]
+note as majority_note
+**All Possible Majorities (size ≥ 2 out of 3):**
+
+**Majority A:** {Athens, Byzantium}
+**Majority B:** {Athens, Cyrene}  
+**Majority C:** {Byzantium, Cyrene}
+**Majority D:** {Athens, Byzantium, Cyrene}
+
+**Key Property:** Any two majorities must overlap!
+end note
+
+' [/step2]
+
+' [step3 {"name":"Overlap Examples", "newPage":"true"}]
+rectangle "Overlap Examples" {
+    rectangle "Majority A\n{Athens, Byzantium}" as majA #LightBlue
+    rectangle "Majority B\n{Athens, Cyrene}" as majB #LightGreen
+    rectangle "Majority C\n{Byzantium, Cyrene}" as majC #LightYellow
+}
+
+majA --> athens : Contains
+majA --> byzantium : Contains
+
+majB --> athens : Contains  
+majB --> cyrene : Contains
+
+majC --> byzantium : Contains
+majC --> cyrene : Contains
+
+note bottom of majA
+A ∩ B = {Athens}
+A ∩ C = {Byzantium}  
+B ∩ C = {Cyrene}
+end note
+' [/step3]
+
+' [step4 {"name":"Why This Matters", "newPage":"true"}]
+note as importance
+**Why Quorum Overlap is Critical:**
+
+1. **Information Propagation:** If a value is accepted by majority A,
+   any future majority B will contain at least one node that knows about it.
+
+2. **Safety Guarantee:** No two different values can be chosen because
+   any two majorities share a node that would detect the conflict.
+
+3. **Recovery Correctness:** During recovery, querying a majority
+   guarantees we'll discover any previously chosen value.
+
+**Example:** If Athens and Byzantium accept "Value X", then any future
+majority must include either Athens or Byzantium, ensuring "Value X"
+is discovered during recovery.
+end note
+' [/step4]
+
+@enduml 

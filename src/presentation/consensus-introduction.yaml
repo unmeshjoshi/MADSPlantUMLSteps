@@ -1,4 +1,7 @@
 title: "Understanding Consensus"
+description: "Learn about consensus algorithms, two-phase protocols, and distributed agreement mechanisms. Covers single server problems, clustering, and fault tolerance strategies."
+icon: "fas fa-handshake"
+category: "Consensus Algorithms"
 slides:
   - type: "text"
     title: "Introduction to Consensus"
@@ -18,22 +21,45 @@ slides:
   - type: "diagram"
     title: "Consensus: Ensuring Consistency in Clustered Environments"
     diagramRef: "cluster_as_single_node"
+    bullets:
+      - "The cluster appears as a single entity to clients"
+      - "Even with node failures, the cluster continues to function"
+      - "But how do we ensure internal consistency?"
 
   - type: "diagram"
     title: "Why Immediate Request Execution is Not Always Possible"
     diagramRef: "single_phase_execution"
+    bullets:
+      - "Athens executes immediately and tries to propagate"
+      - "Network issues prevent updates from reaching other nodes"
+      - "Athens crashes after responding to client"
+      - "System becomes inconsistent: different servers have different data"
   
   - type: "diagram"
-    title: "The Need for Two-Phase Execution"
+    title: "Why simple two phase execution is not enough"
     diagramRef: "two_phase_execution"
+    bullets:
+      - "Phase 1: Athens gets majority agreement to proceed"
+      - "Phase 2: Athens executes on all nodes with majority consent"
+      - "System is now consistent: all nodes have Counter = 6"
 
   - type: "diagram"
     title: "The Commit requests can get lost"
     diagramRef: "two_phase_lost_commits"
+    bullets:
+      - "Athens gets majority agreement in Phase 1"
+      - "Athens executes locally and responds to client early"
+      - "Execute messages to other nodes get lost"
+      - "Athens crashes before other nodes execute"
 
   - type: "diagram"
     title: "The Accept requests can get lost as well"
     diagramRef: "two_phase_missed_accepts"
+    bullets:
+      - "Athens accepts request locally"
+      - "Accept request to Cyrene gets lost"
+      - "Athens proceeds with majority (self + Byzantium)"
+      - "Cyrene never received any requests"
 
 
   - type: "text"

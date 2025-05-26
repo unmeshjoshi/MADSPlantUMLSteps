@@ -4,11 +4,7 @@
     </div>
     {{#hasBullets}}
     <div class='diagram-bullets'>
-        <ul>
-            {{#bullets}}
-            {{#.}}<li>{{.}}</li>{{/.}}
-            {{/bullets}}
-        </ul>
+        {{bulletsHtml}}
     </div>
     {{/hasBullets}}
 </div>

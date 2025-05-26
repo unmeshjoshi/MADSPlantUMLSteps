@@ -1,4 +1,7 @@
 title: "Mastering Distributed Systems with Kafka"
+description: "Deep dive into Kafka's distributed streaming platform. Learn about broker registration, controller metadata handling, topic creation, and partition management."
+icon: "fas fa-stream"
+category: "Distributed Systems"
 sections:
   - title: "Introduction"
     slides:

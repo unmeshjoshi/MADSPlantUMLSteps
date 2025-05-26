@@ -1,0 +1,138 @@
+@startuml
+!include ../../style.puml
+
+title **Raft Log Replication: Strong Leader Model**
+
+' [step1 {"name":"Initial State"}]
+participant "Client" as client
+participant "Athens\n(Leader)" as athens #LightBlue
+participant "Byzantium\n(Follower)" as byzantium
+participant "Cyrene\n(Follower)" as cyrene
+
+note over athens: **Leader Log**\nTerm=2, Index=1: "Set X=5"
+note over byzantium: **Follower Log**\nTerm=2, Index=1: "Set X=5"
+note over cyrene: **Follower Log**\nTerm=2, Index=1: "Set X=5"
+
+note across: **All logs are in sync**
+' [/step1]
+
+' [step2 {"name":"Client Request", "newPage":"true"}]
+group #LightBlue "New Client Request"
+    client -> athens: Set Y=10
+    
+    athens -> athens: Append to local log
+    note over athens: **Leader Log**\nTerm=2, Index=1: "Set X=5"\nTerm=2, Index=2: "Set Y=10" (uncommitted)
+    
+    note over athens: Entry added but not committed\nMust replicate to majority first
+end
+' [/step2]
+
+' [step3 {"name":"Replicate to Followers", "newPage":"true"}]
+group #LightGreen "Replicate to Followers"
+    athens -> byzantium: AppendEntries(\n  term=2,\n  prevLogIndex=1,\n  prevLogTerm=2,\n  entries=[{term=2, index=2, cmd="Set Y=10"}]\n)
+    
+    athens -> cyrene: AppendEntries(\n  term=2,\n  prevLogIndex=1,\n  prevLogTerm=2,\n  entries=[{term=2, index=2, cmd="Set Y=10"}]\n)
+    
+    note over byzantium: Check: prevLogIndex=1, prevLogTerm=2\nMatches my log ✓\nAppend new entry
+    
+    note over cyrene: Check: prevLogIndex=1, prevLogTerm=2\nMatches my log ✓\nAppend new entry
+end
+' [/step3]
+
+' [step4 {"name":"Followers Respond", "newPage":"true"}]
+group #LightGreen "Followers Acknowledge"
+    byzantium --> athens: Success(term=2, matchIndex=2)
+    cyrene --> athens: Success(term=2, matchIndex=2)
+    
+    note over byzantium: **Follower Log**\nTerm=2, Index=1: "Set X=5"\nTerm=2, Index=2: "Set Y=10" (uncommitted)
+    
+    note over cyrene: **Follower Log**\nTerm=2, Index=1: "Set X=5"\nTerm=2, Index=2: "Set Y=10" (uncommitted)
+    
+    note over athens: Majority replicated!\n(3 out of 3 nodes)
+end
+' [/step4]
+
+' [step5 {"name":"Commit Entry", "newPage":"true"}]
+group #LightYellow "Commit Entry"
+    athens -> athens: Commit index 2
+    note over athens: **Leader Log**\nTerm=2, Index=1: "Set X=5" (committed)\nTerm=2, Index=2: "Set Y=10" (committed)
+    
+    athens -> client: Success
+    
+    note over athens: Entry is now committed\nSafe to apply to state machine
+end
+' [/step5]
+
+' [step6 {"name":"Notify Followers of Commit", "newPage":"true"}]
+group #LightYellow "Notify Followers"
+    athens -> byzantium: AppendEntries(\n  term=2,\n  leaderCommit=2,\n  entries=[]\n)
+    
+    athens -> cyrene: AppendEntries(\n  term=2,\n  leaderCommit=2,\n  entries=[]\n)
+    
+    byzantium -> byzantium: Update commitIndex to 2
+    cyrene -> cyrene: Update commitIndex to 2
+    
+    note over byzantium: **Follower Log**\nTerm=2, Index=1: "Set X=5" (committed)\nTerm=2, Index=2: "Set Y=10" (committed)
+    
+    note over cyrene: **Follower Log**\nTerm=2, Index=1: "Set X=5" (committed)\nTerm=2, Index=2: "Set Y=10" (committed)
+    
+    byzantium --> athens: Success
+    cyrene --> athens: Success
+end
+' [/step6]
+
+' [step7 {"name":"Log Consistency Rules", "newPage":"true"}]
+note as consistency_rules
+**Raft Log Consistency Rules**
+
+1. **Log Matching Property:**
+   - If two logs contain an entry with same index and term,
+     then the logs are identical in all preceding entries
+
+2. **Leader Append-Only:**
+   - Leaders never overwrite or delete entries
+   - They only append new entries
+
+3. **Majority Commit:**
+   - Entry is committed only when stored on majority of servers
+   - Once committed, entry will not be lost
+
+4. **Consistency Check:**
+   - AppendEntries includes prevLogIndex and prevLogTerm
+   - Follower rejects if it doesn't have matching entry
+   - Leader decrements nextIndex and retries
+
+**Safety Guarantee:** If any server has applied a log entry
+at a given index to its state machine, no other server will
+ever apply a different log entry for the same index.
+end note
+' [/step7]
+
+' [step8 {"name":"Handling Inconsistencies", "newPage":"true"}]
+note as inconsistencies
+**Handling Log Inconsistencies**
+
+**Scenario:** Network partition caused follower to miss entries
+
+**Leader Log:**
+Index: 1  2  3  4  5
+Term:  1  1  2  2  2
+Cmd:   A  B  C  D  E
+
+**Follower Log:**
+Index: 1  2  3
+Term:  1  1  1  
+Cmd:   A  B  X
+
+**Resolution:**
+1. Leader sends AppendEntries(prevLogIndex=3, prevLogTerm=2)
+2. Follower checks: my index 3 has term 1, not 2 → REJECT
+3. Leader decrements nextIndex to 2, retries
+4. Eventually finds matching point and overwrites inconsistent entries
+5. Follower log becomes: A, B, C, D, E
+
+**Key:** Leader's log is always the source of truth
+end note
+' [/step8]
+
+@enduml 

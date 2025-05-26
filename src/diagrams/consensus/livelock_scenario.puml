@@ -1,0 +1,136 @@
+@startuml
+!include ../../style.puml
+
+' [step1 {"name":"Initial State"}]
+participant "Athens" as athens
+participant "Byzantium" as byzantium
+participant "Cyrene" as cyrene
+
+note over athens: Wants to propose\n"Value A"
+note over byzantium: Wants to propose\n"Value B"
+note over cyrene: Neutral acceptor
+' [/step1]
+
+' [step2 {"name":"Round 1: Athens Tries", "newPage":"true"}]
+group #LightBlue "Round 1: Athens Proposes"
+    athens -> byzantium: prepare(ballot=1)
+    athens -> cyrene: prepare(ballot=1)
+    
+    byzantium --> athens: promise(1)
+    cyrene --> athens: promise(1)
+    
+    note over athens: Got majority!\nProceeding to Phase 2
+end
+' [/step2]
+
+' [step3 {"name":"Round 1: Byzantium Interferes", "newPage":"true"}]
+group #LightGreen "Round 1: Byzantium Interferes"
+    byzantium -> athens: prepare(ballot=2)
+    byzantium -> cyrene: prepare(ballot=2)
+    
+    athens --> byzantium: promise(2)
+    cyrene --> byzantium: promise(2)
+    
+    note over byzantium: Got majority!\nAthens' proposal is now invalid
+end
+' [/step3]
+
+' [step4 {"name":"Round 1: Athens Fails", "newPage":"true"}]
+group #LightCoral "Round 1: Athens' Accept Fails"
+    athens -> byzantium: accept(ballot=1, "Value A")
+    athens -> cyrene: accept(ballot=1, "Value A")
+    
+    byzantium -[#red]-> athens: reject (seen higher ballot 2)
+    cyrene -[#red]-> athens: reject (seen higher ballot 2)
+    
+    note over athens #pink: Accept failed!\nMust restart with higher ballot
+end
+' [/step4]
+
+' [step5 {"name":"Round 2: Byzantium Tries", "newPage":"true"}]
+group #LightGreen "Round 2: Byzantium Proposes"
+    byzantium -> athens: accept(ballot=2, "Value B")
+    byzantium -> cyrene: accept(ballot=2, "Value B")
+    
+    note over athens: Sees Byzantium succeeding\nMust interfere!
+end
+' [/step5]
+
+' [step6 {"name":"Round 2: Athens Interferes", "newPage":"true"}]
+group #LightBlue "Round 2: Athens Interferes"
+    athens -> byzantium: prepare(ballot=3)
+    athens -> cyrene: prepare(ballot=3)
+    
+    byzantium --> athens: promise(3)
+    cyrene --> athens: promise(3)
+    
+    note over athens: Got majority!\nByzantium's proposal is now invalid
+end
+' [/step6]
+
+' [step7 {"name":"Round 2: Byzantium Fails", "newPage":"true"}]
+group #LightCoral "Round 2: Byzantium's Accept Fails"
+    byzantium -> athens: accept(ballot=2, "Value B")
+    byzantium -> cyrene: accept(ballot=2, "Value B")
+    
+    athens -[#red]-> byzantium: reject (seen higher ballot 3)
+    cyrene -[#red]-> byzantium: reject (seen higher ballot 3)
+    
+    note over byzantium #pink: Accept failed!\nMust restart with higher ballot
+end
+' [/step7]
+
+' [step8 {"name":"Livelock Detected", "newPage":"true"}]
+note across #red
+**LIVELOCK DETECTED!**
+
+Pattern: Athens and Byzantium keep interfering with each other
+- Athens prepares → Byzantium interferes → Athens fails
+- Byzantium prepares → Athens interferes → Byzantium fails
+- This can continue indefinitely!
+
+**No progress is made despite no node failures**
+end note
+' [/step8]
+
+' [step9 {"name":"Solution: Random Backoff", "newPage":"true"}]
+group #LightYellow "Solution: Random Backoff"
+    note over athens: Random delay: 100ms
+    note over byzantium: Random delay: 250ms
+    
+    note across: Athens gets to try first due to shorter delay
+    
+    athens -> byzantium: prepare(ballot=4)
+    athens -> cyrene: prepare(ballot=4)
+    
+    byzantium --> athens: promise(4)
+    cyrene --> athens: promise(4)
+    
+    athens -> byzantium: accept(ballot=4, "Value A")
+    athens -> cyrene: accept(ballot=4, "Value A")
+    
+    byzantium --> athens: accepted
+    cyrene --> athens: accepted
+    
+    note over athens #lightgreen: SUCCESS!\nValue A is chosen
+end
+' [/step9]
+
+' [step10 {"name":"Alternative: Leader Election", "newPage":"true"}]
+note as leader_solution
+**Alternative Solution: Stable Leader Election**
+
+Instead of competing proposers:
+1. Elect a single leader using Paxos itself
+2. All requests go through the elected leader
+3. Leader remains stable until it fails
+4. This is the approach used in Multi-Paxos
+
+**Benefits:**
+- Eliminates livelock completely
+- Better performance (no competing proposals)
+- Simpler to reason about
+end note
+' [/step10]
+
+@enduml 

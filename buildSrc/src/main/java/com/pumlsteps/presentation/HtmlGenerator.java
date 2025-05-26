@@ -48,18 +48,23 @@ public class HtmlGenerator {
         
         // Handle bullets if present
         boolean hasBullets = false;
+        String bulletsHtml = "";
         if (slide.containsKey("bullets")) {
             List<String> bullets = (List<String>) slide.get("bullets");
             // Only set hasBullets true if there's at least one non-empty bullet
             if (bullets != null) {
                 hasBullets = bullets.stream().anyMatch(bullet -> bullet != null && !bullet.trim().isEmpty());
-                data.put("bullets", bullets);
+                if (hasBullets) {
+                    // Generate the bullets HTML directly
+                    bulletsHtml = generateBulletList(bullets);
+                }
             }
         }
         
         // Set fullSize based on whether there are actual bullets
         data.put("fullSize", !hasBullets);
         data.put("hasBullets", hasBullets);
+        data.put("bulletsHtml", bulletsHtml);
         
         // Store diagram step count for use in slide title
         String diagramRef = (String) slide.get("diagramRef");

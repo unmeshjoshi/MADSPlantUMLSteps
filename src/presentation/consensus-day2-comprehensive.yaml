@@ -1,0 +1,275 @@
+title: "Day 2: The Journey to Consensus - From Problems to Paxos"
+description: "Comprehensive journey from basic distributed system problems to formal Paxos consensus. Includes hands-on exploration of two-phase protocols, recovery scenarios, and real-world applications like Raft."
+icon: "fas fa-handshake"
+category: "Consensus Algorithms"
+slides:
+  # Session 1: Why We Need Consensus (And Why It's Hard!) - Approx. 2 hours
+  - type: "text"
+    title: "Welcome to Day 2: The Journey to Consensus"
+    bullets:
+      - "Quick recap of Day 1: Why distribute? Common problems (Failures, Clocks), basic patterns (WAL, Quorum)"
+      - "Today's Goal: Multiple servers must agree on requests and their order to stay consistent"
+      - "The Challenge: Single servers lack fault tolerance"
+    notes: "Set the stage by connecting to Day 1 concepts and establishing the core motivation for consensus."
+
+  - type: "diagram"
+    title: "Single Server Lacks Fault Tolerance"
+    diagramRef: "single_server_problem"
+    bullets:
+      - "When server is healthy, all requests are processed"
+      - "Single point of failure: When the only server fails, all clients are affected"
+    notes: "Point out how a single point of failure affects availability. This motivates the need for clustering, which we'll see in the next slides."
+
+  - type: "diagram"
+    title: "Consensus: Ensuring Consistency in Clustered Environments"
+    diagramRef: "cluster_as_single_node"
+    bullets:
+      - "The cluster appears as a single entity to clients"
+      - "Even with node failures, the cluster continues to function"
+      - "But how do we ensure internal consistency?"
+    notes: "Introduce the concept that clustering solves availability but creates new challenges around consistency."
+
+  - type: "text"
+    title: "Challenge 1: Why Immediate Execution Fails"
+    bullets:
+      - "Let's try the simplest thing: a server processes a request and tells others"
+      - "What could go wrong with this approach?"
+      - "Network delays, lost messages, or server crashes lead to inconsistent states"
+    notes: "Set up the first major challenge - why naive replication doesn't work."
+
+  - type: "diagram"
+    title: "Why Immediate Request Execution is Not Always Possible"
+    diagramRef: "single_phase_execution"
+    bullets:
+      - "Athens executes immediately and tries to propagate"
+      - "Network issues prevent updates from reaching other nodes"
+      - "Athens crashes after responding to client"
+      - "System becomes inconsistent: different servers have different data"
+    notes: "Walk through this scenario step by step. Show how network delays, lost messages, or server crashes lead to inconsistent states."
+
+  - type: "text"
+    title: "Challenge 2: Trying Two Phases"
+    bullets:
+      - "How can we ensure a majority agrees before a request is considered 'chosen'?"
+      - "Introduce Phase 1 (Prepare): Ask permission to lead"
+      - "Introduce Phase 2 (Accept): Execute with majority agreement"
+    notes: "Introduce the concept of two-phase execution as a solution to the immediate execution problem."
+
+  - type: "diagram"
+    title: "Why simple two phase execution is not enough"
+    diagramRef: "two_phase_execution"
+    bullets:
+      - "Phase 1: Athens gets majority agreement to proceed"
+      - "Phase 2: Athens executes on all nodes with majority consent"
+      - "System is now consistent: all nodes have Counter = 6"
+    notes: "Visual walkthrough using the two-phase execution slides to show a successful agreement."
+
+  - type: "text"
+    title: "Challenge 3: Failures During Agreement"
+    bullets:
+      - "What if a server crashes or messages get lost during these two phases?"
+      - "Failures can leave the system in an ambiguous state"
+      - "Some nodes might know the result, others might not"
+    notes: "Introduce the complexity that failures add to the two-phase protocol."
+
+  - type: "diagram"
+    title: "The Commit Requests Can Get Lost"
+    diagramRef: "two_phase_lost_commits"
+    bullets:
+      - "Athens gets majority agreement in Phase 1"
+      - "Athens executes locally and responds to client early"
+      - "Execute messages to other nodes get lost"
+      - "Athens crashes before other nodes execute"
+    notes: "Show how a server can crash after getting a majority of accepts but before notifying everyone."
+
+  - type: "diagram"
+    title: "The Accept Requests Can Get Lost as Well"
+    diagramRef: "two_phase_missed_accepts"
+    bullets:
+      - "Athens accepts request locally"
+      - "Accept request to Cyrene gets lost"
+      - "Athens proceeds with majority (self + Byzantium)"
+      - "Cyrene never received any requests"
+    notes: "Show another failure scenario where accept messages are lost."
+
+  - type: "text"
+    title: "Coffee Break"
+    bullets:
+      - "15 minutes - Time to process what we've learned so far"
+    notes: "Take a break before diving into the recovery complexities."
+
+  # Session 2: Recovery, Concurrency, and The 'Highest Generation' Rule - Approx. 1.5 hours
+  - type: "text"
+    title: "Recovery Ambiguity: The Core Dilemma"
+    bullets:
+      - "A new server starts recovery (runs Phase 1)"
+      - "It queries a majority and might see a request accepted on one server, but not another"
+      - "The Dilemma: Was that request chosen before the crash, or did it only reach one node?"
+      - "It's impossible to know for sure!"
+    notes: "Introduce the fundamental ambiguity that makes recovery challenging."
+
+  - type: "text"
+    title: "The Safe Path: When in Doubt, Re-Propose"
+    bullets:
+      - "Since it might have been chosen, the only safe action is to assume it was"
+      - "Re-run both phases for that request with a new, higher generation number"
+      - "This forces the system towards confirming that request"
+      - "Quorum overlap ensures we don't 'forget' a previously chosen value"
+    notes: "Explain why re-proposing is the safe choice and how quorum overlap provides safety."
+
+  - type: "diagram"
+    title: "Understanding Quorum Overlap"
+    diagramRef: "quorum_overlap_visualization"
+    bullets:
+      - "Any two majorities must share at least one node"
+      - "This overlap ensures information propagation"
+      - "Guarantees we'll discover previously chosen values during recovery"
+    notes: "Visual explanation of why quorum overlap is fundamental to consensus safety."
+
+  - type: "text"
+    title: "The Crucial Rule: Always Pick the Highest Generation"
+    bullets:
+      - "During recovery, you might see multiple accepted requests with different generations"
+      - "RULE: Always pick the request with the highest generation number"
+      - "This rule is essential for safety"
+      - "Picking the highest generation respects the history of decisions"
+    notes: "Introduce the most important rule in the protocol."
+
+  - type: "text"
+    title: "Lunch Break"
+    bullets:
+      - "1 hour - Digest the core consensus concepts"
+    notes: "Break before the final session on Paxos formalization."
+
+  # Session 3: Formalizing with Paxos & Building Replicated Logs - Approx. 1.5 hours
+  - type: "text"
+    title: "Congratulations! You've Built Paxos"
+    bullets:
+      - "What we just built is the core logic of Paxos!"
+      - "Paxos is the formal name for this consensus algorithm"
+      - "Let's map our concepts to Paxos terminology"
+      - "Then we'll see how it's used in practice"
+    notes: "Reveal that they've been learning Paxos all along, just in more intuitive terms."
+
+  - type: "text"
+    title: "Mapping Our Concepts to Paxos"
+    bullets:
+      - "Servers = Proposers/Acceptors/Learners"
+      - "prepare = Phase 1a"
+      - "'Yes' response = Promise (Phase 1b)"
+      - "accept = Phase 2a"
+      - "accepted = Phase 2b"
+      - "Generation Number = Ballot Number"
+    notes: "Show the formal Paxos terminology and how it maps to what they've learned."
+
+  - type: "diagram"
+    title: "Paxos in Action: The Full Protocol"
+    diagramRef: "workshop-paxos-full-log-prepare-leader-complete-proposals"
+    bullets:
+      - "Athens runs leader election with ballot=4"
+      - "Discovers highest numbered value 'Distributed Systems' from Cyrene"
+      - "Proposes this value in Phase 2"
+      - "Achieves consensus on 'Distributed Systems'"
+    notes: "Walk through the formal Paxos sequence diagram, connecting it to the concepts they've learned."
+
+  - type: "text"
+    title: "Paxos Challenges in Practice"
+    bullets:
+      - "Livelock: Competing proposers can prevent progress"
+      - "Solution: Random backoff and leader election"
+      - "Performance: Multiple rounds for each decision"
+      - "Solution: Multi-Paxos with stable leader"
+    notes: "Discuss practical challenges and solutions."
+
+  - type: "diagram"
+    title: "Livelock Problem and Solutions"
+    diagramRef: "livelock_scenario"
+    bullets:
+      - "Competing proposers can interfere with each other indefinitely"
+      - "Random backoff helps break the cycle"
+      - "Stable leader election is a better long-term solution"
+    notes: "Show how livelock occurs and how to resolve it."
+
+  - type: "text"
+    title: "Multi-Paxos: Optimizing for Sequences"
+    bullets:
+      - "Run leader election once, then skip Phase 1 for subsequent requests"
+      - "Leader can directly propose values (Phase 2 only)"
+      - "Much more efficient for sequences of operations"
+      - "Used in systems like Google's Chubby and Spanner"
+    notes: "Explain how Multi-Paxos optimizes the basic protocol."
+
+  - type: "diagram"
+    title: "Basic Paxos vs Multi-Paxos Efficiency"
+    diagramRef: "multi_paxos_optimization"
+    bullets:
+      - "Basic Paxos: 4 round trips per request"
+      - "Multi-Paxos: 2 round trips per request after leader election"
+      - "Dramatic improvement in latency and throughput"
+    notes: "Compare the efficiency gains of Multi-Paxos over basic Paxos."
+
+  - type: "text"
+    title: "Raft: A More Understandable Alternative"
+    bullets:
+      - "Raft was designed to be more understandable than Paxos"
+      - "Separates leader election, log replication, and safety"
+      - "Strong leader model: all requests go through leader"
+      - "Widely used in systems like etcd, Consul, and TiKV"
+    notes: "Introduce Raft as an alternative approach to the same problem."
+
+  - type: "diagram"
+    title: "Raft Leader Election Process"
+    diagramRef: "raft_leader_election"
+    bullets:
+      - "Simpler than Paxos: single phase election"
+      - "Uses monotonic terms instead of arbitrary ballot numbers"
+      - "Strong leader model eliminates many edge cases"
+    notes: "Show how Raft's leader election is simpler than Paxos."
+
+  - type: "diagram"
+    title: "Raft Log Replication"
+    diagramRef: "raft_log_replication"
+    bullets:
+      - "Leader appends entries to local log first"
+      - "Replicates to followers with consistency checks"
+      - "Commits only after majority replication"
+    notes: "Demonstrate Raft's log replication mechanism."
+
+  - type: "text"
+    title: "Real-World Applications"
+    bullets:
+      - "Google Spanner: Uses Paxos for global consistency"
+      - "etcd: Uses Raft for Kubernetes cluster state"
+      - "Apache Kafka: Uses a form of consensus for partition leadership"
+      - "CockroachDB: Uses Raft for distributed SQL"
+    notes: "Show how these concepts are used in real systems."
+
+  - type: "diagram"
+    title: "Consensus in Distributed Systems"
+    diagramRef: "consensus_applications"
+    bullets:
+      - "Configuration management: etcd, Consul, ZooKeeper"
+      - "Database systems: CockroachDB, TiDB, MongoDB"
+      - "Cloud infrastructure: Spanner, DynamoDB, Cosmos DB"
+      - "Messaging systems: Kafka, Pulsar, NATS"
+    notes: "Comprehensive overview of where consensus is used in practice."
+
+  - type: "text"
+    title: "Day 2 Summary: Your Journey to Consensus"
+    bullets:
+      - "Started with single server limitations"
+      - "Discovered why immediate execution fails"
+      - "Built two-phase protocol step by step"
+      - "Learned recovery and the highest generation rule"
+      - "Formalized it as Paxos"
+      - "Explored practical applications with Raft"
+    notes: "Summarize the learning journey and key takeaways."
+
+  - type: "text"
+    title: "Next Steps"
+    bullets:
+      - "Try implementing a simple consensus protocol"
+      - "Explore Raft implementations (etcd, Consul)"
+      - "Study how your favorite distributed systems use consensus"
+      - "Consider the trade-offs: consistency vs. availability vs. partition tolerance"
+    notes: "Provide guidance for continued learning." 

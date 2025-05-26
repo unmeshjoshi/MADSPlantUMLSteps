@@ -1,0 +1,204 @@
+@startuml
+!include ../../style.puml
+
+title **Where Consensus is Used in Distributed Systems**
+
+' [step1 {"name":"Configuration Management"}]
+rectangle "Configuration Management" #LightBlue {
+    rectangle "etcd\n(Kubernetes)" as etcd
+    rectangle "Consul\n(Service Discovery)" as consul
+    rectangle "ZooKeeper\n(Kafka, HBase)" as zookeeper
+    
+    note bottom of etcd
+        **Uses:** Raft
+        **Purpose:** Store cluster configuration,
+        service discovery, distributed locking
+    end note
+    
+    note bottom of consul
+        **Uses:** Raft
+        **Purpose:** Service mesh configuration,
+        health checking, KV store
+    end note
+    
+    note bottom of zookeeper
+        **Uses:** Zab (similar to Paxos)
+        **Purpose:** Coordination service,
+        configuration management
+    end note
+}
+' [/step1]
+
+' [step2 {"name":"Database Systems", "newPage":"true"}]
+rectangle "Database Systems" #LightGreen {
+    rectangle "CockroachDB\n(Distributed SQL)" as cockroach
+    rectangle "TiDB\n(Distributed SQL)" as tidb
+    rectangle "MongoDB\n(Replica Sets)" as mongodb
+    
+    note bottom of cockroach
+        **Uses:** Raft
+        **Purpose:** Replicate data across nodes,
+        ensure ACID transactions
+    end note
+    
+    note bottom of tidb
+        **Uses:** Raft (TiKV)
+        **Purpose:** Distributed storage layer,
+        consistent replication
+    end note
+    
+    note bottom of mongodb
+        **Uses:** Raft-like protocol
+        **Purpose:** Primary election,
+        replica set coordination
+    end note
+}
+' [/step2]
+
+' [step3 {"name":"Cloud Infrastructure", "newPage":"true"}]
+rectangle "Cloud Infrastructure" #LightYellow {
+    rectangle "Google Spanner\n(Global Database)" as spanner
+    rectangle "Amazon DynamoDB\n(NoSQL)" as dynamodb
+    rectangle "Azure Cosmos DB\n(Multi-model)" as cosmos
+    
+    note bottom of spanner
+        **Uses:** Paxos
+        **Purpose:** Global consistency,
+        distributed transactions
+    end note
+    
+    note bottom of dynamodb
+        **Uses:** Custom consensus
+        **Purpose:** Metadata management,
+        partition leadership
+    end note
+    
+    note bottom of cosmos
+        **Uses:** Custom protocols
+        **Purpose:** Multi-region consistency,
+        conflict resolution
+    end note
+}
+' [/step3]
+
+' [step4 {"name":"Messaging Systems", "newPage":"true"}]
+rectangle "Messaging & Streaming" #LightCoral {
+    rectangle "Apache Kafka\n(Streaming)" as kafka
+    rectangle "Apache Pulsar\n(Messaging)" as pulsar
+    rectangle "NATS JetStream\n(Messaging)" as nats
+    
+    note bottom of kafka
+        **Uses:** ZooKeeper (Zab)
+        **Purpose:** Controller election,
+        partition leadership, metadata
+    end note
+    
+    note bottom of pulsar
+        **Uses:** Apache BookKeeper (Raft-like)
+        **Purpose:** Ledger management,
+        metadata storage
+    end note
+    
+    note bottom of nats
+        **Uses:** Raft
+        **Purpose:** Stream replication,
+        cluster coordination
+    end note
+}
+' [/step4]
+
+' [step5 {"name":"Common Use Cases", "newPage":"true"}]
+note as use_cases
+**Common Consensus Use Cases**
+
+🏛️ **Leader Election**
+- Who should be the primary/controller?
+- Automatic failover when leader fails
+- Examples: Kafka controller, MongoDB primary
+
+🗂️ **Configuration Management**  
+- Storing cluster configuration
+- Service discovery and registration
+- Examples: etcd for Kubernetes, Consul
+
+🔒 **Distributed Locking**
+- Mutual exclusion across nodes
+- Critical section coordination
+- Examples: ZooKeeper locks, etcd locks
+
+📊 **Metadata Storage**
+- Where is data located?
+- Partition assignments and routing
+- Examples: Spanner directory, Kafka metadata
+
+🔄 **State Machine Replication**
+- Keep multiple copies in sync
+- Apply operations in same order
+- Examples: Database replication, log replication
+
+💾 **Atomic Commitment**
+- Distributed transactions
+- Two-phase commit coordination
+- Examples: Spanner transactions, distributed databases
+end note
+' [/step5]
+
+' [step6 {"name":"When NOT to Use Consensus", "newPage":"true"}]
+note as when_not_to_use
+**When NOT to Use Consensus**
+
+❌ **High-Frequency Operations**
+- Consensus adds latency (multiple round trips)
+- Better: Use consensus for metadata, not data path
+- Example: Don't use Paxos for every database write
+
+❌ **Eventually Consistent is OK**
+- If strong consistency isn't required
+- Better: Use gossip protocols, CRDTs
+- Example: DNS propagation, social media feeds
+
+❌ **Single Data Center**
+- If you don't need fault tolerance across failures
+- Better: Use simpler replication (master-slave)
+- Example: Read replicas in same DC
+
+❌ **Performance-Critical Path**
+- Consensus can be a bottleneck
+- Better: Use consensus for control plane, not data plane
+- Example: Use consensus to elect leader, leader handles data
+
+**Rule of Thumb:** Use consensus for coordination and metadata,
+not for high-throughput data operations.
+end note
+' [/step6]
+
+' [step7 {"name":"Implementation Considerations", "newPage":"true"}]
+note as implementation
+**Implementation Considerations**
+
+⚡ **Performance Optimizations**
+- Batching: Group multiple operations
+- Pipelining: Don't wait for each operation
+- Read replicas: Serve reads from followers
+
+🔧 **Operational Concerns**
+- Monitoring: Track leader elections, log lag
+- Backup: Consensus state must be backed up
+- Upgrades: Rolling upgrades with consensus
+
+🌐 **Network Considerations**
+- Latency: Cross-region consensus is slow
+- Partitions: Majority must be reachable
+- Bandwidth: Log replication can be heavy
+
+🏗️ **Architecture Patterns**
+- Separate control plane (consensus) from data plane
+- Use consensus for metadata, not user data
+- Consider read-heavy vs write-heavy workloads
+
+**Best Practice:** Start simple, add consensus where you
+actually need strong consistency guarantees.
+end note
+' [/step7]
+
+@enduml 

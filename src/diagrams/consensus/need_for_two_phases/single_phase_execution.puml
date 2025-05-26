@@ -16,18 +16,26 @@ group #LightBlue "Increment Request"
 
 ' [step3 {"name":"Athens executes immediately"}]
     athens -> athens: Counter += 1
-    note right of athens: Counter = 6
+    note over athens: Counter = 6
+    / note over byzantium: Counter = 5
+    / note over cyrene: Counter = 5
 ' [/step3]
 
 ' [step4 {"name":"Athens tries to propagate"}]
     athens --> byzantium: Update Counter\n(delayed/lost)
     athens --> cyrene: Update Counter\n(delayed/lost)
+    note over athens: Counter = 6
+    / note over byzantium: Counter = 5
+    / note over cyrene: Counter = 5
     note right of athens: Network issues prevent\nupdates from reaching\nother nodes
 ' [/step4]
 
 ' [step5 {"name":"Athens responds to client"}]
     athens -> client: Success
     deactivate athens
+    note over athens: Counter = 6
+    / note over byzantium: Counter = 5
+    / note over cyrene: Counter = 5
 end
 ' [/step5]
 
@@ -38,8 +46,9 @@ group #LightCoral "Node Failure"
 ' [/step6]
 
 ' [step7 {"name":"System state is now inconsistent"}]
-note over byzantium: Counter = 5
-note over cyrene: Counter = 5
+note over athens: Counter = 6\n(crashed)
+/ note over byzantium: Counter = 5
+/ note over cyrene: Counter = 5
 note across: System is now inconsistent!\nAthens had Counter = 6\nByzantium and Cyrene still have Counter = 5
 ' [/step7]
 

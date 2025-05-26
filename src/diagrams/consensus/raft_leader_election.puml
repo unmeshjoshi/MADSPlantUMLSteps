@@ -1,0 +1,113 @@
+@startuml
+!include ../../style.puml
+
+title **Raft Leader Election: Simpler than Paxos**
+
+' [step1 {"name":"Initial State - All Followers"}]
+participant "Athens\n(Follower)" as athens
+participant "Byzantium\n(Follower)" as byzantium  
+participant "Cyrene\n(Follower)" as cyrene
+
+note over athens: Term=1, VotedFor=null
+note over byzantium: Term=1, VotedFor=null
+note over cyrene: Term=1, VotedFor=null
+
+note across: **Initial State: All nodes are followers**
+' [/step1]
+
+' [step2 {"name":"Election Timeout", "newPage":"true"}]
+group #LightYellow "Election Timeout"
+    note over athens #yellow: Election timeout!\nNo heartbeat from leader
+    
+    athens -> athens: Increment term to 2
+    athens -> athens: Vote for self
+    athens -> athens: Become candidate
+    
+    note over athens: Term=2, VotedFor=Athens\nState=Candidate
+end
+' [/step2]
+
+' [step3 {"name":"Request Votes", "newPage":"true"}]
+group #LightBlue "Request Votes Phase"
+    athens -> byzantium: RequestVote(term=2, candidateId=Athens)
+    athens -> cyrene: RequestVote(term=2, candidateId=Athens)
+    
+    note over byzantium: Term 2 > my term 1\nUpdate term, grant vote
+    byzantium -> byzantium: Term=2, VotedFor=Athens
+    
+    note over cyrene: Term 2 > my term 1\nUpdate term, grant vote  
+    cyrene -> cyrene: Term=2, VotedFor=Athens
+    
+    byzantium --> athens: VoteGranted(term=2)
+    cyrene --> athens: VoteGranted(term=2)
+end
+' [/step3]
+
+' [step4 {"name":"Become Leader", "newPage":"true"}]
+group #LightGreen "Become Leader"
+    note over athens: Received majority votes\n(3 out of 3)
+    
+    athens -> athens: Become leader
+    
+    note over athens #lightgreen: Term=2, State=Leader
+    note over byzantium: Term=2, State=Follower
+    note over cyrene: Term=2, State=Follower
+end
+' [/step4]
+
+' [step5 {"name":"Send Heartbeats", "newPage":"true"}]
+group #LightGreen "Establish Leadership"
+    athens -> byzantium: AppendEntries(term=2, entries=[])
+    athens -> cyrene: AppendEntries(term=2, entries=[])
+    
+    byzantium --> athens: Success(term=2)
+    cyrene --> athens: Success(term=2)
+    
+    note across: **Empty AppendEntries = Heartbeat**\nPrevents new elections
+end
+' [/step5]
+
+' [step6 {"name":"Split Vote Scenario", "newPage":"true"}]
+note as split_vote
+**What if there's a split vote?**
+
+**Scenario:** Athens and Byzantium both timeout simultaneously
+
+1. **Athens:** Requests votes for term=3
+2. **Byzantium:** Requests votes for term=3  
+3. **Cyrene:** Votes for whoever asks first (say Athens)
+4. **Result:** Athens gets 2 votes, Byzantium gets 1 vote
+5. **Athens wins** and becomes leader
+
+**If truly simultaneous:**
+- Each candidate votes for itself
+- Cyrene votes for one of them
+- Winner gets 2 votes, loser gets 1 vote
+- Random timeouts prevent repeated ties
+end note
+' [/step6]
+
+' [step7 {"name":"Raft vs Paxos Comparison", "newPage":"true"}]
+note as comparison
+**Raft vs Paxos Leader Election**
+
+**Key Differences:**
+• Complexity: Raft (Simple) vs Paxos (Complex)
+• Phases: Raft (1 RequestVote) vs Paxos (2 Prepare + Accept)
+• Terms/Ballots: Raft (Monotonic) vs Paxos (Arbitrary)
+• Split brain: Raft (Impossible) vs Paxos (Possible without care)
+• Understandability: Raft (High) vs Paxos (Low)
+
+**Raft Advantages:**
+✓ Simpler to understand and implement
+✓ Strong leader model eliminates many edge cases
+✓ Clear separation of concerns (election vs replication)
+
+**Paxos Advantages:**
+✓ More flexible (multiple proposers)
+✓ Better theoretical foundation
+✓ Can handle more complex scenarios
+end note
+' [/step7]
+
+@enduml 

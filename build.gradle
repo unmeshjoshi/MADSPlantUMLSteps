@@ -1,5 +1,6 @@
 import com.pumlsteps.presentation.YamlPresentationProcessor
 import com.pumlsteps.presentation.HtmlGenerator
+import com.pumlsteps.presentation.IndexGenerator
 import com.pumlsteps.StepImageGenerator
 import com.pumlsteps.StepParser
 import com.pumlsteps.PumlFile
@@ -93,6 +94,12 @@ task html {
                 println "Generated ${htmlFile.name} from ${yamlFile.name}"
             }
         }
+        
+        // Generate dynamic index.html
+        def indexGenerator = new com.pumlsteps.presentation.IndexGenerator()
+        def indexFile = new File(buildDir, 'index.html')
+        indexGenerator.generateIndex(presentationDir, indexFile)
+        println "Generated dynamic index.html in build directory"
         
         println "✓ HTML presentations generated in: ${buildDir.absolutePath}"
     }

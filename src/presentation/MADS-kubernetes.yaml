@@ -1,4 +1,7 @@
 title: "Understanding Kubernetes Architecture and Components"
+description: "Understand Kubernetes controller patterns and scheduling mechanisms. Learn how the control plane manages workloads and resource allocation."
+icon: "fas fa-dharmachakra"
+category: "Container Orchestration"
 sections:
   - title: "Introduction"
     slides:

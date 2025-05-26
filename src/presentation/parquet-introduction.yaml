@@ -1,4 +1,7 @@
 title: "Understanding Apache Parquet"
+description: "Explore columnar storage concepts, Parquet file structure, and efficient data reading patterns. Compare row vs column storage and understand storage layout optimizations."
+icon: "fas fa-database"
+category: "Data Storage"
 slides:
   - type: "text"
     title: "Introduction to Apache Parquet"
