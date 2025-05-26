@@ -398,11 +398,13 @@ body {
     align-items: center;
     width: 100%;
     height: 100%;
+    max-height: 100%; /* Ensure step doesn't exceed parent container */
     position: relative;
     box-sizing: border-box;
     padding: 10px;
     /* Ensure step container maintains size */
     min-height: 500px;
+    overflow: hidden; /* Prevent content from overflowing */
 }
 
 .step img {
@@ -410,6 +412,7 @@ body {
     min-width: 95%;   /* Ensure minimum width */
     max-width: 95%;   /* Cap maximum width */
     height: auto;     /* Allow height to adjust based on content */
+    max-height: calc(100% - 5rem); /* Ensure image fits within step container minus padding, margin, and border */
     object-fit: contain;
     border: 1px solid var(--border-dark);
     border-radius: 12px;
@@ -567,7 +570,7 @@ button:hover:not(:disabled) i.fa-chevron-left,
     .step img {
         max-width: 100%;
         width: 100%;
-        max-height: 70vh;
+        max-height: calc(100% - 3rem); /* Ensure mobile images fit within step container */
     }
 }
 
@@ -607,7 +610,7 @@ button:hover:not(:disabled) i.fa-chevron-left,
     .step img {
         max-width: 100%;
         width: 100%;
-        max-height: 70vh;
+        max-height: calc(100% - 3rem); /* Ensure very small screen images fit within step container */
     }
     
     .title-container h2 {
