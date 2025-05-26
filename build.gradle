@@ -97,7 +97,7 @@ task html {
         
         // Generate dynamic index.html
         def indexGenerator = new com.pumlsteps.presentation.IndexGenerator()
-        def indexFile = new File(buildDir, 'index.html')
+        def indexFile = new File(file('build'), 'index.html')
         indexGenerator.generateIndex(presentationDir, indexFile)
         println "Generated dynamic index.html in build directory"
         

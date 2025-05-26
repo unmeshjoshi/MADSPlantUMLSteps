@@ -458,7 +458,7 @@ public class IndexGenerator {
         // Generate cards for each presentation
         for (PresentationInfo presentation : presentations) {
             body.append("""
-            <a href=\"""").append(presentation.fileName).append("""
+            <a href="presentations/""").append(presentation.fileName).append("""
 " class="presentation-card">
                 <div class="card-icon">
                     <i class=\"""").append(presentation.icon).append("""
@@ -508,7 +508,7 @@ public class IndexGenerator {
 
     <script>
         // Load build time from version.txt
-        fetch('version.txt')
+        fetch('presentations/version.txt')
             .then(response => response.text())
             .then(data => {
                 const buildTime = data.trim().replace('Built on: ', '');
