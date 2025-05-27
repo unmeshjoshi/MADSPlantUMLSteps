@@ -3,13 +3,13 @@
 
 title Recovery Ambiguity: The Impossible Decision
 
-' [step1 {"name":"Initial Setup - Previous Crash"}]
-participant "Athens\n(Recovering)" as athens
+' [step1 {"name":"Initial Setup - Before New Request"}]
+participant "Athens\n(Wants new request)" as athens
 participant "Byzantium\n(Counter=5)" as byzantium
 participant "Cyrene\n(Counter=5)" as cyrene
 
-note over athens: Athens crashed during\na previous consensus attempt.\nNow starting recovery...
-note over byzantium: Has accepted:\nIncrementCounter (Generation=3)
+note over athens: Athens wants to execute\na new request.\nFirst, must check for any\nexisting accepted requests...
+note over byzantium: Has accepted:\nIncrementCounter
 note over cyrene: No accepted requests
 ' [/step1]
 
@@ -28,7 +28,7 @@ group #LightYellow "Recovery Phase"
 ' [/step3]
 
 ' [step4 {"name":"Conflicting Responses"}]
-    byzantium -> athens: "Yes! I accepted:\nIncrementCounter (Generation=3)"
+    byzantium -> athens: "Yes! I accepted:\nIncrementCounter"
     deactivate byzantium
     
     cyrene -> athens: "No accepted requests"
@@ -50,10 +50,10 @@ end
 ' [step6 {"name":"Why We Can't Tell", "newPage":"true"}]
 group #Red "Why Athens Cannot Decide"
     note over athens, cyrene #pink: **The Problem:**
-    note over athens, cyrene: • Athens doesn't know who else might have accepted IncrementCounter
-    note over athens, cyrene: • Maybe the third node crashed and was replaced
-    note over athens, cyrene: • Maybe messages were lost before reaching majority
-    note over athens, cyrene: • No way to distinguish committed vs. uncommitted!
+    note over athens, cyrene: • Athens can only reach majority (2 out of 3 nodes)
+    note over athens, cyrene: • Third node might be unreachable due to network partition
+    note over athens, cyrene: • Athens doesn't know if IncrementCounter was committed
+    note over athens, cyrene: • No way to distinguish committed vs. uncommitted with partial information!
 end
 ' [/step6]
 

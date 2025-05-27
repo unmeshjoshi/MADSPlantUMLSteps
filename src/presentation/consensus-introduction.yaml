@@ -96,10 +96,16 @@ slides:
     title: "Adding Recovery Phase"
     bullets:
       - "When a server wants to process a request, it can't just proceed immediately"
-      - "First, it must check: 'Are there any requests already accepted by the majority?'"
-      - "This recovery phase ensures we don't miss previously accepted requests"
-      - "Only after checking can the server safely proceed with its own request"
-    notes: "Introduce the concept of recovery as a necessary first step before processing any request."
+      - "First, it must check with a majority: 'Are there any requests already accepted?'"
+    notes: "Introduce the concept of checking with majority as a necessary first step, and how this creates the fundamental ambiguity."
+
+  - type: "text"
+    title: "Adding Recovery Phase (Continued)"
+    bullets:
+      - "This check ensures we don't miss previously accepted requests that might have been committed"
+      - "Since we only need majority responses (for fault tolerance), ambiguity can arise" 
+      - "Only after this check can the server safely proceed with its decision"
+    notes: "Introduce the concept of checking with majority as a necessary first step, and how this creates the fundamental ambiguity."
 
   - type: "diagram"
     title: "Recovery Phase: Checking for Existing Accepted Requests"
@@ -114,21 +120,56 @@ slides:
   - type: "text"
     title: "Recovery Ambiguity: The Core Dilemma"
     bullets:
-      - "A new server starts recovery (runs Phase 1)"
+      - "Before executing ANY new request, a server must first check for existing accepted requests"
       - "It queries a majority and might see a request accepted on one server, but not another"
-      - "The Dilemma: Was that request committed before the crash, or did it only reach one node?"
-      - "It's impossible to know for sure!"
-    notes: "Introduce the fundamental ambiguity that makes recovery challenging."
+      - "The Dilemma: Was that request committed, or did it only reach one node?"
+      - "Since decisions are made with majority responses (for fault tolerance), it's impossible to know for sure!"
+    notes: "Introduce the fundamental ambiguity that arises from making decisions with only majority information for fault tolerance."
 
   - type: "diagram"
-    title: "Recovery Ambiguity: The Impossible Decision"
+    title: "Recovery Ambiguity: The Scenario"
     diagramRef: "recovery_ambiguity_dilemma"
     bullets:
-      - "Athens starts recovery and queries majority"
+      - "Athens wants to execute a new request and first checks for existing accepted requests"
+      - "Athens can only reach majority (Byzantium and Cyrene)"
       - "Byzantium reports: 'I have accepted IncrementCounter'"
       - "Cyrene reports: 'I have no accepted requests'"
+    notes: "Show the setup of the ambiguous scenario where Athens gets conflicting information from the majority it can reach."
+
+  - type: "text"
+    title: "Recovery Ambiguity: The Impossible Decision"
+    bullets:
       - "Athens faces the dilemma: Was IncrementCounter committed or not?"
-    notes: "Show the ambiguous scenario where recovery cannot determine if a request was committed."
+      - "Two possible scenarios exist, but Athens cannot distinguish between them"
+    notes: "Explain the fundamental dilemma and why Athens cannot make the decision with partial information from majority responses."
+
+  - type: "text"
+    title: "Recovery Ambiguity: The Impossible Decision (Continued)"
+    bullets:
+      - "Scenario 1: IncrementCounter WAS committed (previous leader got majority)"
+      - "Scenario 2: IncrementCounter was NOT committed (only reached one node)"
+      - "Safety requirement: If a value was ever committed, it must NEVER be lost"
+    notes: "Explain the fundamental dilemma and why Athens cannot make the decision with partial information from majority responses."
+
+
+  - type: "text"
+    title: "Recovery Dilemma: Multiple Conflicting Requests"
+    bullets:
+      - "What if Athens discovers TWO different accepted requests from the majority it can reach?"
+      - "Each server in the majority reports a different request with different generation numbers"
+      - "Athens must decide: Which request should be preserved and re-proposed?"
+      - "This scenario demonstrates the critical 'highest generation rule'"
+    notes: "Introduce the more complex scenario where multiple conflicting accepted requests are discovered when checking with majority."
+
+  - type: "diagram"
+    title: "Recovery Dilemma: Multiple Conflicting Accepted Requests"
+    diagramRef: "recovery_multiple_accepted_requests"
+    bullets:
+      - "Athens wants to execute a new request and checks with majority"
+      - "Byzantium reports: 'I have accepted IncrementCounter (Generation=2)'"
+      - "Cyrene reports: 'I have accepted DecrementCounter (Generation=3)'"
+      - "Athens must choose which request to preserve using the highest generation rule"
+    notes: "Show the scenario where Athens discovers two different accepted requests from majority and must apply the highest generation rule to choose safely."
 
   - type: "text"
     title: "The Safe Path: When in Doubt, Re-Propose"

@@ -1,0 +1,47 @@
+@startuml
+!include ../../style.puml
+
+title Recovery Dilemma: Multiple Conflicting Accepted Requests
+
+' [step1 {"name":"Initial Setup - Before New Request"}]
+participant "Athens\n(Wants new request)" as athens
+participant "Byzantium\n(Counter=5)" as byzantium
+participant "Cyrene\n(Counter=5)" as cyrene
+
+note over athens: Athens wants to execute\na new request.\nFirst, must check for any\nexisting accepted requests...
+note over byzantium: Has accepted:\nIncrementCounter 
+note over cyrene: Has accepted:\nDecrementCounter
+' [/step1]
+
+' [step2 {"name":"Recovery Phase Start"}]
+group #LightYellow "Recovery Phase"
+    note over athens: Athens needs to check:\n"Are there any accepted requests\nI should know about?"
+' [/step2]
+
+' [step3 {"name":"Query Majority"}]
+    par Recovery Queries
+        athens -> byzantium: "Do you have any\naccepted requests?"
+        activate byzantium
+        athens -> cyrene: "Do you have any\naccepted requests?"
+        activate cyrene
+    end
+' [/step3]
+
+' [step4 {"name":"Conflicting Responses"}]
+    byzantium -> athens: "Yes! I accepted:\nIncrementCounter"
+    deactivate byzantium
+    
+    cyrene -> athens: "Yes! I accepted:\nDecrementCounter"
+    deactivate cyrene
+    
+    note over athens #pink: CONFLICT DETECTED!\nTwo different requests!
+' [/step4]
+
+' [step5 {"name":"The Dilemma", "newPage":"true"}]
+group #LightCoral "Which Request to Choose?"
+    note over athens #pink: **Athens' Dilemma:**
+    note over athens #lightgreen: **Which one was actually committed?\nWhich one should Athens preserve?**
+end
+' [/step5]
+
+@enduml 
