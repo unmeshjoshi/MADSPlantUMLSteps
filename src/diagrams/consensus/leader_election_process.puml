@@ -1,0 +1,24 @@
+@startuml
+!include ../../style.puml
+
+title Leader Election Process
+
+participant Athens as "Athens\n(Candidate)"
+participant Byzantium as "Byzantium\n(Acceptor)"
+participant Cyrene as "Cyrene\n(Acceptor)"
+
+note over Athens: Wants to become leader\nChooses Generation Number 5\n(higher than any seen)
+
+Athens -> Byzantium: Prepare(generation=5)
+Athens -> Cyrene: Prepare(generation=5)
+
+note over Byzantium: Checks: 5 > any promised?\nYes! Promises not to accept\nrequests with generation < 5
+
+note over Cyrene: Checks: 5 > any promised?\nYes! Promises not to accept\nrequests with generation < 5
+
+Byzantium -> Athens: Promise(generation=5)
+Cyrene -> Athens: Promise(generation=5)
+
+note over Athens: Got majority promises!\nNow Leader for Generation 5\nCan proceed with Phase 2
+
+@enduml 

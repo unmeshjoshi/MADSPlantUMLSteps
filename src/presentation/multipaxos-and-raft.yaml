@@ -1,0 +1,88 @@
+title: "Multi-Paxos and Raft"
+description: "Description of Multi-Paxos and Raft"
+icon: "fas fa-handshake"
+category: "Consensus Algorithms"
+slides:
+  - type: "text"
+    title: "Multi-Paxos: Optimizing for Sequences"
+    bullets:
+      - "Run leader election once, then skip Phase 1 for subsequent requests"
+      - "Leader can directly propose values (Phase 2 only)"
+      - "Much more efficient for sequences of operations"
+      - "Used in systems like Google's Chubby and Spanner"
+    notes: "Explain how Multi-Paxos optimizes the basic protocol."
+
+  - type: "diagram"
+    title: "Basic Paxos vs Multi-Paxos Efficiency"
+    diagramRef: "multi_paxos_optimization"
+    bullets:
+      - "Basic Paxos: 4 round trips per request"
+      - "Multi-Paxos: 2 round trips per request after leader election"
+      - "Dramatic improvement in latency and throughput"
+    notes: "Compare the efficiency gains of Multi-Paxos over basic Paxos."
+
+  - type: "text"
+    title: "Raft: A More Understandable Alternative"
+    bullets:
+      - "Raft was designed to be more understandable than Paxos"
+      - "Separates leader election, log replication, and safety"
+      - "Strong leader model: all requests go through leader"
+      - "Widely used in systems like etcd, Consul, and TiKV"
+    notes: "Introduce Raft as an alternative approach to the same problem."
+
+  - type: "diagram"
+    title: "Raft Leader Election Process"
+    diagramRef: "raft_leader_election"
+    bullets:
+      - "Simpler than Paxos: single phase election"
+      - "Uses monotonic terms instead of arbitrary ballot numbers"
+      - "Strong leader model eliminates many edge cases"
+    notes: "Show how Raft's leader election is simpler than Paxos."
+
+  - type: "diagram"
+    title: "Raft Log Replication"
+    diagramRef: "raft_log_replication"
+    bullets:
+      - "Leader appends entries to local log first"
+      - "Replicates to followers with consistency checks"
+      - "Commits only after majority replication"
+    notes: "Demonstrate Raft's log replication mechanism."
+
+  - type: "text"
+    title: "Real-World Applications"
+    bullets:
+      - "Google Spanner: Uses Paxos for global consistency"
+      - "etcd: Uses Raft for Kubernetes cluster state"
+      - "Apache Kafka: Uses a form of consensus for partition leadership"
+      - "CockroachDB: Uses Raft for distributed SQL"
+    notes: "Show how these concepts are used in real systems."
+
+  - type: "diagram"
+    title: "Consensus in Distributed Systems"
+    diagramRef: "consensus_applications"
+    bullets:
+      - "Configuration management: etcd, Consul, ZooKeeper"
+      - "Database systems: CockroachDB, TiDB, MongoDB"
+      - "Cloud infrastructure: Spanner, DynamoDB, Cosmos DB"
+      - "Messaging systems: Kafka, Pulsar, NATS"
+    notes: "Comprehensive overview of where consensus is used in practice."
+
+  - type: "text"
+    title: "Day 2 Summary: Your Journey to Consensus"
+    bullets:
+      - "Started with single server limitations"
+      - "Discovered why immediate execution fails"
+      - "Built two-phase protocol step by step"
+      - "Learned recovery and the highest generation rule"
+      - "Formalized it as Paxos"
+      - "Explored practical applications with Raft"
+    notes: "Summarize the learning journey and key takeaways."
+
+  - type: "text"
+    title: "Next Steps"
+    bullets:
+      - "Try implementing a simple consensus protocol"
+      - "Explore Raft implementations (etcd, Consul)"
+      - "Study how your favorite distributed systems use consensus"
+      - "Consider the trade-offs: consistency vs. availability vs. partition tolerance"
+    notes: "Provide guidance for continued learning." 

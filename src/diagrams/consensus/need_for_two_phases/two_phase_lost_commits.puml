@@ -8,24 +8,24 @@ participant "Byzantium\n(Counter=5)" as byzantium
 participant "Cyrene\n(Counter=5)" as cyrene
 ' [/step1]
 
-' [step2 {"name":"Phase 1: Prepare"}]
-group #LightBlue "Phase 1: Prepare"
+' [step2 {"name":"Phase 1: Accept"}]
+group #LightBlue "Phase 1: Accept"
     client -> athens: IncrementCounter
     activate athens
 
-    par Prepare Phase
-        athens -> byzantium: Prepare(IncrementCounter)
+    par Accept Phase
+        athens -> byzantium: Accept(IncrementCounter)
         activate byzantium
-        athens -> cyrene: Prepare(IncrementCounter)
+        athens -> cyrene: Accept(IncrementCounter)
         activate cyrene
     end
 
-    byzantium -> athens: Accept
+    byzantium -> athens: Agreed
     deactivate byzantium
-    cyrene -> athens: Accept
+    cyrene -> athens: Agreed
     deactivate cyrene
 
-    note over athens: Majority achieved\n(2 accepts + self)
+    note over athens: Majority achieved\n(2 agreements + self)
 end
 ' [/step2]
 

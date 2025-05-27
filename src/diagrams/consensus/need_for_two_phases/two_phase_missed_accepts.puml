@@ -15,7 +15,7 @@ B --> A: Accepted
 note over A: Got majority (self + Byzantium)\nproceeds to commit
 A -> A: Execute request
 A -> B: Execute request
-A -[#red]x C: Execute request?
+A -[#red]x C: Execute request
 
-note over A, C: C never received any requests.
+note over A, C: Cyrene never received any requests.
 @enduml

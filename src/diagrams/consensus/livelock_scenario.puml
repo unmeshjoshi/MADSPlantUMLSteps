@@ -80,7 +80,7 @@ group #LightCoral "Round 2: Byzantium's Accept Fails"
 end
 ' [/step7]
 
-' [step8 {"name":"Livelock Detected", "newPage":"true"}]
+' [step8 {"name":"Livelock Detected"}]
 note across #red
 **LIVELOCK DETECTED!**
 

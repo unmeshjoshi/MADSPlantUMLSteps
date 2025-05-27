@@ -1,0 +1,26 @@
+@startuml
+!include ../../style.puml
+
+title Request Propagation with Generation Numbers
+
+participant Athens as "Athens\n(Leader Gen=5)"
+participant Byzantium as "Byzantium\n(Promised Gen=5)"
+participant Cyrene as "Cyrene\n(Promised Gen=5)"
+
+note over Athens: Has leadership for Generation 5\nWants to propose: Counter = 10
+
+Athens -> Byzantium: Accept(generation=5, request="Counter=10")
+Athens -> Cyrene: Accept(generation=5, request="Counter=10")
+
+note over Byzantium: Checks: generation=5 matches\nmy promise (5)?\nYes! Store request but don't execute
+
+note over Cyrene: Checks: generation=5 matches\nmy promise (5)?\nYes! Store request but don't execute
+
+Byzantium -> Athens: Accepted(generation=5)
+Cyrene -> Athens: Accepted(generation=5)
+
+note over Athens: Got majority acceptance!\nRequest is now committed\nSafe to execute
+
+note over Athens, Cyrene: All nodes can now execute:\nCounter = 10
+
+@enduml 

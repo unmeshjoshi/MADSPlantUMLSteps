@@ -1,0 +1,26 @@
+@startuml
+!include ../../style.puml
+
+title From Agreement to Execution
+
+participant Athens as "Athens\n(Leader)"
+participant Byzantium as "Byzantium\n(Acceptor)"
+participant Cyrene as "Cyrene\n(Acceptor)"
+
+note over Athens: Has majority agreement\nfor generation=5, "Counter=6"\nRequest is now COMMITTED
+
+Athens -> Byzantium: Commit(generation=5, request="Counter=6")
+Athens -> Cyrene: Commit(generation=5, request="Counter=6")
+
+note over Byzantium: Request is committed!\nSafe to execute:\nCounter = 6
+
+note over Cyrene: Request is committed!\nSafe to execute:\nCounter = 6
+
+note over Athens: Execute locally:\nCounter = 6
+
+Byzantium -> Athens: Executed: Counter = 6
+Cyrene -> Athens: Executed: Counter = 6
+
+note over Athens, Cyrene: All nodes now have consistent state:\nCounter = 6\n\nSystem maintains consistency\ndespite failures and recovery
+
+@enduml 

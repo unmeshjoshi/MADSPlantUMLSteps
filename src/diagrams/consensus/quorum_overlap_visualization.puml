@@ -59,11 +59,11 @@ note as importance
 1. **Information Propagation:** If a value is accepted by majority A,
    any future majority B will contain at least one node that knows about it.
 
-2. **Safety Guarantee:** No two different values can be chosen because
+2. **Safety Guarantee:** No two different values can be committed because
    any two majorities share a node that would detect the conflict.
 
 3. **Recovery Correctness:** During recovery, querying a majority
-   guarantees we'll discover any previously chosen value.
+   guarantees we'll discover any previously committed value.
 
 **Example:** If Athens and Byzantium accept "Value X", then any future
 majority must include either Athens or Byzantium, ensuring "Value X"

@@ -15,7 +15,8 @@ slides:
     title: "Single Server Lacks Fault Tolerance"
     diagramRef: "single_server_problem"
     bullets:
-      - "Consider a single server. It cannot handle failures."
+      - "When server is healthy, all requests are processed"
+      - "Single point of failure: When the only server fails, all clients are affected"
     notes: "Point out how a single point of failure affects availability. This motivates the need for clustering, which we'll see in the next slides."
 
   - type: "diagram"
@@ -25,6 +26,15 @@ slides:
       - "The cluster appears as a single entity to clients"
       - "Even with node failures, the cluster continues to function"
       - "But how do we ensure internal consistency?"
+    notes: "Introduce the concept that clustering solves availability but creates new challenges around consistency."
+
+  - type: "text"
+    title: "Challenge 1: Why Immediate Execution Fails"
+    bullets:
+      - "Let's try the simplest thing: a server processes a request and tells others"
+      - "What could go wrong with this approach?"
+      - "Network delays, lost messages, or server crashes lead to inconsistent states"
+    notes: "Set up the first major challenge - why naive replication doesn't work."
 
   - type: "diagram"
     title: "Why Immediate Request Execution is Not Always Possible"
@@ -34,38 +44,245 @@ slides:
       - "Network issues prevent updates from reaching other nodes"
       - "Athens crashes after responding to client"
       - "System becomes inconsistent: different servers have different data"
-  
+    notes: "Walk through this scenario step by step. Show how network delays, lost messages, or server crashes lead to inconsistent states."
+
+  - type: "text"
+    title: "Challenge 2: Trying Two Phases"
+    bullets:
+      - "How can we ensure a majority agrees before a request is considered 'committed'?"
+      - "Introduce Phase 1 (Accept): Get majority agreement on the request"
+      - "Introduce Phase 2 (Execute): Execute the request once majority agrees"
+    notes: "Introduce the concept of two-phase execution as a solution to the immediate execution problem."
+
   - type: "diagram"
     title: "Why simple two phase execution is not enough"
     diagramRef: "two_phase_execution"
     bullets:
-      - "Phase 1: Athens gets majority agreement to proceed"
-      - "Phase 2: Athens executes on all nodes with majority consent"
+      - "Phase 1 (Accept): Athens gets majority agreement on the request"
+      - "Phase 2 (Execute): Athens executes on all nodes with majority consent"
       - "System is now consistent: all nodes have Counter = 6"
+    notes: "Visual walkthrough using the two-phase execution slides to show a successful agreement."
+
+  - type: "text"
+    title: "Challenge 3: Failures During Agreement"
+    bullets:
+      - "What if a server crashes or messages get lost during these two phases?"
+      - "Failures can leave the system in an ambiguous state"
+      - "Some nodes might know the result, others might not"
+    notes: "Introduce the complexity that failures add to the two-phase protocol."
 
   - type: "diagram"
-    title: "The Commit requests can get lost"
+    title: "The Commit Requests Can Get Lost"
     diagramRef: "two_phase_lost_commits"
     bullets:
-      - "Athens gets majority agreement in Phase 1"
+      - "Athens gets majority agreement in Phase 1 (Accept)"
       - "Athens executes locally and responds to client early"
       - "Execute messages to other nodes get lost"
       - "Athens crashes before other nodes execute"
+    notes: "Show how a server can crash after getting a majority of accepts but before notifying everyone."
 
   - type: "diagram"
-    title: "The Accept requests can get lost as well"
+    title: "The Accept Requests Can Get Lost as Well"
     diagramRef: "two_phase_missed_accepts"
     bullets:
       - "Athens accepts request locally"
       - "Accept request to Cyrene gets lost"
       - "Athens proceeds with majority (self + Byzantium)"
       - "Cyrene never received any requests"
+    notes: "Show another failure scenario where accept messages are lost."
 
+  # Session 2: Recovery, Concurrency, and The 'Highest Generation' Rule - Approx. 1.5 hours
+  - type: "text"
+    title: "Adding Recovery Phase"
+    bullets:
+      - "When a server wants to process a request, it can't just proceed immediately"
+      - "First, it must check: 'Are there any requests already accepted by the majority?'"
+      - "This recovery phase ensures we don't miss previously accepted requests"
+      - "Only after checking can the server safely proceed with its own request"
+    notes: "Introduce the concept of recovery as a necessary first step before processing any request."
+
+  - type: "diagram"
+    title: "Recovery Phase: Checking for Existing Accepted Requests"
+    diagramRef: "recovery_phase_check"
+    bullets:
+      - "Athens wants to process a new request"
+      - "First, Athens asks majority: 'Do you have any accepted requests?'"
+      - "Nodes respond with any previously accepted requests they have"
+      - "Only then can Athens decide how to proceed"
+    notes: "Show the recovery phase where a server checks for existing accepted requests before proceeding."
 
   - type: "text"
-    title: "Key Concepts"
+    title: "Recovery Ambiguity: The Core Dilemma"
     bullets:
-      - "Generation numbers for leadership"
-      - "Two-phase commit protocol"
-      - "Handling network partitions"
-      - "Recovery and fault tolerance"
+      - "A new server starts recovery (runs Phase 1)"
+      - "It queries a majority and might see a request accepted on one server, but not another"
+      - "The Dilemma: Was that request committed before the crash, or did it only reach one node?"
+      - "It's impossible to know for sure!"
+    notes: "Introduce the fundamental ambiguity that makes recovery challenging."
+
+  - type: "diagram"
+    title: "Recovery Ambiguity: The Impossible Decision"
+    diagramRef: "recovery_ambiguity_dilemma"
+    bullets:
+      - "Athens starts recovery and queries majority"
+      - "Byzantium reports: 'I have accepted IncrementCounter'"
+      - "Cyrene reports: 'I have no accepted requests'"
+      - "Athens faces the dilemma: Was IncrementCounter committed or not?"
+    notes: "Show the ambiguous scenario where recovery cannot determine if a request was committed."
+
+  - type: "text"
+    title: "The Safe Path: When in Doubt, Re-Propose"
+    bullets:
+      - "Since it might have been committed, the only safe action is to assume it was"
+      - "Re-run both phases for that request with a new, higher generation number"
+      - "This forces the system towards confirming that request"
+      - "Quorum overlap ensures we don't 'forget' a previously committed value"
+    notes: "Explain why re-proposing is the safe choice and how quorum overlap provides safety."
+
+  - type: "diagram"
+    title: "Understanding Quorum Overlap"
+    diagramRef: "quorum_overlap_visualization"
+    bullets:
+      - "Any two majorities must share at least one node"
+      - "This overlap ensures information propagation"
+      - "Guarantees we'll discover previously committed values during recovery"
+    notes: "Visual explanation of why quorum overlap is fundamental to consensus safety."
+
+  - type: "text"
+    title: "Establishing Authority (Becoming the Leader)"
+    bullets:
+      - "A node that wants to initiate an agreement must first establish its authority"
+      - "It chooses a Generation Number higher than any it's seen before"
+      - "Asks a majority quorum to acknowledge this number"
+      - "If majority agrees (and haven't acknowledged a higher number), they promise not to accept lower Generation Numbers"
+      - "If nodes have previously stored requests, they report them back with their Generation Numbers"
+    notes: "Explain the first critical step: establishing leadership authority through generation numbers."
+
+  - type: "diagram"
+    title: "Leader Election Process"
+    diagramRef: "leader_election_process"
+    bullets:
+      - "Athens chooses Generation Number 5 (higher than any seen)"
+      - "Sends prepare requests to majority (self + Byzantium)"
+      - "Nodes promise not to accept requests with lower generation numbers"
+      - "Athens becomes Leader for Generation Number 5"
+    notes: "Show the step-by-step process of becoming a leader through generation number establishment."
+
+  - type: "text"
+    title: "The Leader Sends the Request"
+    bullets:
+      - "Leader sends the actual request with its Generation Number to majority quorum"
+      - "Nodes check Generation Number against their promises"
+      - "If it matches promised number (or higher), they store the request but don't execute yet"
+      - "If Generation Number is lower than promised, they reject it"
+      - "This ensures only the current leader's requests are accepted"
+    notes: "Explain how the leader propagates requests while maintaining generation number consistency."
+
+  - type: "diagram"
+    title: "Request Propagation with Generation Numbers"
+    diagramRef: "request_propagation_generation"
+    bullets:
+      - "Leader Athens sends request with Generation Number 5"
+      - "Byzantium and Cyrene check against their promises"
+      - "They store the request but don't execute yet"
+      - "System maintains consistency through generation number validation"
+    notes: "Visualize how requests are propagated and validated using generation numbers."
+
+  - type: "text"
+    title: "Choosing the Request (Recovery)"
+    bullets:
+      - "When becoming Leader, examine responses from 'Establishing Authority' step"
+      - "If nodes reported previously stored requests, choose the one with highest Generation Number"
+      - "This ensures continuity and prevents 'lost' requests that were close to agreement"
+      - "Only if no previous requests were reported can Leader propose its own request"
+      - "This is the crucial 'highest generation rule' for safety"
+    notes: "Explain the critical recovery logic that ensures safety during leadership transitions."
+
+  - type: "diagram"
+    title: "Recovery: Choosing the Highest Generation Request"
+    diagramRef: "recovery_highest_generation"
+    bullets:
+      - "New leader discovers multiple stored requests from previous attempts"
+      - "Chooses request with Generation Number 4 (highest found)"
+      - "Must re-propose this request with new, higher Generation Number 5"
+      - "Ensures no previously committed values are lost"
+    notes: "Show how the highest generation rule works during recovery scenarios."
+
+  - type: "text"
+    title: "Ensuring Majority Agreement & Execution"
+    bullets:
+      - "Even if Leader adopts a request from previous round, it must send it again with new, higher Generation Number"
+      - "Previous attempt might have failed before reaching true majority"
+      - "By getting current majority to store it with new Generation Number, Leader solidifies the request's status"
+      - "Only once request is committed (agreed by majority) can nodes execute it"
+      - "Nodes execute requests in order, only after all preceding requests are committed"
+    notes: "Explain the final step: ensuring committed requests are executed in proper order."
+
+  - type: "diagram"
+    title: "From Agreement to Execution"
+    diagramRef: "agreement_to_execution"
+    bullets:
+      - "Leader gets majority agreement on request with Generation Number 5"
+      - "Request is now committed and safe to execute"
+      - "All nodes execute in the same order"
+      - "System maintains consistent state across all nodes"
+    notes: "Show the final step from consensus agreement to actual execution."
+
+  - type: "text"
+    title: "The Complete Consensus Flow"
+    bullets:
+      - "1. Establish Authority: Get majority to promise higher Generation Number"
+      - "2. Choose Request: Pick highest generation request from recovery or propose new"
+      - "3. Get Agreement: Send selected request with new Generation Number to majority"
+      - "4. Execute: Only execute committed requests in proper order"
+      - "This ensures all nodes agree on same sequence and maintain consistent state"
+    notes: "Summarize the complete four-step consensus process before revealing it's Paxos."
+
+  # Session 3: Formalizing with Paxos & Building Replicated Logs - Approx. 1.5 hours
+  - type: "text"
+    title: "Congratulations! You've Built Paxos"
+    bullets:
+      - "What we just built is the core logic of Paxos!"
+      - "Paxos is the formal name for this consensus algorithm"
+      - "Let's map our concepts to Paxos terminology"
+      - "Then we'll see how it's used in practice"
+    notes: "Reveal that they've been learning Paxos all along, just in more intuitive terms."
+
+  - type: "text"
+    title: "Mapping Our Concepts to Paxos"
+    bullets:
+      - "Servers = Proposers/Acceptors/Learners"
+      - "prepare = Phase 1a"
+      - "'Yes' response = Promise (Phase 1b)"
+      - "accept = Phase 2a"
+      - "accepted = Phase 2b"
+      - "Generation Number = Ballot Number"
+    notes: "Show the formal Paxos terminology and how it maps to what they've learned."
+
+  - type: "diagram"
+    title: "Paxos in Action: The Full Protocol"
+    diagramRef: "workshop-paxos-full-log-prepare-leader-complete-proposals"
+    bullets:
+      - "Athens runs leader election with ballot=4"
+      - "Discovers highest numbered value 'Distributed Systems' from Cyrene"
+      - "Proposes this value in Phase 2"
+      - "Achieves consensus on 'Distributed Systems'"
+    notes: "Walk through the formal Paxos sequence diagram, connecting it to the concepts they've learned."
+
+  - type: "text"
+    title: "Paxos Challenges in Practice"
+    bullets:
+      - "Livelock: Competing proposers can prevent progress"
+      - "Solution: Random backoff and leader election"
+      - "Performance: Multiple rounds for each decision"
+      - "Solution: Multi-Paxos with stable leader"
+    notes: "Discuss practical challenges and solutions."
+
+  - type: "diagram"
+    title: "Livelock Problem and Solutions"
+    diagramRef: "livelock_scenario"
+    bullets:
+      - "Competing proposers can interfere with each other indefinitely"
+      - "Random backoff helps break the cycle"
+      - "Stable leader election is a better long-term solution"
+    notes: "Show how livelock occurs and how to resolve it."

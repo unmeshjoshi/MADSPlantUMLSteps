@@ -1,0 +1,29 @@
+@startuml
+!include ../../style.puml
+
+title Recovery: Choosing the Highest Generation Request
+
+participant Athens as "Athens\n(New Leader)"
+participant Byzantium as "Byzantium\n(Acceptor)"
+participant Cyrene as "Cyrene\n(Acceptor)"
+
+note over Athens: Crashed leader recovery\nChooses Generation Number 5\nSends Prepare requests
+
+Athens -> Byzantium: Prepare(generation=5)
+Athens -> Cyrene: Prepare(generation=5)
+
+note over Byzantium: Has stored request:\ngeneration=3, "Counter=8"\nPromises generation=5
+
+note over Cyrene: Has stored request:\ngeneration=4, "Counter=6"\nPromises generation=5
+
+Byzantium -> Athens: Promise(generation=5)\nStored: gen=3, "Counter=8"
+Cyrene -> Athens: Promise(generation=5)\nStored: gen=4, "Counter=6"
+
+note over Athens: Received multiple stored requests:\n- gen=3: "Counter=8"\n- gen=4: "Counter=6"\n\nMust choose HIGHEST: gen=4, "Counter=6"
+
+note over Athens: Cannot propose own request!\nMust re-propose "Counter=6"\nwith new generation=5
+
+Athens -> Byzantium: Accept(generation=5, request="Counter=6")
+Athens -> Cyrene: Accept(generation=5, request="Counter=6")
+
+@enduml 

@@ -1,0 +1,69 @@
+@startuml
+!include ../../style.puml
+
+title Recovery Ambiguity: The Impossible Decision
+
+' [step1 {"name":"Initial Setup - Previous Crash"}]
+participant "Athens\n(Recovering)" as athens
+participant "Byzantium\n(Counter=5)" as byzantium
+participant "Cyrene\n(Counter=5)" as cyrene
+
+note over athens: Athens crashed during\na previous consensus attempt.\nNow starting recovery...
+note over byzantium: Has accepted:\nIncrementCounter (Generation=3)
+note over cyrene: No accepted requests
+' [/step1]
+
+' [step2 {"name":"Recovery Phase Start"}]
+group #LightYellow "Recovery Phase"
+    note over athens: Athens needs to check:\n"Are there any accepted requests\nI should know about?"
+' [/step2]
+
+' [step3 {"name":"Query Majority"}]
+    par Recovery Queries
+        athens -> byzantium: "Do you have any\naccepted requests?"
+        activate byzantium
+        athens -> cyrene: "Do you have any\naccepted requests?"
+        activate cyrene
+    end
+' [/step3]
+
+' [step4 {"name":"Conflicting Responses"}]
+    byzantium -> athens: "Yes! I accepted:\nIncrementCounter (Generation=3)"
+    deactivate byzantium
+    
+    cyrene -> athens: "No accepted requests"
+    deactivate cyrene
+    
+    note over athens #pink: AMBIGUITY DETECTED!\nConflicting information
+' [/step4]
+
+' [step5 {"name":"The Dilemma", "newPage":"true"}]
+group #LightCoral "The Impossible Decision"
+    note over athens #pink: **Two Possible Scenarios:**
+    
+    note over athens #lightblue: **Scenario 1: Request WAS Committed**\n• Previous leader got majority (Byzantium + someone else)\n• IncrementCounter is the committed value\n• Athens must preserve it
+    
+    note over athens #lightyellow: **Scenario 2: Request was NOT Committed**\n• Previous leader only reached Byzantium\n• IncrementCounter never got majority agreement\n• Athens can ignore it
+end
+' [/step5]
+
+' [step6 {"name":"Why We Can't Tell", "newPage":"true"}]
+group #Red "Why Athens Cannot Decide"
+    note over athens, cyrene #pink: **The Problem:**
+    note over athens, cyrene: • Athens doesn't know who else might have accepted IncrementCounter
+    note over athens, cyrene: • Maybe the third node crashed and was replaced
+    note over athens, cyrene: • Maybe messages were lost before reaching majority
+    note over athens, cyrene: • No way to distinguish committed vs. uncommitted!
+end
+' [/step6]
+
+' [step7 {"name":"The Safety Requirement", "newPage":"true"}]
+group #LightGreen "Safety Requirement"
+    note over athens, cyrene: **Critical Safety Rule:**
+    note over athens, cyrene: If a value was ever committed,\nit must NEVER be lost or changed
+    
+    note over athens #pink: **Athens' Dilemma:**\nRisk losing a committed value\nOR\nRisk blocking with an uncommitted value?
+end
+' [/step7]
+
+@enduml 

@@ -1,0 +1,76 @@
+@startuml
+!include ../../style.puml
+
+title Recovery Phase: Checking for Existing Accepted Requests
+
+' [step1 {"name":"Initial Setup"}]
+participant "Alice\n(Client)" as client
+participant "Athens\n(Counter=5)" as athens
+participant "Byzantium\n(Counter=5)" as byzantium
+participant "Cyrene\n(Counter=5)" as cyrene
+
+note over athens: Athens wants to process\na new client request
+' [/step1]
+
+' [step2 {"name":"Recovery Phase Start"}]
+group #LightYellow "Recovery Phase"
+    client -> athens: IncrementCounter
+    activate athens
+    
+    note over athens: Before proceeding,\nAthens must check for\nexisting accepted requests
+' [/step2]
+
+' [step3 {"name":"Query Majority"}]
+    par Recovery Queries
+        athens -> byzantium: "Do you have any\naccepted requests?"
+        activate byzantium
+        athens -> cyrene: "Do you have any\naccepted requests?"
+        activate cyrene
+    end
+' [/step3]
+
+' [step4 {"name":"Responses - No Previous Requests"}]
+    byzantium -> athens: "No accepted requests"
+    deactivate byzantium
+    cyrene -> athens: "No accepted requests"
+    deactivate cyrene
+    
+    note over athens: Safe to proceed!\nNo previous requests found
+' [/step4]
+
+' [step5 {"name":"Proceed with Request", "newPage":"true"}]
+group #LightBlue "Now Safe to Proceed"
+    note over athens: Athens can now safely\nprocess the new request
+    
+    par Accept Phase
+        athens -> byzantium: Accept(IncrementCounter)
+        activate byzantium
+        athens -> cyrene: Accept(IncrementCounter)
+        activate cyrene
+    end
+    
+    byzantium -> athens: Agreed
+    deactivate byzantium
+    cyrene -> athens: Agreed
+    deactivate cyrene
+    
+    note over athens: Majority achieved\n(2 agreements + self)
+end
+' [/step5]
+
+' [step6 {"name":"Execute Phase"}]
+group #LightGreen "Execute Phase"
+    par Execute Phase
+        athens -> athens: Execute(IncrementCounter)
+        athens -> byzantium: Execute(IncrementCounter)
+        athens -> cyrene: Execute(IncrementCounter)
+    end
+    
+    athens -> client: Success
+    deactivate athens
+end
+
+note across: Recovery phase ensures we don't\nmiss previously accepted requests!
+' [/step6]
+
+@enduml 
