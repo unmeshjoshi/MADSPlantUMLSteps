@@ -1,0 +1,74 @@
+@startuml
+!include ../../style.puml
+
+title Multi-Slot Consensus in Action
+
+' [step1 {"name":"Initial State"}]
+participant "Athens\n(Leader)" as athens
+participant "Byzantium" as byzantium
+participant "Cyrene" as cyrene
+
+note over athens: **Current Log State:**\n[1] IncrementCounter (committed)\n[2] <empty>\n[3] <empty>
+
+note over athens: New request:\nDecrementCounter
+' [/step1]
+
+' [step2 {"name":"Try Slot 1 - Already Occupied"}]
+athens -> byzantium: "Slot 1 consensus check"
+athens -> cyrene: "Slot 1 consensus check"
+
+byzantium --> athens: "Slot 1 has IncrementCounter\n(already committed)"
+cyrene --> athens: "Slot 1 has IncrementCounter\n(already committed)"
+
+note over athens #yellow: Slot 1 already committed\nCannot use for new request
+' [/step2]
+
+' [step3 {"name":"Try Slot 2 - Available", "newPage":"true"}]
+group #LightBlue "Consensus for Slot 2"
+    athens -> byzantium: Prepare(gen=5, slot=2)
+    athens -> cyrene: Prepare(gen=5, slot=2)
+    
+    byzantium --> athens: Promise(gen=5, slot=2)\nNo previous value
+    cyrene --> athens: Promise(gen=5, slot=2)\nNo previous value
+    
+    note over athens: Slot 2 is available!\nCan propose DecrementCounter
+end
+' [/step3]
+
+' [step4 {"name":"Accept Phase for Slot 2"}]
+group #LightGreen "Accept Phase"
+    athens -> byzantium: Accept(gen=5, slot=2, "DecrementCounter")
+    athens -> cyrene: Accept(gen=5, slot=2, "DecrementCounter")
+    
+    byzantium --> athens: Accepted(slot=2)
+    cyrene --> athens: Accepted(slot=2)
+    
+    note over athens #lightgreen: SUCCESS!\nDecrementCounter committed in Slot 2
+end
+' [/step4]
+
+' [step5 {"name":"Final Log State", "newPage":"true"}]
+note over athens: **Updated Log State:**\n[1] IncrementCounter (committed)\n[2] DecrementCounter (committed)\n[3] <empty>
+
+note over byzantium: **Updated Log State:**\n[1] IncrementCounter (committed)\n[2] DecrementCounter (committed)\n[3] <empty>
+
+note over cyrene: **Updated Log State:**\n[1] IncrementCounter (committed)\n[2] DecrementCounter (committed)\n[3] <empty>
+
+note over athens, cyrene #lightgreen: Both requests now committed!\nCan execute in order: Slot 1, then Slot 2
+' [/step5]
+
+' [step6 {"name":"Key Insights", "newPage":"true"}]
+note across #lightyellow
+**Multi-Slot Consensus Key Points:**
+
+• **Independent Slots**: Each slot runs separate consensus
+• **Slot Discovery**: Find next available slot for new requests  
+• **Preserve Committed**: Never overwrite committed slots
+• **Ordered Execution**: Execute slots in sequential order
+• **Unlimited Capacity**: Can handle any number of requests
+
+**This solves the single-value limitation!**
+end note
+' [/step6]
+
+@enduml 

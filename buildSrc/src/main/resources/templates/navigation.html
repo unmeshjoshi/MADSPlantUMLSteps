@@ -3,8 +3,35 @@
         <i class='fas fa-chevron-left' aria-hidden='true'></i>
         <span>Previous</span>
     </button>
+    
+    <button id='goto-slide-button' onclick='toggleSlideSelector()' aria-label='Go to Slide'>
+        <i class='fas fa-list' aria-hidden='true'></i>
+        <span>Go to Slide</span>
+    </button>
+    
     <button id='next-button' onclick='nextStep()' aria-label='Next Slide'>
         <span>Next</span>
         <i class='fas fa-chevron-right' aria-hidden='true'></i>
     </button>
+</div>
+
+<!-- Slide Selector Modal -->
+<div id='slide-selector-modal' class='slide-selector-modal' style='display: none;'>
+    <div class='slide-selector-content'>
+        <div class='slide-selector-header'>
+            <h3>Go to Slide</h3>
+            <button id='close-slide-selector' onclick='closeSlideSelector()' aria-label='Close'>
+                <i class='fas fa-times'></i>
+            </button>
+        </div>
+        <div class='slide-selector-body'>
+            <div class='slide-search'>
+                <input type='text' id='slide-search-input' placeholder='Search slides...' />
+                <i class='fas fa-search'></i>
+            </div>
+            <div id='slide-list' class='slide-list'>
+                <!-- Slides will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
 </div>

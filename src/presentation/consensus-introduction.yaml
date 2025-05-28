@@ -297,3 +297,117 @@ slides:
       - "Random backoff helps break the cycle"
       - "Stable leader election is a better long-term solution"
     notes: "Show how livelock occurs and how to resolve it."
+
+  # Session 4: From Single Value to Replicated Logs
+  - type: "text"
+    title: "Limitation: Accepted Requests Never Forgotten"
+    bullets:
+      - "Once a request is accepted by any node, it can NEVER be forgotten"
+      - "Safety requirement: If it might have been committed, we must preserve it"
+      - "This creates a fundamental limitation for our current approach"
+    notes: "Introduce the key limitation that leads to the need for replicated logs."
+
+  - type: "text"
+    title: "The Single-Value Problem"
+    bullets:
+      - "Our current consensus can only agree on ONE value ever"
+      - "Once a value is committed, no other request can be executed"
+      - "Example: If 'IncrementCounter' is committed, 'DecrementCounter' can never be processed"
+      - "This makes the system unusable for real applications!"
+    notes: "Explain why single-value consensus is insufficient for practical systems."
+
+  - type: "diagram"
+    title: "Single-Value Consensus Limitation"
+    diagramRef: "single_value_limitation"
+    bullets:
+      - "IncrementCounter is committed and executed"
+      - "New request DecrementCounter arrives"
+      - "System cannot process it - consensus slot is 'used up'"
+      - "No way to handle multiple requests over time"
+    notes: "Show the fundamental limitation of single-value consensus."
+
+  - type: "text"
+    title: "Solution: Replicated Log of Requests"
+    bullets:
+      - "Instead of agreeing on a single value, maintain an ordered log of requests"
+      - "Each log slot can hold one committed request"
+      - "Run consensus separately for each slot"
+      - "Execute requests in log order to maintain consistency"
+    notes: "Introduce the concept of replicated logs as the solution."
+
+  - type: "diagram"
+    title: "Replicated Log Concept"
+    diagramRef: "replicated_log_concept"
+    bullets:
+      - "Each node maintains an ordered log of requests"
+      - "Slot 1: IncrementCounter, Slot 2: DecrementCounter, Slot 3: ..."
+      - "Consensus ensures all nodes have the same log"
+      - "Requests are executed in log order"
+    notes: "Show the basic concept of replicated logs."
+
+  - type: "text"
+    title: "Multi-Slot Consensus Process"
+    bullets:
+      - "For each new request, find the next available slot"
+      - "Run full consensus (generation number + recovery + two phases) for that slot"
+      - "If slot already has an accepted request, commit it first, then try next slot"
+      - "Continue until our request gets committed in some slot"
+    notes: "Explain how consensus works across multiple slots."
+
+  - type: "diagram"
+    title: "Multi-Slot Consensus in Action"
+    diagramRef: "multi_slot_consensus"
+    bullets:
+      - "Athens wants to commit DecrementCounter"
+      - "Slot 1 already has IncrementCounter - commit it first"
+      - "Try DecrementCounter in Slot 2"
+      - "Success! Both requests now committed in order"
+    notes: "Show how multi-slot consensus handles multiple requests."
+
+  - type: "text"
+    title: "Execution Challenge: The High-Water Mark"
+    bullets:
+      - "Problem: Log might have gaps (some slots committed, others not)"
+      - "Cannot execute immediately after commit - might break ordering"
+      - "Solution: High-water mark - index before which ALL slots are committed"
+      - "Execute requests only up to the high-water mark"
+    notes: "Introduce the execution challenge and high-water mark solution."
+
+  - type: "diagram"
+    title: "High-Water Mark Execution"
+    diagramRef: "high_water_mark_execution"
+    bullets:
+      - "Log state: Slot 1 (committed), Slot 2 (uncommitted), Slot 3 (committed)"
+      - "High-water mark = 0 (no consecutive committed slots from start)"
+      - "Cannot execute Slot 3 until Slot 2 is committed"
+      - "Ensures strict ordering of execution"
+    notes: "Show how high-water mark ensures ordered execution."
+
+  - type: "text"
+    title: "Complete Multi-Paxos Flow"
+    bullets:
+      - "1. Client sends request to leader"
+      - "2. Leader finds next available slot"
+      - "3. Run consensus for that slot (with recovery)"
+      - "4. Update high-water mark when consecutive slots are committed"
+      - "5. Execute all requests up to high-water mark in order"
+    notes: "Summarize the complete Multi-Paxos process."
+
+  - type: "diagram"
+    title: "Multi-Paxos: Complete Flow"
+    diagramRef: "multi_paxos_complete_flow"
+    bullets:
+      - "Multiple clients sending requests"
+      - "Leader assigns slots and runs consensus"
+      - "Handles recovery and slot conflicts"
+      - "Maintains high-water mark for safe execution"
+    notes: "Show the complete Multi-Paxos system in action."
+
+  - type: "text"
+    title: "From Basic Consensus to Production Systems"
+    bullets:
+      - "We've built the foundation: single-value consensus with recovery"
+      - "Extended it to replicated logs for practical use"
+      - "This is the core of systems like Chubby, etcd, and Raft"
+      - "Real systems add optimizations, but the principles remain the same"
+    notes: "Connect the concepts learned to real-world distributed systems."

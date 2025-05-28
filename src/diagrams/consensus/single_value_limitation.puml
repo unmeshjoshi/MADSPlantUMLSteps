@@ -1,0 +1,56 @@
+@startuml
+!include ../../style.puml
+
+title Single-Value Consensus Limitation
+
+' [step1 {"name":"Initial State - First Request"}]
+participant "Athens\n(Leader)" as athens
+participant "Byzantium" as byzantium
+participant "Cyrene" as cyrene
+
+note over athens, cyrene: System starts fresh\nNo committed values yet
+
+note over athens: Client sends:\nIncrementCounter
+' [/step1]
+
+' [step2 {"name":"First Request Committed"}]
+athens -> byzantium: Accept(gen=1, "IncrementCounter")
+athens -> cyrene: Accept(gen=1, "IncrementCounter")
+
+byzantium --> athens: Accepted
+cyrene --> athens: Accepted
+
+note over athens, cyrene #lightgreen: SUCCESS!\nIncrementCounter is committed and executed\nCounter = 6
+' [/step2]
+
+' [step3 {"name":"Second Request Arrives", "newPage":"true"}]
+note over athens: New client sends:\nDecrementCounter
+
+note over athens #pink: PROBLEM!\nConsensus slot is already "used up"\nby IncrementCounter
+' [/step3]
+
+' [step4 {"name":"Cannot Process New Request", "newPage":"true"}]
+note over athens, cyrene #red: **FUNDAMENTAL LIMITATION**
+
+note over athens, cyrene: • Once a value is committed, consensus is "done"
+note over athens, cyrene: • Cannot agree on any other value
+note over athens, cyrene: • DecrementCounter can NEVER be processed
+note over athens, cyrene: • System becomes unusable for multiple requests!
+
+note over athens #pink: Athens must reject\nDecrementCounter\n\nNo way to handle it!
+' [/step4]
+
+' [step5 {"name":"Why This Happens", "newPage":"true"}]
+note across #lightyellow
+**Why Single-Value Consensus Has This Limitation:**
+
+1. **Safety Requirement**: Once committed, value can never change
+2. **Recovery Rule**: Must always preserve any accepted request
+3. **Single Slot**: Only one "consensus instance" exists
+4. **No Reset**: Cannot start fresh consensus for new requests
+
+**Result**: System can only handle ONE request in its entire lifetime!
+end note
+' [/step5]
+
+@enduml 

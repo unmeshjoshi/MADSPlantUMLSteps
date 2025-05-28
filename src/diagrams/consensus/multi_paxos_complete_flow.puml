@@ -1,0 +1,115 @@
+@startuml
+!include ../../style.puml
+
+title Multi-Paxos: Complete Flow
+
+' [step1 {"name":"Initial Setup"}]
+participant "Client A" as clientA
+participant "Client B" as clientB
+participant "Athens\n(Leader)" as athens
+participant "Byzantium" as byzantium
+participant "Cyrene" as cyrene
+
+note over athens: **Current Log:**\n[1] <empty>\n[2] <empty>\n[3] <empty>\nHigh-Water Mark = 0
+' [/step1]
+
+' [step2 {"name":"Multiple Client Requests"}]
+clientA -> athens: IncrementCounter
+clientB -> athens: DecrementCounter
+
+note over athens: Assign slots:\nClient A → Slot 1\nClient B → Slot 2
+' [/step2]
+
+' [step3 {"name":"Consensus for Slot 1", "newPage":"true"}]
+group #LightBlue "Slot 1 Consensus"
+    athens -> byzantium: Prepare(gen=1, slot=1)
+    athens -> cyrene: Prepare(gen=1, slot=1)
+    
+    byzantium --> athens: Promise(gen=1, slot=1)
+    cyrene --> athens: Promise(gen=1, slot=1)
+    
+    athens -> byzantium: Accept(gen=1, slot=1, "IncrementCounter")
+    athens -> cyrene: Accept(gen=1, slot=1, "IncrementCounter")
+    
+    byzantium --> athens: Accepted(slot=1)
+    cyrene --> athens: Accepted(slot=1)
+end
+
+note over athens #lightgreen: Slot 1 committed!\nHigh-Water Mark = 1
+' [/step3]
+
+' [step4 {"name":"Consensus for Slot 2", "newPage":"true"}]
+group #LightGreen "Slot 2 Consensus"
+    athens -> byzantium: Prepare(gen=2, slot=2)
+    athens -> cyrene: Prepare(gen=2, slot=2)
+    
+    byzantium --> athens: Promise(gen=2, slot=2)
+    cyrene --> athens: Promise(gen=2, slot=2)
+    
+    athens -> byzantium: Accept(gen=2, slot=2, "DecrementCounter")
+    athens -> cyrene: Accept(gen=2, slot=2, "DecrementCounter")
+    
+    byzantium --> athens: Accepted(slot=2)
+    cyrene --> athens: Accepted(slot=2)
+end
+
+note over athens #lightgreen: Slot 2 committed!\nHigh-Water Mark = 2
+' [/step4]
+
+' [step5 {"name":"Execution Phase", "newPage":"true"}]
+group #LightYellow "Execute Up to High-Water Mark"
+    note over athens: Execute Slot 1:\nIncrementCounter\nCounter = 5 + 1 = 6
+    
+    note over athens: Execute Slot 2:\nDecrementCounter\nCounter = 6 - 1 = 5
+    
+    note over athens: **High-Water Mark = 2**\nBoth slots executed
+end
+
+athens --> clientA: Success: IncrementCounter executed
+athens --> clientB: Success: DecrementCounter executed
+' [/step5]
+
+' [step6 {"name":"New Request with Conflict", "newPage":"true"}]
+participant "Client C" as clientC
+clientC -> athens: SetCounter(10)
+
+note over athens: Try Slot 3 for SetCounter(10)
+
+athens -> byzantium: Prepare(gen=3, slot=3)
+athens -> cyrene: Prepare(gen=3, slot=3)
+
+byzantium --> athens: Promise(gen=3, slot=3)\nFound: IncrementCounter (gen=1)
+cyrene --> athens: Promise(gen=3, slot=3)\nNo previous value
+
+note over athens #yellow: Conflict! Byzantium has different value\nMust commit IncrementCounter first
+' [/step6]
+
+' [step7 {"name":"Resolve Conflict", "newPage":"true"}]
+group #LightCoral "Commit Conflicting Request First"
+    athens -> byzantium: Accept(gen=3, slot=3, "IncrementCounter")
+    athens -> cyrene: Accept(gen=3, slot=3, "IncrementCounter")
+    
+    byzantium --> athens: Accepted(slot=3)
+    cyrene --> athens: Accepted(slot=3)
+    
+    note over athens: Slot 3 committed with IncrementCounter\nNow try Slot 4 for SetCounter(10)
+end
+' [/step7]
+
+' [step8 {"name":"Final State", "newPage":"true"}]
+note over athens: **Final Log State:**\n[1] IncrementCounter (committed, executed)\n[2] DecrementCounter (committed, executed)\n[3] IncrementCounter (committed)\n[4] SetCounter(10) (pending)\nHigh-Water Mark = 3
+
+note across #lightgreen
+**Multi-Paxos Complete Flow Achieved:**
+
+✓ **Multiple Clients**: Handled concurrent requests
+✓ **Slot Assignment**: Each request gets appropriate slot  
+✓ **Conflict Resolution**: Preserved existing accepted values
+✓ **Ordered Execution**: Maintained consistency via high-water mark
+✓ **Fault Tolerance**: Consensus ensures agreement despite failures
+
+**This is production-ready distributed consensus!**
+end note
+' [/step8]
+
+@enduml 

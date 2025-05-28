@@ -46,11 +46,21 @@ class PresentationViewer {
         this.progressIndicator = document.querySelector('.progress-indicator');
         this.sectionInfo = document.getElementById('current-section');
         
+        // Slide selector elements
+        this.slideSelectorModal = document.getElementById('slide-selector-modal');
+        this.slideList = document.getElementById('slide-list');
+        this.slideSearchInput = document.getElementById('slide-search-input');
+        this.gotoSlideButton = document.getElementById('goto-slide-button');
+        this.closeSlideSelectorButton = document.getElementById('close-slide-selector');
+        
         // Create toolbar
         this.createToolbar();
         
         // Handle title notes positioning
         this.setupTitleNotes();
+        
+        // Initialize slide selector
+        this.initializeSlideSelector();
     }
 
     createToolbar() {
@@ -209,6 +219,10 @@ class PresentationViewer {
                 case 'c':
                     e.preventDefault();
                     this.clearDrawings();
+                    break;
+                case 'g':
+                    e.preventDefault();
+                    this.toggleSlideSelector();
                     break;
                 case 'escape':
                     e.preventDefault();
@@ -506,6 +520,18 @@ class PresentationViewer {
         
         // Update slide counter
         this.currentSlideNum.textContent = this.currentSlideIndex + 1;
+        
+        // Update slide selector current slide if modal is open
+        if (this.slideSelectorModal && this.slideSelectorModal.style.display !== 'none') {
+            const slideItems = this.slideList.querySelectorAll('.slide-item');
+            slideItems.forEach((item, index) => {
+                if (index === this.currentSlideIndex) {
+                    item.classList.add('current');
+                } else {
+                    item.classList.remove('current');
+                }
+            });
+        }
     }
 
     updateButtonStates() {
@@ -582,6 +608,138 @@ class PresentationViewer {
 
     initializePresentation() {
         this.showSlide(this.currentSlideIndex);
+    }
+
+    // Slide selector functionality
+    initializeSlideSelector() {
+        this.populateSlideList();
+        this.setupSlideSelector();
+    }
+
+    populateSlideList() {
+        this.slideList.innerHTML = '';
+        
+        this.slides.forEach((slide, index) => {
+            const titleElement = slide.querySelector('h2');
+            const title = titleElement ? titleElement.textContent : `Slide ${index + 1}`;
+            
+            const slideItem = document.createElement('div');
+            slideItem.className = 'slide-item';
+            slideItem.dataset.slideIndex = index;
+            
+            if (index === this.currentSlideIndex) {
+                slideItem.classList.add('current');
+            }
+            
+            slideItem.innerHTML = `
+                <div class="slide-number">${index + 1}</div>
+                <div class="slide-title">${title}</div>
+            `;
+            
+            slideItem.addEventListener('click', () => {
+                this.goToSlide(index);
+                this.closeSlideSelector();
+            });
+            
+            this.slideList.appendChild(slideItem);
+        });
+    }
+
+    setupSlideSelector() {
+        // Search functionality
+        this.slideSearchInput.addEventListener('input', (e) => {
+            this.filterSlides(e.target.value);
+        });
+        
+        // Close modal when clicking outside
+        this.slideSelectorModal.addEventListener('click', (e) => {
+            if (e.target === this.slideSelectorModal) {
+                this.closeSlideSelector();
+            }
+        });
+        
+        // Keyboard shortcuts for slide selector
+        document.addEventListener('keydown', (e) => {
+            if (this.slideSelectorModal.style.display !== 'none') {
+                if (e.key === 'Escape') {
+                    this.closeSlideSelector();
+                } else if (e.key === 'Enter') {
+                    const firstVisibleSlide = this.slideList.querySelector('.slide-item:not([style*="display: none"])');
+                    if (firstVisibleSlide) {
+                        const slideIndex = parseInt(firstVisibleSlide.dataset.slideIndex);
+                        this.goToSlide(slideIndex);
+                        this.closeSlideSelector();
+                    }
+                }
+            }
+        });
+    }
+
+    toggleSlideSelector() {
+        if (this.slideSelectorModal.style.display === 'none' || !this.slideSelectorModal.style.display) {
+            this.showSlideSelector();
+        } else {
+            this.closeSlideSelector();
+        }
+    }
+
+    showSlideSelector() {
+        this.slideSelectorModal.style.display = 'flex';
+        this.populateSlideList(); // Refresh to show current slide
+        this.slideSearchInput.value = '';
+        this.slideSearchInput.focus();
+        
+        // Scroll current slide into view
+        const currentSlideItem = this.slideList.querySelector('.slide-item.current');
+        if (currentSlideItem) {
+            currentSlideItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    closeSlideSelector() {
+        this.slideSelectorModal.style.display = 'none';
+        this.slideSearchInput.value = '';
+        this.filterSlides(''); // Reset filter
+    }
+
+    filterSlides(searchTerm) {
+        const slideItems = this.slideList.querySelectorAll('.slide-item');
+        const term = searchTerm.toLowerCase();
+        
+        slideItems.forEach(item => {
+            const title = item.querySelector('.slide-title').textContent.toLowerCase();
+            const slideNumber = item.querySelector('.slide-number').textContent;
+            
+            if (title.includes(term) || slideNumber.includes(term)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    goToSlide(slideIndex) {
+        if (slideIndex >= 0 && slideIndex < this.slides.length) {
+            this.currentSlideIndex = slideIndex;
+            this.currentStepIndex = 0;
+            this.showSlide(this.currentSlideIndex);
+            
+            // Clear drawings when jumping to a different slide
+            this.clearDrawings();
+        }
+    }
+}
+
+// Global functions for onclick handlers
+function toggleSlideSelector() {
+    if (window.presentationViewer) {
+        window.presentationViewer.toggleSlideSelector();
+    }
+}
+
+function closeSlideSelector() {
+    if (window.presentationViewer) {
+        window.presentationViewer.closeSlideSelector();
     }
 }
 
