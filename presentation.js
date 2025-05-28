@@ -743,6 +743,10 @@ function closeSlideSelector() {
     }
 }
 
+function toggleDiagramBullets(element) {
+    element.classList.toggle('active');
+}
+
 // Initialize the presentation viewer when DOM is loaded
 document.addEventListener("DOMContentLoaded", function () {
     window.presentationViewer = new PresentationViewer();

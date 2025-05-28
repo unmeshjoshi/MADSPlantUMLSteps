@@ -306,49 +306,121 @@ body {
     flex-direction: column;
     width: 100%;
     height: 100%;
-    align-items: stretch; /* Full width for children */
-    justify-content: flex-start;
-    gap: 0; /* Let margins control spacing */
+    align-items: center;
+    justify-content: center;
     padding: 1.5rem;
-    overflow: hidden; /* Prevent outer container overflow */
+    overflow: hidden;
 }
 
 .diagram-container {
     width: 100%;
-    flex: 1 1 auto; /* Allow growing to fill available space */
+    height: 100%;
     display: flex;
-    align-items: flex-start; /* Align to top to prevent centering cutting off content */
+    align-items: center;
     justify-content: center;
-    min-height: 0; /* Allows container to shrink */
-    margin-bottom: 1.5rem; /* Space between diagram and bullets */
-    overflow-y: auto; /* Add scrolling for tall images */
-    max-height: 70vh; /* Set a fixed maximum height */
+    overflow-y: auto;
 }
 
-/* When no bullets are present */
+/* When no bullets are present - same as with bullets now */
 .diagram-slide-content.full-size .diagram-container {
-    flex: 1; /* Take all available space */
-    max-height: 80vh; /* Set a maximum height - slightly larger when no bullets */
-    margin-bottom: 0; /* Remove bottom margin */
-    overflow-y: auto; /* Maintain scrolling when needed */
-    height: auto; /* Let height adjust based on content */
+    width: 100%;
+    height: 100%;
 }
 
 .diagram-bullets {
-    width: 100%; /* Full width */
-    flex: 0 1 auto; /* Don't grow, can shrink, auto basis */
-    overflow-y: visible; /* Allow content to determine height */
-    padding: 1.25rem 2rem;
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    width: 350px;
+    max-width: 90vw;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 1.5rem;
     background: var(--surface);
     border-radius: 12px;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-lg);
     border: 1px solid var(--border);
-    margin-bottom: 1rem; /* Space at bottom */
+    z-index: 1000;
+    display: none; /* Hidden by default */
+    transition: all 0.3s ease;
+}
+
+/* Show bullets when active */
+.diagram-bullets.active {
+    display: block;
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
+    }
+}
+
+/* Floating toggle button */
+.diagram-bullets-toggle {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    box-shadow: var(--shadow-lg);
+    z-index: 999;
+    transition: all 0.3s ease;
+}
+
+.diagram-bullets-toggle:hover {
+    background: var(--primary-dark);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.diagram-bullets-toggle::after {
+    content: 'Show Notes';
+    position: absolute;
+    right: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--text-primary);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+}
+
+.diagram-bullets-toggle:hover::after {
+    opacity: 1;
+}
+
+/* Hide toggle when bullets are active */
+.diagram-bullets.active + .diagram-bullets-toggle {
+    display: none;
 }
 
 .diagram-bullets ul {
     margin: 0;
-    padding: 0 1.5rem;
+    padding: 1.5rem 1.5rem 0 1.5rem;
     list-style-position: outside;
     text-align: left;
     width: 100%;
@@ -409,8 +481,8 @@ body {
 }
 
 .step img {
-    width: 95%;       /* Use full width for better readability */
-    max-width: 95%;   /* Cap maximum width */
+    width: 80%;       /* Reduced to 80% for better visual balance */
+    max-width: 80%;   /* Cap maximum width */
     height: auto;     /* Allow height to adjust based on content */
     /* Remove max-height to allow full diagram display */
     /* Remove object-fit to allow natural scaling */
@@ -572,9 +644,31 @@ button:hover:not(:disabled) i.fa-chevron-left,
     }
 
     .step img {
-        max-width: 100%;
-        width: 95%; /* Use full width on mobile too */
+        max-width: 80%;
+        width: 75%;       /* Proportionally smaller for tablets (80% desktop -> 75% tablet) */
         /* Remove max-height to allow full diagram display on mobile */
+    }
+
+    /* Mobile responsive styles for floating bullets */
+    .diagram-bullets {
+        right: 10px;
+        width: 300px;
+        max-width: 85vw;
+        padding: 1.2rem;
+        font-size: 0.9rem;
+    }
+    
+    .diagram-bullets-toggle {
+        right: 10px;
+        width: 45px;
+        height: 45px;
+        font-size: 1rem;
+    }
+    
+    .diagram-bullets-toggle::after {
+        right: 55px;
+        font-size: 0.75rem;
+        padding: 6px 10px;
     }
 }
 
@@ -612,8 +706,8 @@ button:hover:not(:disabled) i.fa-chevron-left,
     }
     
     .step img {
-        max-width: 100%;
-        width: 95%; /* Use full width on very small screens too */
+        max-width: 80%;
+        width: 70%;       /* Proportionally smaller for phones (80% desktop -> 70% phone) */
         /* Remove max-height to allow full diagram display on very small screens */
     }
     
@@ -626,6 +720,48 @@ button:hover:not(:disabled) i.fa-chevron-left,
         font-size: 20px;
         padding-left: 25px;
         width: 90%;
+    }
+
+    .diagram-bullets {
+        right: 5px;
+        left: 5px;
+        width: auto;
+        max-width: none;
+        padding: 1rem;
+        font-size: 0.85rem;
+        top: auto;
+        bottom: 80px;
+        transform: none;
+        max-height: 50vh;
+    }
+    
+    .diagram-bullets-toggle {
+        right: 20px;
+        bottom: 20px;
+        top: auto;
+        transform: none;
+        width: 40px;
+        height: 40px;
+        font-size: 0.9rem;
+    }
+    
+    .diagram-bullets-toggle::after {
+        display: none; /* Hide tooltip on very small screens */
+    }
+    
+    .diagram-bullets.active {
+        animation: slideInUp 0.3s ease-out;
+    }
+    
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(100%);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 }
 
@@ -1127,4 +1263,28 @@ kbd {
     .slide-title {
         font-size: 0.9rem;
     }
+}
+
+/* Close button for floating bullets */
+.diagram-bullets-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: var(--text-light);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+
+.diagram-bullets-close:hover {
+    background: var(--text-secondary);
+    transform: scale(1.1);
 }

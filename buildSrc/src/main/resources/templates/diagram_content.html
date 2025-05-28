@@ -4,7 +4,13 @@
     </div>
     {{#hasBullets}}
     <div class='diagram-bullets'>
+        <button class='diagram-bullets-close' onclick="toggleDiagramBullets(this.parentElement)">
+            <i class='fas fa-times'></i>
+        </button>
         {{bulletsHtml}}
     </div>
+    <button class='diagram-bullets-toggle' onclick="toggleDiagramBullets(this.previousElementSibling)">
+        <i class='fas fa-sticky-note'></i>
+    </button>
     {{/hasBullets}}
 </div>
