@@ -1,0 +1,194 @@
+@startuml
+!include ../../style.puml
+
+footer Page %page% of %lastpage%
+
+actor Client1
+actor Client2
+participant Athens
+participant Byzantium 
+participant Cyrene 
+
+title Why Accepted Values Cannot Be Forgotten
+
+== Initial State: Value Accepted by Quorum ==
+
+note over Athens
+Generation: 5
+Accepted: "IncrementCounter"
+State: ACCEPTED
+end note
+
+note over Byzantium
+Generation: 5
+Accepted: "IncrementCounter"
+State: ACCEPTED
+end note
+
+/ note over Cyrene
+Generation: 3
+Accepted: ""
+State: NONE
+end note
+
+hnote over Athens, Byzantium #lightgreen
+Quorum has accepted "IncrementCounter"
+with Generation 5
+end note
+
+newPage
+
+== Scenario: Athens Forgets and Network Issues ==
+
+note over Athens #lightcoral
+DANGER: Athens "forgets" 
+its accepted value
+Generation: 5
+Accepted: ""  ← WRONG!
+State: NONE
+end note
+
+note over Byzantium
+Generation: 5
+Accepted: "IncrementCounter"
+State: ACCEPTED
+end note
+
+/ note over Cyrene
+Generation: 3
+Accepted: ""
+State: NONE
+end note
+
+Client2 -> Athens: "DecrementCounter"
+
+newPage
+
+== Athens Starts New Round with Higher Generation ==
+
+Athens -> Athens: prepare(Generation=6)
+Athens -> Byzantium: prepare(Generation=6)
+Athens -> Cyrene: prepare(Generation=6)
+
+Athens <-- Athens: promise(Generation=6, no_accepted_value)
+Athens <-[#red]-x Byzantium: promise(Generation=6, accepted="IncrementCounter", Generation=5)
+Athens <-- Cyrene: promise(Generation=6, no_accepted_value)
+
+hnote over Athens #red
+CRITICAL PROBLEM:
+- Athens forgot its accepted value
+- Byzantium's response is lost
+- Athens only sees "no accepted values"
+end note
+
+newPage
+
+== The Dangerous Decision ==
+
+note over Athens #lightcoral
+Athens thinks there are no
+previously accepted values
+and proceeds with its own request
+end note
+
+Athens -> Athens: accept("DecrementCounter", Generation=6)
+Athens -> Byzantium: accept("DecrementCounter", Generation=6)
+Athens -> Cyrene: accept("DecrementCounter", Generation=6)
+
+Athens <-- Athens: accepted
+Athens <-- Byzantium: accepted
+Athens <-- Cyrene: accepted
+
+hnote over Athens, Cyrene #red
+SAFETY VIOLATION!
+Two different values could be committed:
+- "IncrementCounter" (from previous round)
+- "DecrementCounter" (from current round)
+end note
+
+newPage
+
+== Why This Violates Safety ==
+
+hnote over Athens, Cyrene #red
+**The Problem:**
+Byzantium still remembers "IncrementCounter" was accepted.
+If another node later queries Byzantium, it might
+re-propose "IncrementCounter" while Athens has
+committed "DecrementCounter".
+
+**Result:** Two conflicting values both considered valid!
+end note
+
+newPage
+
+== The Correct Behavior: Never Forget ==
+
+note over Athens #lightgreen
+Athens MUST never forget
+accepted values, even after
+crashes or restarts
+end note
+
+note over Athens
+Generation: 5
+Accepted: "IncrementCounter"
+State: ACCEPTED ← PRESERVED!
+end note
+
+Athens -> Athens: prepare(Generation=6)
+Athens -> Byzantium: prepare(Generation=6)
+Athens -> Cyrene: prepare(Generation=6)
+
+Athens <-- Athens: promise(Generation=6, accepted="IncrementCounter", Generation=5)
+Athens <-[#red]-x Byzantium: promise(Generation=6, accepted="IncrementCounter", Generation=5)
+Athens <-- Cyrene: promise(Generation=6, no_accepted_value)
+
+hnote over Athens #lightgreen
+Even with lost message, Athens
+knows about "IncrementCounter"
+from its own memory
+end note
+
+newPage
+
+== Safety Preserved ==
+
+note over Athens #lightgreen
+Athens uses the accepted value
+from its own memory
+end note
+
+Athens -> Athens: accept("IncrementCounter", Generation=6)
+Athens -> Byzantium: accept("IncrementCounter", Generation=6)
+Athens -> Cyrene: accept("IncrementCounter", Generation=6)
+
+Athens <-- Athens: accepted
+Athens <-- Byzantium: accepted
+Athens <-- Cyrene: accepted
+
+hnote over Athens, Cyrene #lightgreen
+SAFETY PRESERVED!
+Only "IncrementCounter" can be committed
+end note
+
+newPage
+
+== Why This Rule is Critical ==
+
+hnote over Athens, Cyrene #lightyellow
+**Key Insight:**
+Nodes must persist accepted values to stable storage
+and never "forget" them, even across crashes.
+
+**The Rule:**
+During prepare phase, use the highest generation value
+from BOTH own memory AND responses from other nodes.
+
+**This ensures:**
+- Only one value can ever be committed
+- Safety is maintained across failures and network issues
+- Consensus remains consistent even with lost messages
+end note
+
+@enduml 

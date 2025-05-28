@@ -307,6 +307,16 @@ slides:
       - "This creates a fundamental limitation for our current approach"
     notes: "Introduce the key limitation that leads to the need for replicated logs."
 
+  - type: "diagram"
+    title: "Why Accepted Values Cannot Be Forgotten"
+    diagramRef: "why_accepted_values_cannot_be_forgotten"
+    bullets:
+      - "Critical safety property: Once accepted by quorum, values must be preserved"
+      - "Forgetting accepted values can lead to safety violations"
+      - "Two different values could be committed, breaking consensus"
+      - "The 'highest generation rule' prevents this by preserving accepted values"
+    notes: "Show the detailed scenario of what happens when accepted values are forgotten and why this violates safety. This is a fundamental property that makes single-value consensus limited."
+
   - type: "text"
     title: "The Single-Value Problem"
     bullets:
