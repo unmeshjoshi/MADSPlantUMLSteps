@@ -4,6 +4,9 @@ import java.util.List;
 
 public class PresentationConfig {
     private String title;
+    private String description;
+    private String icon;
+    private String category;
     private List<SlideConfig> slides;
     private List<SectionConfig> sections;
 
@@ -13,6 +16,30 @@ public class PresentationConfig {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getIcon() {
+        return icon;
+    }
+
+    public void setIcon(String icon) {
+        this.icon = icon;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public List<SlideConfig> getSlides() {

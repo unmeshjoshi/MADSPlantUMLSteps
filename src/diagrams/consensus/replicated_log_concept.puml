@@ -8,39 +8,87 @@ participant "Athens" as athens
 participant "Byzantium" as byzantium  
 participant "Cyrene" as cyrene
 
-note over athens: **Athens' Log**\n[1] IncrementCounter\n[2] DecrementCounter\n[3] IncrementCounter\n[4] <empty>
+note over athens
+ballot=1
+==Log==
+--index 1--
+IncrementCounter
+----
+--index 2--
+DecrementCounter
+----
+--index 3--
+IncrementCounter
+----
+--index 4--
+<empty>
+----
+====
+end note
 
-note over byzantium: **Byzantium's Log**\n[1] IncrementCounter\n[2] DecrementCounter\n[3] IncrementCounter\n[4] <empty>
+note over byzantium
+ballot=1
+==Log==
+--index 1--
+IncrementCounter
+----
+--index 2--
+DecrementCounter
+----
+--index 3--
+IncrementCounter
+----
+--index 4--
+<empty>
+----
+====
+end note
 
-note over cyrene: **Cyrene's Log**\n[1] IncrementCounter\n[2] DecrementCounter\n[3] IncrementCounter\n[4] <empty>
+note over cyrene
+ballot=1
+==Log==
+--index 1--
+IncrementCounter
+----
+--index 2--
+DecrementCounter
+----
+--index 3--
+IncrementCounter
+----
+--index 4--
+<empty>
+----
+====
+end note
 ' [/step1]
 
 ' [step2 {"name":"Key Properties", "newPage":"true"}]
 note across #lightblue
 **Replicated Log Properties:**
 
-• **Ordered Slots**: Each position holds one request
-• **Consensus Per Slot**: Run separate consensus for each slot
+• **Ordered Slots**: Each index holds one request
+• **Consensus Per Slot**: Run separate consensus for each index
 • **Same Order**: All nodes have identical logs
-• **Sequential Execution**: Execute requests in slot order
+• **Sequential Execution**: Execute requests in index order
 end note
 ' [/step2]
 
 ' [step3 {"name":"Multiple Requests Handling", "newPage":"true"}]
 note over athens, cyrene: **How Multiple Requests Are Handled:**
 
-note over athens: Slot 1: Run consensus\nfor "IncrementCounter"
-note over byzantium: Slot 2: Run consensus\nfor "DecrementCounter"  
-note over cyrene: Slot 3: Run consensus\nfor "IncrementCounter"
+note over athens: Index 1: Run consensus\nfor "IncrementCounter"
+note over byzantium: Index 2: Run consensus\nfor "DecrementCounter"  
+note over cyrene: Index 3: Run consensus\nfor "IncrementCounter"
 
-note over athens, cyrene #lightgreen: Each slot is independent!\nCan handle unlimited requests
+note over athens, cyrene #lightgreen: Each index is independent!\nCan handle unlimited requests
 ' [/step3]
 
 ' [step4 {"name":"Execution Order", "newPage":"true"}]
 group #LightYellow "Execution Process"
-    note over athens: Execute Slot 1:\nCounter = 5 + 1 = 6
-    note over athens: Execute Slot 2:\nCounter = 6 - 1 = 5
-    note over athens: Execute Slot 3:\nCounter = 5 + 1 = 6
+    note over athens: Execute Index 1:\nCounter = 5 + 1 = 6
+    note over athens: Execute Index 2:\nCounter = 6 - 1 = 5
+    note over athens: Execute Index 3:\nCounter = 5 + 1 = 6
 end
 
 note over athens, cyrene: **All nodes execute in same order**\n**Final state: Counter = 6**
