@@ -31,10 +31,10 @@ group #LightYellow "Recovery Phase"
     byzantium -> athens: "Yes! I accepted:\nIncrementCounter"
     deactivate byzantium
     
-    cyrene -> athens: "No accepted requests"
+    cyrene -[#red]-x athens: "Fails to respond"
     deactivate cyrene
     
-    note over athens #pink: AMBIGUITY DETECTED!\nConflicting information
+    note over athens #pink: AMBIGUITY DETECTED!
 ' [/step4]
 
 ' [step5 {"name":"The Dilemma", "newPage":"true"}]

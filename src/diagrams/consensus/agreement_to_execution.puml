@@ -3,24 +3,44 @@
 
 title From Agreement to Execution
 
+' [step1 {"name":"Starting Accept Phase"}]
 participant Athens as "Athens\n(Leader)"
 participant Byzantium as "Byzantium\n(Acceptor)"
 participant Cyrene as "Cyrene\n(Acceptor)"
 
-note over Athens: Has majority agreement\nfor generation=5, "Counter=6"\nRequest is now COMMITTED
+note over Athens: Chose "DecrementCounter" from recovery\n(highest generation found)\nNow sending Accept requests with generation=5
+' [/step1]
 
-Athens -> Byzantium: Commit(generation=5, request="Counter=6")
-Athens -> Cyrene: Commit(generation=5, request="Counter=6")
+' [step2 {"name":"Sending Accept Requests"}]
+Athens -> Byzantium: Accept(generation=5, request="DecrementCounter")
+Athens -> Cyrene: Accept(generation=5, request="DecrementCounter")
+' [/step2]
 
-note over Byzantium: Request is committed!\nSafe to execute:\nCounter = 6
+' [step3 {"name":"Receiving Accept Responses"}]
+Byzantium -> Athens: Accepted
+Cyrene -> Athens: Accepted
 
-note over Cyrene: Request is committed!\nSafe to execute:\nCounter = 6
+note over Athens: Majority agreement achieved!\nRequest is now COMMITTED
+' [/step3]
 
-note over Athens: Execute locally:\nCounter = 6
+' [step4 {"name":"Sending Commit Messages"}]
+Athens -> Byzantium: Commit(generation=5, request="DecrementCounter")
+Athens -> Cyrene: Commit(generation=5, request="DecrementCounter")
+' [/step4]
 
-Byzantium -> Athens: Executed: Counter = 6
-Cyrene -> Athens: Executed: Counter = 6
+' [step5 {"name":"Nodes Prepare for Execution", "newPage":"true"}]
+note over Byzantium: Request is committed!\nSafe to execute:\nDecrementCounter
 
-note over Athens, Cyrene: All nodes now have consistent state:\nCounter = 6\n\nSystem maintains consistency\ndespite failures and recovery
+note over Cyrene: Request is committed!\nSafe to execute:\nDecrementCounter
+
+note over Athens: Execute locally:\nDecrementCounter
+' [/step5]
+
+' [step6 {"name":"Execution and Confirmation"}]
+Byzantium -> Athens: Executed: DecrementCounter
+Cyrene -> Athens: Executed: DecrementCounter
+
+note over Athens, Cyrene: All nodes now have consistent state:\nDecrementCounter executed\n\nSystem maintains consistency\ndespite failures and recovery
+' [/step6]
 
 @enduml 

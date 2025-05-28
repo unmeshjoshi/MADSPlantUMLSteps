@@ -37,7 +37,7 @@ slides:
     notes: "Set up the first major challenge - why naive replication doesn't work."
 
   - type: "diagram"
-    title: "Why Immediate Request Execution is Not Always Possible"
+    title: "Why Immediate Request Execution Does not Work"
     diagramRef: "single_phase_execution"
     bullets:
       - "Athens executes immediately and tries to propagate"
@@ -47,11 +47,12 @@ slides:
     notes: "Walk through this scenario step by step. Show how network delays, lost messages, or server crashes lead to inconsistent states."
 
   - type: "text"
-    title: "Challenge 2: Trying Two Phases"
+    title: "Challenge 2: Trying Two Phases With Majority Quorum"
     bullets:
+      - "Majority quorum: A majority of nodes must agree to execute a request"
       - "How can we ensure a majority agrees before a request is considered 'committed'?"
       - "Introduce Phase 1 (Accept): Get majority agreement on the request"
-      - "Introduce Phase 2 (Execute): Execute the request once majority agrees"
+      - "Introduce Phase 2 (Execute): Execute the request once majority agrees" 
     notes: "Introduce the concept of two-phase execution as a solution to the immediate execution problem."
 
   - type: "diagram"
@@ -133,7 +134,7 @@ slides:
       - "Athens wants to execute a new request and first checks for existing accepted requests"
       - "Athens can only reach majority (Byzantium and Cyrene)"
       - "Byzantium reports: 'I have accepted IncrementCounter'"
-      - "Cyrene reports: 'I have no accepted requests'"
+      - "Cyrene could not respond or the response gets lost"
     notes: "Show the setup of the ambiguous scenario where Athens gets conflicting information from the majority it can reach."
 
   - type: "text"
@@ -151,14 +152,22 @@ slides:
       - "Safety requirement: If a value was ever committed, it must NEVER be lost"
     notes: "Explain the fundamental dilemma and why Athens cannot make the decision with partial information from majority responses."
 
+  - type: "text"
+    title: "The Safe Path: When in Doubt, Re-Propose"
+    bullets:
+      - "Since it might have been committed, the only safe action is to assume it was"
+      - "Re-run both phases for that request"
+      - "This forces the system towards confirming that request is committed"
+      - "Quorum overlap ensures we don't 'forget' a previously committed value"
+    notes: "Explain why re-proposing is the safe choice and how quorum overlap provides safety."
+
 
   - type: "text"
     title: "Recovery Dilemma: Multiple Conflicting Requests"
     bullets:
       - "What if Athens discovers TWO different accepted requests from the majority it can reach?"
-      - "Each server in the majority reports a different request with different generation numbers"
+      - "Each server in the majority reports a different request"
       - "Athens must decide: Which request should be preserved and re-proposed?"
-      - "This scenario demonstrates the critical 'highest generation rule'"
     notes: "Introduce the more complex scenario where multiple conflicting accepted requests are discovered when checking with majority."
 
   - type: "diagram"
@@ -166,31 +175,13 @@ slides:
     diagramRef: "recovery_multiple_accepted_requests"
     bullets:
       - "Athens wants to execute a new request and checks with majority"
-      - "Byzantium reports: 'I have accepted IncrementCounter (Generation=2)'"
-      - "Cyrene reports: 'I have accepted DecrementCounter (Generation=3)'"
-      - "Athens must choose which request to preserve using the highest generation rule"
+      - "Byzantium reports: 'I have accepted IncrementCounter'"
+      - "Cyrene reports: 'I have accepted DecrementCounter'"
+      - "Athens must choose which request to preserve"
     notes: "Show the scenario where Athens discovers two different accepted requests from majority and must apply the highest generation rule to choose safely."
 
   - type: "text"
-    title: "The Safe Path: When in Doubt, Re-Propose"
-    bullets:
-      - "Since it might have been committed, the only safe action is to assume it was"
-      - "Re-run both phases for that request with a new, higher generation number"
-      - "This forces the system towards confirming that request"
-      - "Quorum overlap ensures we don't 'forget' a previously committed value"
-    notes: "Explain why re-proposing is the safe choice and how quorum overlap provides safety."
-
-  - type: "diagram"
-    title: "Understanding Quorum Overlap"
-    diagramRef: "quorum_overlap_visualization"
-    bullets:
-      - "Any two majorities must share at least one node"
-      - "This overlap ensures information propagation"
-      - "Guarantees we'll discover previously committed values during recovery"
-    notes: "Visual explanation of why quorum overlap is fundamental to consensus safety."
-
-  - type: "text"
-    title: "Establishing Authority (Becoming the Leader)"
+    title: "Establishing Authority With Generation Number (Becoming the Leader)"
     bullets:
       - "A node that wants to initiate an agreement must first establish its authority"
       - "It chooses a Generation Number higher than any it's seen before"
@@ -234,6 +225,11 @@ slides:
     bullets:
       - "When becoming Leader, examine responses from 'Establishing Authority' step"
       - "If nodes reported previously stored requests, choose the one with highest Generation Number"
+    notes: "Explain the critical recovery logic that ensures safety during leadership transitions."
+
+  - type: "text"
+    title: "Choosing the Request (Recovery) (Continued)"
+    bullets:     
       - "This ensures continuity and prevents 'lost' requests that were close to agreement"
       - "Only if no previous requests were reported can Leader propose its own request"
       - "This is the crucial 'highest generation rule' for safety"
@@ -254,6 +250,11 @@ slides:
     bullets:
       - "Even if Leader adopts a request from previous round, it must send it again with new, higher Generation Number"
       - "Previous attempt might have failed before reaching true majority"
+    notes: "Explain the final step: ensuring committed requests are executed in proper order."
+
+  - type: "text"
+    title: "Ensuring Majority Agreement & Execution (Continued)"
+    bullets:
       - "By getting current majority to store it with new Generation Number, Leader solidifies the request's status"
       - "Only once request is committed (agreed by majority) can nodes execute it"
       - "Nodes execute requests in order, only after all preceding requests are committed"
@@ -279,44 +280,13 @@ slides:
       - "This ensures all nodes agree on same sequence and maintain consistent state"
     notes: "Summarize the complete four-step consensus process before revealing it's Paxos."
 
-  # Session 3: Formalizing with Paxos & Building Replicated Logs - Approx. 1.5 hours
-  - type: "text"
-    title: "Congratulations! You've Built Paxos"
-    bullets:
-      - "What we just built is the core logic of Paxos!"
-      - "Paxos is the formal name for this consensus algorithm"
-      - "Let's map our concepts to Paxos terminology"
-      - "Then we'll see how it's used in practice"
-    notes: "Reveal that they've been learning Paxos all along, just in more intuitive terms."
 
   - type: "text"
-    title: "Mapping Our Concepts to Paxos"
-    bullets:
-      - "Servers = Proposers/Acceptors/Learners"
-      - "prepare = Phase 1a"
-      - "'Yes' response = Promise (Phase 1b)"
-      - "accept = Phase 2a"
-      - "accepted = Phase 2b"
-      - "Generation Number = Ballot Number"
-    notes: "Show the formal Paxos terminology and how it maps to what they've learned."
-
-  - type: "diagram"
-    title: "Paxos in Action: The Full Protocol"
-    diagramRef: "workshop-paxos-full-log-prepare-leader-complete-proposals"
-    bullets:
-      - "Athens runs leader election with ballot=4"
-      - "Discovers highest numbered value 'Distributed Systems' from Cyrene"
-      - "Proposes this value in Phase 2"
-      - "Achieves consensus on 'Distributed Systems'"
-    notes: "Walk through the formal Paxos sequence diagram, connecting it to the concepts they've learned."
-
-  - type: "text"
-    title: "Paxos Challenges in Practice"
+    title: "Challenges in Practice"
     bullets:
       - "Livelock: Competing proposers can prevent progress"
       - "Solution: Random backoff and leader election"
       - "Performance: Multiple rounds for each decision"
-      - "Solution: Multi-Paxos with stable leader"
     notes: "Discuss practical challenges and solutions."
 
   - type: "diagram"
