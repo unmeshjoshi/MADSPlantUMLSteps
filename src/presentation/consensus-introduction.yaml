@@ -225,6 +225,8 @@ slides:
     bullets:
       - "When becoming Leader, examine responses from 'Establishing Authority' step"
       - "If nodes reported previously stored requests, choose the one with highest Generation Number"
+      - "The 'choose highest generation' helps solve the recovery ambiguity"
+      - "If every leader had first checked with majority, and chose the highest generation request, then if any request was ever committed, it would be one with the highest generation"
     notes: "Explain the critical recovery logic that ensures safety during leadership transitions."
 
   - type: "text"
@@ -235,6 +237,21 @@ slides:
       - "This is the crucial 'highest generation rule' for safety"
     notes: "Explain the critical recovery logic that ensures safety during leadership transitions."
 
+  - type: "text"
+    title: "Choosing Highest Generation: Why the Rule Works"
+    bullets:
+      - "If any request was ever committed, it should be the one with the highest generation"
+      - "This rule works because of a fundamental mathematical property: quorum overlap"
+    notes: "Emphasize that this is the mathematical foundation that makes consensus algorithms work. The overlap property is what transforms the highest generation rule from a heuristic into a safety guarantee. This principle applies to all quorum-based consensus systems, not just Paxos."
+
+  - type: "text"
+    title: "Choosing Highest Generation: Why the Rule Works"
+    bullets:
+      - "In a system of N nodes, any two majorities must share at least one node"
+      - "Example: With 5 nodes, any two groups of 3 must overlap by 1 node"
+      - "This overlap ensures every future leader will see evidence of past commitments"
+      - "The highest generation rule + quorum overlap = guaranteed safety"
+    
   - type: "diagram"
     title: "Recovery: Choosing the Highest Generation Request"
     diagramRef: "recovery_highest_generation"
@@ -249,7 +266,7 @@ slides:
     title: "Ensuring Majority Agreement & Execution"
     bullets:
       - "Even if Leader adopts a request from previous round, it must send it again with new, higher Generation Number"
-      - "Previous attempt might have failed before reaching true majority"
+      - "Previous attempt might have failed before reaching true majority (Remember the recovery ambiguity?)"
     notes: "Explain the final step: ensuring committed requests are executed in proper order."
 
   - type: "text"
@@ -257,7 +274,6 @@ slides:
     bullets:
       - "By getting current majority to store it with new Generation Number, Leader solidifies the request's status"
       - "Only once request is committed (agreed by majority) can nodes execute it"
-      - "Nodes execute requests in order, only after all preceding requests are committed"
     notes: "Explain the final step: ensuring committed requests are executed in proper order."
 
   - type: "diagram"
@@ -286,7 +302,8 @@ slides:
     bullets:
       - "Livelock: Competing proposers can prevent progress"
       - "Solution: Random backoff and leader election"
-      - "Performance: Multiple rounds for each decision"
+      - "Single Request Problem: Once a request is committed, no other request can be executed"
+      - "Solution: Replicated Log of Requests"
     notes: "Discuss practical challenges and solutions."
 
   - type: "diagram"
@@ -308,7 +325,7 @@ slides:
     notes: "Introduce the key limitation that leads to the need for replicated logs."
 
   - type: "diagram"
-    title: "Why Accepted Values Cannot Be Forgotten"
+    title: "Why Accepted Requests Cannot Be Forgotten"
     diagramRef: "why_accepted_values_cannot_be_forgotten"
     bullets:
       - "Critical safety property: Once accepted by quorum, values must be preserved"
@@ -318,10 +335,10 @@ slides:
     notes: "Show the detailed scenario of what happens when accepted values are forgotten and why this violates safety. This is a fundamental property that makes single-value consensus limited."
 
   - type: "text"
-    title: "The Single-Value Problem"
+    title: "The Single-Request Problem"
     bullets:
-      - "Our current consensus can only agree on ONE value ever"
-      - "Once a value is committed, no other request can be executed"
+      - "Our current consensus can only agree on ONE request ever"
+      - "Once a request is committed, no other request can be executed"
       - "Example: If 'IncrementCounter' is committed, 'DecrementCounter' can never be processed"
       - "This makes the system unusable for real applications!"
     notes: "Explain why single-value consensus is insufficient for practical systems."

@@ -1,17 +1,15 @@
 @startuml
 !include ../../style.puml
 
-footer Page %page% of %lastpage%
-
 actor Client1
 actor Client2
 participant Athens
 participant Byzantium 
 participant Cyrene 
 
-title Why Accepted Values Cannot Be Forgotten
+title Why Accepted Requests Cannot Be Forgotten
 
-== Initial State: Value Accepted by Quorum ==
+' [step1 {"name":"Initial State: Request Accepted by Quorum"}]
 
 note over Athens
 Generation: 5
@@ -25,7 +23,7 @@ Accepted: "IncrementCounter"
 State: ACCEPTED
 end note
 
-/ note over Cyrene
+note over Cyrene
 Generation: 3
 Accepted: ""
 State: NONE
@@ -36,13 +34,13 @@ Quorum has accepted "IncrementCounter"
 with Generation 5
 end note
 
-newPage
+' [/step1]
 
-== Scenario: Athens Forgets and Network Issues ==
+' [step2 {"name":"Scenario: Athens Forgets and Network Issues", "newPage":"true"}]
 
 note over Athens #lightcoral
 DANGER: Athens "forgets" 
-its accepted value
+its accepted request
 Generation: 5
 Accepted: ""  ← WRONG!
 State: NONE
@@ -54,7 +52,7 @@ Accepted: "IncrementCounter"
 State: ACCEPTED
 end note
 
-/ note over Cyrene
+note over Cyrene
 Generation: 3
 Accepted: ""
 State: NONE
@@ -62,32 +60,32 @@ end note
 
 Client2 -> Athens: "DecrementCounter"
 
-newPage
+' [/step2]
 
-== Athens Starts New Round with Higher Generation ==
+' [step3 {"name":"Athens Starts New Round with Higher Generation", "newPage":"true"}]
 
 Athens -> Athens: prepare(Generation=6)
 Athens -> Byzantium: prepare(Generation=6)
 Athens -> Cyrene: prepare(Generation=6)
 
-Athens <-- Athens: promise(Generation=6, no_accepted_value)
-Athens <-[#red]-x Byzantium: promise(Generation=6, accepted="IncrementCounter", Generation=5)
-Athens <-- Cyrene: promise(Generation=6, no_accepted_value)
+Athens -> Athens: promise(Generation=6, no_accepted_request)
+Athens x-[#red]- Byzantium: Failed to respond
+Athens <-- Cyrene: promise(Generation=6, no_accepted_request)
 
-hnote over Athens #red
+note over Athens #red
 CRITICAL PROBLEM:
-- Athens forgot its accepted value
+- Athens forgot its accepted request
 - Byzantium's response is lost
-- Athens only sees "no accepted values"
+- Athens only sees "no accepted requests"
 end note
 
-newPage
+' [/step3]
 
-== The Dangerous Decision ==
+' [step4 {"name":"The Dangerous Decision", "newPage":"true"}]
 
 note over Athens #lightcoral
 Athens thinks there are no
-previously accepted values
+previously accepted requests
 and proceeds with its own request
 end note
 
@@ -101,32 +99,34 @@ Athens <-- Cyrene: accepted
 
 hnote over Athens, Cyrene #red
 SAFETY VIOLATION!
-Two different values could be committed:
+Two different requests could be committed:
 - "IncrementCounter" (from previous round)
 - "DecrementCounter" (from current round)
 end note
 
-newPage
+' [/step4]
 
-== Why This Violates Safety ==
+' [step5 {"name":"Why This Violates Safety", "newPage":"true"}]
 
 hnote over Athens, Cyrene #red
 **The Problem:**
-Byzantium still remembers "IncrementCounter" was accepted.
-If another node later queries Byzantium, it might
-re-propose "IncrementCounter" while Athens has
-committed "DecrementCounter".
+Athens and Byzantium had "IncrementCounter" accepted.
+Athens might have committed it. But it 'forgot' 
+the accepted request. (May be after a crash and restart).
+This lead to a situation where on Athens, we have IncremenCounter
+executed, but on other nodes we never had it executed,
+and they directly executed "DecrementCounter".
 
-**Result:** Two conflicting values both considered valid!
+**Result:** Inconsistent state on all nodes!
 end note
 
-newPage
+' [/step5]
 
-== The Correct Behavior: Never Forget ==
+' [step6 {"name":"The Correct Behavior: Never Forget", "newPage":"true"}]
 
 note over Athens #lightgreen
 Athens MUST never forget
-accepted values, even after
+accepted requests, even after
 crashes or restarts
 end note
 
@@ -140,9 +140,9 @@ Athens -> Athens: prepare(Generation=6)
 Athens -> Byzantium: prepare(Generation=6)
 Athens -> Cyrene: prepare(Generation=6)
 
-Athens <-- Athens: promise(Generation=6, accepted="IncrementCounter", Generation=5)
-Athens <-[#red]-x Byzantium: promise(Generation=6, accepted="IncrementCounter", Generation=5)
-Athens <-- Cyrene: promise(Generation=6, no_accepted_value)
+Athens --> Athens: promise(Generation=6, accepted="IncrementCounter", Generation=5)
+Athens x-[#red]- Byzantium: promise(Generation=6, accepted="IncrementCounter", Generation=5)
+Athens <-- Cyrene: promise(Generation=6, no_accepted_request)
 
 hnote over Athens #lightgreen
 Even with lost message, Athens
@@ -150,12 +150,12 @@ knows about "IncrementCounter"
 from its own memory
 end note
 
-newPage
+' [/step6]
 
-== Safety Preserved ==
+' [step7 {"name":"Safety Preserved", "newPage":"true"}]
 
 note over Athens #lightgreen
-Athens uses the accepted value
+Athens uses the accepted request
 from its own memory
 end note
 
@@ -172,23 +172,25 @@ SAFETY PRESERVED!
 Only "IncrementCounter" can be committed
 end note
 
-newPage
+' [/step7]
 
-== Why This Rule is Critical ==
+' [step8 {"name":"Why This Rule is Critical", "newPage":"true"}]
 
 hnote over Athens, Cyrene #lightyellow
 **Key Insight:**
-Nodes must persist accepted values to stable storage
+Nodes must persist accepted requests to stable storage
 and never "forget" them, even across crashes.
 
 **The Rule:**
-During prepare phase, use the highest generation value
+During prepare phase, use the highest generation request
 from BOTH own memory AND responses from other nodes.
 
 **This ensures:**
-- Only one value can ever be committed
+- Only one request can ever be committed
 - Safety is maintained across failures and network issues
 - Consensus remains consistent even with lost messages
 end note
+
+' [/step8]
 
 @enduml 

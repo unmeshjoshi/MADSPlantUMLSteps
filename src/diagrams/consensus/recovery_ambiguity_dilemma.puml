@@ -41,14 +41,14 @@ group #LightYellow "Recovery Phase"
 group #LightCoral "The Impossible Decision"
     note over athens #pink: **Two Possible Scenarios:**
     
-    note over athens #lightblue: **Scenario 1: Request WAS Committed**\n• Previous leader got majority (Byzantium + someone else)\n• IncrementCounter is the committed value\n• Athens must preserve it
+    note over athens #lightblue: **Scenario 1: Request WAS Committed**\n• Previous request got majority (Byzantium + someone else)\n• IncrementCounter is the committed value\n• Athens must preserve it
     
-    note over athens #lightyellow: **Scenario 2: Request was NOT Committed**\n• Previous leader only reached Byzantium\n• IncrementCounter never got majority agreement\n• Athens can ignore it
+    note over athens #lightyellow: **Scenario 2: Request was NOT Committed**\n• Previous request only reached Byzantium\n• IncrementCounter never got majority agreement\n• Athens can ignore it
 end
 ' [/step5]
 
 ' [step6 {"name":"Why We Can't Tell", "newPage":"true"}]
-group #Red "Why Athens Cannot Decide"
+group #LightCoral "Why Athens Cannot Decide"
     note over athens, cyrene #pink: **The Problem:**
     note over athens, cyrene: • Athens can only reach majority (2 out of 3 nodes)
     note over athens, cyrene: • Third node might be unreachable due to network partition

@@ -9,13 +9,17 @@ participant "Byzantium\n(Counter=5)" as byzantium
 participant "Cyrene\n(Counter=5)" as cyrene
 
 note over athens: Athens wants to execute\na new request.\nFirst, must check for any\nexisting accepted requests...
+note over athens: Has accepted:\nDecrementCounter 
 note over byzantium: Has accepted:\nIncrementCounter 
-note over cyrene: Has accepted:\nDecrementCounter
+note over cyrene: No accepted requests
 ' [/step1]
 
 ' [step2 {"name":"Recovery Phase Start"}]
 group #LightYellow "Recovery Phase"
     note over athens: Athens needs to check:\n"Are there any accepted requests\nI should know about?"
+    
+    athens -> athens: Check own state
+    note right of athens: Found: DecrementCounter
 ' [/step2]
 
 ' [step3 {"name":"Query Majority"}]
@@ -31,16 +35,17 @@ group #LightYellow "Recovery Phase"
     byzantium -> athens: "Yes! I accepted:\nIncrementCounter"
     deactivate byzantium
     
-    cyrene -> athens: "Yes! I accepted:\nDecrementCounter"
+    cyrene -[#red]x athens: "No accepted requests"
     deactivate cyrene
+    note right #pink: Message lost!\nAthens doesn't receive\nCyrene's response
     
-    note over athens #pink: CONFLICT DETECTED!\nTwo different requests!
+    note over athens #pink: DILEMMA!\nAthens only knows:\n- Own: DecrementCounter\n- Byzantium: IncrementCounter\n- Cyrene: ???
 ' [/step4]
 
 ' [step5 {"name":"The Dilemma", "newPage":"true"}]
 group #LightCoral "Which Request to Choose?"
     note over athens #pink: **Athens' Dilemma:**
-    note over athens #lightgreen: **Which one was actually committed?\nWhich one should Athens preserve?**
+    note over athens #lightgreen: **Cannot determine majority!\n- Own DecrementCounter vs Byzantium's IncrementCounter\n- Cyrene's state unknown (failed response)\n- Which request has majority support?**
 end
 ' [/step5]
 

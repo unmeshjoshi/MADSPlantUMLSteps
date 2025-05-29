@@ -55,7 +55,7 @@ group #LightCoral "Phase 2: Execute"
 
 ' [step5 {"name":"Athens Failure", "newPage":"true"}]
 group #Red "System Failure"
-    note over athens: Athens crashes
+    note over athens: Athens crashes\nCounter = 6
     athens -[#red]x athens
 
     note across #pink: System State After Failure:\n* Athens (failed): Counter = 6\n* Other nodes: Counter = 5\n* Client believes operation succeeded
