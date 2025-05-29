@@ -481,8 +481,8 @@ body {
 }
 
 .step img {
-    width: 80%;       /* Reduced to 80% for better visual balance */
-    max-width: 80%;   /* Cap maximum width */
+    width: 65%;       /* Reduced to 80% for better visual balance */
+    max-width: 65%;   /* Cap maximum width */
     height: auto;     /* Allow height to adjust based on content */
     /* Remove max-height to allow full diagram display */
     /* Remove object-fit to allow natural scaling */
