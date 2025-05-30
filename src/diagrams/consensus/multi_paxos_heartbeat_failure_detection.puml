@@ -1,0 +1,141 @@
+@startuml
+!include ../../style.puml
+
+participant "Athens\n(Leader)" as athens
+participant "Byzantium\n(Follower)" as byzantium
+participant "Cyrene\n(Follower)" as cyrene
+
+title Multi-Paxos: Heartbeat and Failure Detection
+
+' [step1 {"name":"Normal Heartbeat Operation"}]
+note over athens: **Athens (Leader)**\nGeneration = 5\nSending periodic heartbeats
+
+note over byzantium: **Byzantium (Follower)**\nTimeout = 320ms (random)\nTimer: ████████████ (Reset)
+
+note over cyrene: **Cyrene (Follower)**\nTimeout = 280ms (random)\nTimer: ████████████ (Reset)
+
+athens -> byzantium: Heartbeat(gen=5)
+athens -> cyrene: Heartbeat(gen=5)
+
+note over byzantium #lightgreen: **Heartbeat Received**\nReset timeout timer (320ms)
+note over cyrene #lightgreen: **Heartbeat Received**\nReset timeout timer (280ms)
+' [/step1]
+
+' [step2 {"name":"Regular Heartbeat Cycle", "newPage":"true"}]
+note over athens, cyrene: **Heartbeat Interval: 100ms**\n**Random Timeout Range: 250-350ms**
+
+...Time passes (100ms)...
+
+athens -> byzantium: Heartbeat(gen=5)
+athens -> cyrene: Heartbeat(gen=5)
+
+note over byzantium: Timer: ████████████ (Reset 320ms)
+note over cyrene: Timer: ████████████ (Reset 280ms)
+
+...Time passes (100ms)...
+
+athens -> byzantium: Heartbeat(gen=5)
+athens -> cyrene: Heartbeat(gen=5)
+
+note over byzantium: Timer: ████████████ (Reset 320ms)
+note over cyrene: Timer: ████████████ (Reset 280ms)
+
+note across #lightblue: **Steady State:** Regular heartbeats maintain leader liveness
+' [/step2]
+
+' [step3 {"name":"Leader Failure", "newPage":"true"}]
+group #Red "Leader Failure"
+    athens -[#red]x athens: Athens crashes/network partition
+    
+    note over athens #red: **Athens Failed**\nNo more heartbeats sent
+end
+
+note over byzantium #yellow: **No Heartbeat Received**\nTimeout timer (320ms) continues...
+note over cyrene #yellow: **No Heartbeat Received**\nTimeout timer (280ms) continues...
+
+...Time passes (100ms - no heartbeat)...
+
+note over byzantium: Timer: ████████░░░░ (220ms remaining)
+note over cyrene: Timer: ████████░░░░ (180ms remaining)
+' [/step3]
+
+' [step4 {"name":"Staggered Timeout Detection", "newPage":"true"}]
+...Time passes (another 100ms - still no heartbeat)...
+
+note over byzantium: Timer: ████░░░░░░░░ (120ms remaining)
+note over cyrene: Timer: ████░░░░░░░░ (80ms remaining)
+
+...Time passes (80ms - Cyrene timeout reached)...
+
+note over cyrene #red: **TIMEOUT EXPIRED! (280ms)**\nTimer: ░░░░░░░░░░░░ (0% remaining)\nAthens assumed failed - trigger election
+
+note over byzantium: Timer: ██░░░░░░░░░░ (40ms remaining)\nCyrene triggered election\nTimer will be reset by new leader
+
+note across #red: **Staggered Detection:** Cyrene detects failure first and triggers election
+' [/step4]
+
+' [step5 {"name":"Cyrene Triggers Leader Election", "newPage":"true"}]
+group #LightBlue "Leader Election (Cyrene Leads)"
+    note over cyrene: **Cyrene triggers election first**\n(Shorter timeout: 280ms)\nChooses Generation = 6
+
+    note over byzantium: **Byzantium timeout expires later**\n(Longer timeout: 320ms)\nSees election already in progress
+    
+    group "Election Process"
+        cyrene -> cyrene: Prepare(gen=6)
+        cyrene -> byzantium: Prepare(gen=6)
+        
+        cyrene -> cyrene: Promise(gen=6)
+        byzantium -> cyrene: Promise(gen=6)
+    end
+    
+    note over cyrene #lightgreen: **Cyrene wins election**\nGeneration = 6 established\nAdvantage of starting first
+end
+' [/step5]
+
+' [step6 {"name":"New Leader Establishes Heartbeats", "newPage":"true"}]
+note over cyrene: **Cyrene (New Leader)**\nGeneration = 6\nStart sending heartbeats
+
+cyrene -> byzantium: Heartbeat(gen=6)
+note over cyrene: Self-heartbeat not needed
+
+note over byzantium #lightgreen: **New Leader Detected**\nReset timeout timer (320ms)\nGeneration = 6 acknowledged
+
+note over cyrene: **Heartbeat Schedule Established**\nInterval: 100ms\nByzantium will timeout after 320ms if no heartbeat
+
+note across #lightgreen: **New Leader Active:** Heartbeat mechanism resumed with random timeouts
+' [/step6]
+
+' [step7 {"name":"Heartbeat Optimization and Random Timeouts", "newPage":"true"}]
+participant "Client" as client
+client -> cyrene: IncrementCounter
+
+note over cyrene: **Optimization:** Piggyback heartbeat\non consensus messages
+
+group #LightYellow "Consensus with Implicit Heartbeat"
+    cyrene -> byzantium: Accept(gen=6, slot=N, "IncrementCounter")
+    
+    note over byzantium: **Two purposes served:**\n1. Consensus message\n2. Implicit heartbeat (reset timer)
+    
+    byzantium -> cyrene: Accepted(slot=N)
+end
+
+cyrene -> client: Success
+
+note across #lightblue
+**Heartbeat with Random Timeouts Benefits:**
+
+✓ **Fast failure detection**: Configurable timeout (typically 1-5 seconds)
+✓ **Livelock prevention**: Random timeouts prevent simultaneous elections
+✓ **Automatic recovery**: First timeout triggers leader election immediately
+✓ **Low overhead**: Can piggyback on regular messages
+✓ **Production ready**: Essential for real-world distributed systems
+
+**Random Timeout Guidelines:**
+• Base timeout = 3-5 × Heartbeat interval
+• Random jitter = ±20% of base timeout
+• Example: Base=300ms, Range=250-350ms
+• Ensures staggered failure detection
+end note
+' [/step7]
+
+@enduml 

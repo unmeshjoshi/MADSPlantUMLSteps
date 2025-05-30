@@ -26,19 +26,36 @@ High-Water Mark = 2
 end note
 
 clientA -> athens: AddCounter(3)
-note over athens: Assign to Slot 4\nUse existing leadership
+clientB -> athens: MultiplyCounter(2)
+
+note over athens: **Process AddCounter(3)**\nAssign to Slot 4\nUse existing leadership (gen=5)
+
+group #LightGreen "Partial Request Processing"
+    athens -> athens: Accept(gen=5, slot=4, "AddCounter(3)")
+    athens -> cyrene: Accept(gen=5, slot=4, "AddCounter(3)")
+    
+    athens -> athens: Accepted(slot=4)
+    cyrene -> athens: Accepted(slot=4)
+    
+    note over athens #yellow: **Ready to commit**\nBut failure occurs before commit phase
+end
 ' [/step1]
 
-' [step2 {"name":"Leader Failure", "newPage":"true"}]
+' [step2 {"name":"Leader Failure During Processing", "newPage":"true"}]
 group #Red "Leader Failure"
-    athens -[#red]x athens: Athens crashes/disconnects
+    athens -[#red]x athens: Athens crashes before commit phase
     
-    note over athens #red: **Athens Failed**\nCannot complete client request
-    
-    clientA -[#red]x athens: No response
+    note over athens #red: **Athens Failed**\nAddCounter(3) accepted but not committed\nMultiplyCounter(2) not processed
 end
 
-note over byzantium, cyrene #yellow: **Leadership Lost**\nNeed new leader for slot 4 and beyond
+clientA -[#red]x athens: No response (timeout)
+clientB -[#red]x athens: No response (timeout)
+
+note over clientA #orange: **Client Dilemma:**\nDid AddCounter(3) execute?\nShould I retry the request?
+
+note over clientB #orange: **Client Dilemma:**\nDid MultiplyCounter(2) execute?\nShould I retry the request?
+
+note over byzantium, cyrene #yellow: **Leadership Lost**\nSlot 4 has accepted request but not committed\nByzantium and Cyrene must elect new leader
 ' [/step2]
 
 ' [step3 {"name":"New Leader Election", "newPage":"true"}]
@@ -48,46 +65,60 @@ group #LightBlue "Leader Election (Prepare Phase)"
     byzantium -> byzantium: Prepare(gen=6)
     byzantium -> cyrene: Prepare(gen=6)
     
-    byzantium -> byzantium: Promise(gen=6)
-    cyrene -> byzantium: Promise(gen=6, found slots with pending entries)
+    byzantium -> byzantium: Promise(gen=6, no pending entries)
+    cyrene -> byzantium: Promise(gen=6, slot=4: "AddCounter(3)" gen=5)
     
-    note over byzantium #lightgreen: **Byzantium becomes Leader**\nGeneration = 6 established
+    note over byzantium #lightgreen: **Byzantium becomes Leader**\nGeneration = 6 established\nDiscovered pending: AddCounter(3)
 end
 ' [/step3]
 
 ' [step4 {"name":"Recovery Phase", "newPage":"true"}]
 group #LightYellow "Recovery for All Uncommitted Slots"
-    note over byzantium: **Recovery Process:**\n1. Check all slots for uncommitted entries\n2. Apply highest generation rule\n3. Re-commit with new generation
+    note over byzantium: **Recovery Process:**\n1. Found AddCounter(3) in slot=4 with gen=5\n2. Apply highest generation rule\n3. Re-commit with new generation
     
-    note over byzantium: Slot 3: Found SetCounter(10) (gen=5)\nMust re-commit with gen=6
+    note over byzantium: Slot 3: Found SetCounter(10) (gen=5)\nSlot 4: Found AddCounter(3) (gen=5)\nMust re-commit both with gen=6
     
     byzantium -> byzantium: Accept(gen=6, slot=3, "SetCounter(10)")
     byzantium -> cyrene: Accept(gen=6, slot=3, "SetCounter(10)")
     
-    byzantium -> byzantium: Accepted(slot=3)
-    cyrene -> byzantium: Accepted(slot=3)
-    
-    note over byzantium #lightgreen: Slot 3 committed!\nHigh-Water Mark = 3
-end
-' [/step4]
-
-' [step5 {"name":"Process Pending Client Request", "newPage":"true"}]
-group #LightGreen "Handle Client Request (No Prepare Needed)"
-    note over byzantium: **Optimization in Action:**\nLeadership already established\nJust run Accept/Commit phases
-    
     byzantium -> byzantium: Accept(gen=6, slot=4, "AddCounter(3)")
     byzantium -> cyrene: Accept(gen=6, slot=4, "AddCounter(3)")
     
-    byzantium -> byzantium: Accepted(slot=4)
-    cyrene -> byzantium: Accepted(slot=4)
+    byzantium -> byzantium: Accepted(slot=3,4)
+    cyrene -> byzantium: Accepted(slot=3,4)
     
-    note over byzantium #lightgreen: Slot 4 committed!\nHigh-Water Mark = 4
+    note over byzantium #lightgreen: Slots 3,4 committed!\nHigh-Water Mark = 4
 end
 
-byzantium -> clientA: Success: AddCounter(3) executed
+note over byzantium #orange: **Critical: No response to ClientA**\nNew leader doesn't know which client\nsent AddCounter(3) originally
+' [/step4]
+
+' [step5 {"name":"Client Retries - Need for Idempotent Receiver", "newPage":"true"}]
+note over clientA #orange: **ClientA retries AddCounter(3)**\nDon't know if it was executed\nCould cause duplicate execution!
+
+note over clientB #orange: **ClientB retries MultiplyCounter(2)**\nDon't know if it was executed\nCould cause duplicate execution!
+
+clientA -> byzantium: AddCounter(3) [RETRY]
+clientB -> byzantium: MultiplyCounter(2) [RETRY]
+
+note over byzantium #red: **Problem Without Idempotent Receiver:**\nAddCounter(3) already executed in slot 4\nRetry would execute it AGAIN in slot 5!\nViolates exactly-once semantics
+
+note across #red
+**Critical Issue: Duplicate Execution**
+
+Without proper handling:
+• AddCounter(3) executed twice → Wrong result
+• MultiplyCounter(2) executed twice → Wrong result
+• System loses correctness guarantees
+
+**Solution: Idempotent Receiver Pattern**
+• Assign unique IDs to client requests
+• Track processed requests
+• Return cached results for duplicates
+end note
 ' [/step5]
 
-' [step6 {"name":"Final State", "newPage":"true"}]
+' [step6 {"name":"Final State After Recovery", "newPage":"true"}]
 note over byzantium
 **Byzantium (New Leader)**
 Generation = 6
@@ -118,32 +149,24 @@ AddCounter(3) (gen=6) ✓
 High-Water Mark = 4
 end note
 
-note across #lightgreen: **Multi-Paxos Recovery Complete:**\nNew leader established, all slots recovered,\nclient request processed seamlessly
+note across #lightgreen: **Multi-Paxos Recovery Complete:**\nPreviously accepted request preserved and committed\nBut client retry problem remains unsolved
 ' [/step6]
 
-' [step7 {"name":"Subsequent Requests - Optimization", "newPage":"true"}]
-clientB -> byzantium: MultiplyCounter(2)
+' [step7 {"name":"Production Requirement", "newPage":"true"}]
+note across #lightblue
+**Multi-Paxos in Production Requires:**
 
-note over byzantium #lightblue: **Multi-Paxos Optimization:**\nNo prepare phase needed!\nLeadership already established
+✓ **Consensus Safety**: Achieved through generation numbers and quorum overlap
+✓ **Leader Election**: Achieved through prepare phase and heartbeats  
+✓ **Failure Recovery**: Achieved through highest generation rule
+✗ **Client Retry Safety**: Requires Idempotent Receiver pattern
 
-group #LightGreen "Direct Accept/Commit"
-    byzantium -> byzantium: Accept(gen=6, slot=5, "MultiplyCounter(2)")
-    byzantium -> cyrene: Accept(gen=6, slot=5, "MultiplyCounter(2)")
-    
-    byzantium -> byzantium: Accepted(slot=5)
-    cyrene -> byzantium: Accepted(slot=5)
-end
+**Next: Implement Idempotent Receiver for client retry safety**
 
-byzantium -> clientB: Success: MultiplyCounter(2) executed
-
-note across #lightgreen
-**Multi-Paxos Key Benefits:**
-
-✓ **One-time leadership**: Prepare phase executed once per leader
-✓ **Fast subsequent requests**: Only accept/commit phases needed
-✓ **Automatic recovery**: Handles leader failures gracefully
-✓ **Consistency**: Maintains safety through generation numbers
-✓ **Production ready**: Optimal performance for real systems
+**Problem Solved by Idempotent Receiver:**
+• Clients don't know if requests were processed during failures
+• Retries can cause duplicate execution without proper deduplication
+• Need unique request IDs and response caching for safety
 end note
 ' [/step7]
 

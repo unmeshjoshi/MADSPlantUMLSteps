@@ -1,0 +1,129 @@
+@startuml
+!include ../../style.puml
+
+participant "Client A\n(ID: clientA)" as clientA
+participant "Server\n(Leader)" as server
+participant "Deduplication\nTable" as dedupTable
+participant "Consensus Log" as log
+
+title Idempotent Receiver Pattern: Using Deduplication Table
+
+' [step1 {"name":"Client Sends Request with Client ID + Request Number"}]
+note over clientA: **Client A generates request**\nClient ID: "clientA"\nRequest Number: 42\nPayload: Transfer $100
+
+clientA -> server: Request(clientID="clientA", reqNum=42, "Transfer $100")
+
+note over server: **Check deduplication table first**\nLook for (clientA, 42)
+
+server -> dedupTable: Lookup(clientID="clientA", reqNum=42)
+dedupTable -> server: Not found
+
+note over server #lightgreen: **New request - proceed with consensus**
+' [/step1]
+
+' [step2 {"name":"Run Consensus and Execute", "newPage":"true"}]
+group #LightBlue "Consensus Process"
+    note over server: **Add to consensus log**\nRaw request without result
+    
+    server -> log: Add entry: Slot=5, (clientA, 42, "Transfer $100")
+    
+    note over log #lightgreen: **Consensus achieved**\nSlot 5: (clientA, 42, "Transfer $100")
+end
+
+group #LightGreen "Execute and Update Table"
+    note over server: **Execute committed request**\nTransfer $100: Balance $1000 → $900
+    
+    server -> dedupTable: Store(clientA, 42, "Success: Transferred $100")
+    
+    note over dedupTable #lightgreen: **Table Updated**\n(clientA, 42) → "Success: Transferred $100"
+end
+
+server -> clientA: "Success: Transferred $100"
+' [/step2]
+
+' [step3 {"name":"Network Failure - Response Lost", "newPage":"true"}]
+group #Red "Network Failure"
+    server -[#red]x clientA: Response lost due to\nnetwork partition
+    
+    note over server #lightblue: **Server State:**\nRequest executed and cached in table\nConsensus log has entry\nResponse sent but lost
+end
+
+note over clientA #orange: **Client Dilemma:**\nDid Transfer $100 execute?\nTimeout occurred - should retry
+
+note over clientA: **Client Decision:**\nRetry with SAME client ID + request number\nCritical: Must use identical (clientA, 42)
+' [/step3]
+
+' [step4 {"name":"Client Retries - Table Lookup", "newPage":"true"}]
+clientA -> server: Request(clientID="clientA", reqNum=42, "Transfer $100") [RETRY]
+
+note over server: **Check deduplication table**\nBefore any consensus processing
+
+server -> dedupTable: Lookup(clientID="clientA", reqNum=42)
+dedupTable -> server: Found: "Success: Transferred $100"
+
+note over server #lightgreen: **Duplicate detected!**\nReturn cached result immediately\nNo consensus needed!
+' [/step4]
+
+' [step5 {"name":"Return Cached Result", "newPage":"true"}]
+server -> clientA: "Success: Transferred $100" [FROM TABLE]
+
+note over clientA #lightgreen: **Client receives response**\nRequest completed successfully\nExactly-once semantics preserved
+
+note over server #lightblue: **No duplicate processing**\nNo consensus run\nNo duplicate execution\nBalance remains $900 (correct)
+
+note across #lightgreen: **Idempotent Receiver Success:**\nFast duplicate detection using efficient table lookup
+' [/step5]
+
+' [step6 {"name":"Multiple Clients and Requests", "newPage":"true"}]
+participant "Client B\n(ID: clientB)" as clientB
+
+clientB -> server: Request(clientID="clientB", reqNum=10, "Deposit $50")
+
+server -> dedupTable: Lookup(clientID="clientB", reqNum=10)
+dedupTable -> server: Not found
+
+note over server: **New client/request combination**\nProceed with consensus
+
+group "Consensus and Execution"
+    server -> log: Add entry: Slot=6, (clientB, 10, "Deposit $50")
+    server -> dedupTable: Store(clientB, 10, "Success: Deposited $50")
+end
+
+server -> clientB: "Success: Deposited $50"
+
+note over dedupTable: **Table Now Contains:**\n(clientA, 42) → "Success: Transferred $100"\n(clientB, 10) → "Success: Deposited $50"
+' [/step6]
+
+' [step7 {"name":"System Architecture", "newPage":"true"}]
+note across #lightblue
+**Idempotent Receiver Architecture:**
+
+**Two Separate Components:**
+
+**1. Consensus Log (Ordering):**
+• Slot=5: (clientA, 42, "Transfer $100")
+• Slot=6: (clientB, 10, "Deposit $50")
+• Contains raw requests in commit order
+• Used for replication and recovery
+
+**2. Deduplication Table (Fast Lookup):**
+• (clientA, 42) → "Success: Transferred $100"
+• (clientB, 10) → "Success: Deposited $50"
+• Optimized hash table for O(1) lookups
+• Updated after each execution
+
+**Request Processing Flow:**
+1. Check deduplication table first
+2. If found: return cached result (fast path)
+3. If not found: run consensus → execute → update table
+4. Respond to client
+
+**Benefits:**
+• Fast duplicate detection (O(1) table lookup)
+• Separates concerns: ordering vs deduplication
+• Table can be optimized independently
+• Works with any consensus algorithm
+end note
+' [/step7]
+
+@enduml 

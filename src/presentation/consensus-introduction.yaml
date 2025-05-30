@@ -482,6 +482,78 @@ slides:
     notes: "Show the complete Multi-Paxos leader failure and recovery cycle, demonstrating how the optimization works in practice when leadership changes."
 
   - type: "text"
+    title: "Heartbeat Mechanism: Detecting Leader Failures"
+    bullets:
+      - "Problem: How do followers know when the leader has failed?"
+      - "Solution: Leader periodically sends heartbeat messages to all followers"
+      - "Heartbeat interval should be greater than network round-trip time between servers"
+      - "Followers wait for timeout interval (multiple of heartbeat interval)"
+      - "If heartbeat doesn't arrive within timeout, followers trigger leader election"
+    notes: "Introduce the heartbeat pattern as described in Martin Fowler's Patterns of Distributed Systems. Emphasize the importance of timely failure detection for maintaining system availability."
+
+  - type: "diagram"
+    title: "Heartbeat Pattern: General Concept"
+    diagramRef: "heartbeat_general_concept"
+    bullets:
+      - "Server periodically sends heartbeat messages to indicate liveness"
+      - "Other servers maintain timeout timers"
+      - "Timeout expiry indicates server failure"
+      - "Enables timely detection of failures in distributed systems"
+    notes: "Show the basic heartbeat pattern as a general distributed systems concept before applying it to Multi-Paxos. Emphasize timing relationships and failure detection mechanism."
+
+  - type: "text"
+    title: "Heartbeat in Multi-Paxos Context"
+    bullets:
+      - "Leader sends heartbeats while processing client requests (can piggyback on regular messages)"
+      - "During idle periods, leader sends explicit heartbeat messages"
+      - "Followers reset their timeout whenever they receive any message from current leader"
+      - "Timeout expiry triggers immediate leader election with higher generation number"
+      - "Ensures rapid detection of leader failures and minimal service disruption"
+    notes: "Explain how heartbeat mechanism integrates with Multi-Paxos, including optimization opportunities like piggybacking heartbeats on regular consensus messages."
+
+  - type: "diagram"
+    title: "Multi-Paxos: Heartbeat and Failure Detection"
+    diagramRef: "multi_paxos_heartbeat_failure_detection"
+    bullets:
+      - "Leader Athens sends periodic heartbeats to followers"
+      - "Followers maintain timeout timers for leader liveness"
+      - "Athens fails and heartbeats stop arriving"
+      - "Timeout expires on followers, triggering leader election"
+      - "Demonstrates the complete failure detection and recovery cycle"
+    notes: "Show how heartbeat mechanism works in practice with Multi-Paxos, including timing relationships and the transition from heartbeat failure to leader election."
+
+  - type: "text"
+    title: "Client Retry Problem in Distributed Systems"
+    bullets:
+      - "When servers fail, clients don't know if their requests were processed"
+      - "Clients must retry to ensure their requests are handled"
+      - "Problem: Retries can cause duplicate execution if the original request was processed"
+      - "Example: Transfer $100 - if executed twice, transfers $200!"
+      - "Need mechanism to handle retries safely while maintaining exactly-once semantics"
+    notes: "Introduce the fundamental client retry problem that occurs in all distributed systems. This is separate from consensus but equally important for production systems."
+
+  - type: "text"
+    title: "Idempotent Receiver Pattern: Safe Request Handling"
+    bullets:
+      - "Solution: Each client assigns unique (client ID, request number) to every request"
+      - "Servers maintain deduplication table: (clientID, requestNumber) → executionResult"
+      - "Table updated after each committed request is executed"
+      - "When new request arrives: check deduplication table first"
+      - "If found: return cached result without consensus or execution"
+    notes: "Explain the Idempotent Receiver pattern using a separate deduplication table that's maintained as derived state from the consensus log."
+
+  - type: "diagram"
+    title: "Idempotent Receiver Pattern in Action"
+    diagramRef: "idempotent_receiver_pattern"
+    bullets:
+      - "Client sends request with unique ID"
+      - "Server processes request and caches response"
+      - "Server crashes before responding to client"
+      - "Client retries with same request ID"
+      - "Server detects duplicate and returns cached response"
+    notes: "Show the complete flow of the Idempotent Receiver pattern, demonstrating how it prevents duplicate execution while ensuring clients get responses."
+
+  - type: "text"
     title: "From Basic Consensus to Production Systems"
     bullets:
       - "We've built the foundation: single-value consensus with recovery"

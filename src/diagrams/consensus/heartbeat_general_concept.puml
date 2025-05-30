@@ -1,0 +1,119 @@
+@startuml
+!include ../../style.puml
+
+participant "Athens\n(Sending Heartbeats)" as athens
+participant "Byzantium\n(Monitoring)" as byzantium
+participant "Cyrene\n(Monitoring)" as cyrene
+
+title Heartbeat Pattern: General Concept
+
+' [step1 {"name":"Normal Heartbeat Operation"}]
+note over athens: **Athens (Current Leader)**\nSending periodic heartbeats\nto indicate liveness
+
+note over byzantium: **Byzantium**\nTimeout = 2.8 seconds (random)\nMonitoring Athens
+
+note over cyrene: **Cyrene**\nTimeout = 3.2 seconds (random)\nMonitoring Athens
+
+note over athens, cyrene: **Heartbeat Interval: 1 second**\n**Random Timeout Range: 2.5-3.5 seconds**
+
+athens -> byzantium: Heartbeat
+athens -> cyrene: Heartbeat
+
+note over byzantium #lightgreen: **Heartbeat Received**\nReset timeout timer (2.8s)
+note over cyrene #lightgreen: **Heartbeat Received**\nReset timeout timer (3.2s)
+' [/step1]
+
+' [step2 {"name":"Regular Heartbeat Cycle", "newPage":"true"}]
+...Time passes (1 second)...
+
+athens -> byzantium: Heartbeat
+athens -> cyrene: Heartbeat
+
+note over byzantium: **Timer Reset (2.8s)**\nAthens is alive
+note over cyrene: **Timer Reset (3.2s)**\nAthens is alive
+
+...Time passes (1 second)...
+
+athens -> byzantium: Heartbeat
+athens -> cyrene: Heartbeat
+
+note over byzantium: **Timer Reset (2.8s)**\nAthens is alive
+note over cyrene: **Timer Reset (3.2s)**\nAthens is alive
+
+note across #lightblue: **Steady State:** Regular heartbeats confirm leader liveness
+' [/step2]
+
+' [step3 {"name":"Athens Failure", "newPage":"true"}]
+group #Red "Leader Failure"
+    athens -[#red]x athens: Athens fails\n(crash, network partition, etc.)
+    
+    note over athens #red: **Athens Failed**\nNo more heartbeats sent
+end
+
+note over byzantium #yellow: **Missing Heartbeat**\nTimeout timer (2.8s) running...
+note over cyrene #yellow: **Missing Heartbeat**\nTimeout timer (3.2s) running...
+
+...Time passes (1 second - no heartbeat)...
+
+note over byzantium: **Timer: 1.8s remaining**\nStill waiting for heartbeat
+note over cyrene: **Timer: 2.2s remaining**\nStill waiting for heartbeat
+' [/step3]
+
+' [step4 {"name":"Staggered Timeout Detection", "newPage":"true"}]
+...Time passes (1 more second - still no heartbeat)...
+
+note over byzantium: **Timer: 0.8s remaining**\nAthens might be failed
+note over cyrene: **Timer: 1.2s remaining**\nStill waiting a bit longer
+
+...Time passes (0.8 seconds)...
+
+note over byzantium #red: **TIMEOUT EXPIRED! (2.8s)**\nAthens assumed failed\nTrigger leader election
+
+note over cyrene: **Timer: 0.4s remaining**\nByzantium's timeout expired first
+
+...Time passes (0.4 seconds)...
+
+note over cyrene #orange: **TIMEOUT EXPIRED! (3.2s)**\nBut Byzantium already started election\nJoin election or wait
+' [/step4]
+
+' [step5 {"name":"Staggered Leader Election", "newPage":"true"}]
+group #LightBlue "Leader Election (Staggered Start)"
+    note over byzantium: **Byzantium starts election first**\n(Shorter timeout: 2.8s)\nGeneration = N+1
+    
+    note over cyrene: **Cyrene timeout expires later**\n(Longer timeout: 3.2s)\nSees election in progress
+    
+    note over byzantium: **Advantage of starting first:**\nLikely to win leadership\nReduces election conflicts
+end
+
+note across #lightgreen: **Random Timeouts Prevent Livelock:**\nStaggered election starts reduce simultaneous attempts
+' [/step5]
+
+' [step6 {"name":"Benefits of Random Timeouts", "newPage":"true"}]
+note across #lightblue
+**Random Timeout Benefits for Consensus:**
+
+**Livelock Prevention:**
+• Different servers timeout at different times
+• Reduces simultaneous leader election attempts
+• First server to timeout has advantage
+
+**Election Efficiency:**
+• Server with shortest timeout likely becomes leader
+• Fewer competing proposals
+• Faster convergence to new leader
+
+**Timeout Range Guidelines:**
+• Base timeout: 3-5 × heartbeat interval
+• Random jitter: ±20% of base timeout
+• Example: Base=3s, Range=2.4s-3.6s
+• Ensure minimum > 2 × heartbeat interval
+
+**Implementation Notes:**
+• Each server picks random timeout on startup
+• Timeout recomputed after each leader election
+• Balance: detection speed vs. false positives
+• Consider network conditions and load
+end note
+' [/step6]
+
+@enduml 
