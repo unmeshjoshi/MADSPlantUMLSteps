@@ -441,6 +441,47 @@ slides:
     notes: "Show the complete Multi-Paxos system in action."
 
   - type: "text"
+    title: "Multi-Paxos Optimization: Server-Level Leadership"
+    bullets:
+      - "Key insight: Leader election (prepare phase) can be executed only once at server level"
+      - "Generation number maintained at server level to detect conflicts during recovery and execution"
+      - "When triggered, server runs leader election to establish generation number"
+      - "New leader then runs recovery for all uncommitted log entries across all servers"
+    notes: "Introduce the key optimization that makes Multi-Paxos practical - separating leadership from per-slot consensus."
+
+  - type: "text"
+    title: "Multi-Paxos Recovery Process"
+    bullets:
+      - "Recovery phase: For each uncommitted slot, choose highest generation entry found"
+      - "Re-run two phases (accept and commit) with new generation number for recovered entries"
+      - "Use high-water mark mechanism to ensure safe execution order"
+      - "After recovery completes, leader can execute just accept/commit phases for new requests"
+      - "Leader knows which next slot to use - no more prepare phases needed"
+    notes: "Explain the recovery process and how it enables the optimization of skipping prepare phases for subsequent requests."
+
+  - type: "diagram"
+    title: "Multi-Paxos: Initial Leader Election"
+    diagramRef: "multi_paxos_initial_leader_election"
+    bullets:
+      - "System startup - no existing leader"
+      - "Athens triggers leader election and establishes generation number"
+      - "Athens becomes leader and starts processing client requests"
+      - "Subsequent requests use only accept/commit phases (no prepare needed)"
+      - "Demonstrates the Multi-Paxos optimization from clean state"
+    notes: "Show how Multi-Paxos works from system startup, demonstrating the initial leader election and subsequent optimization for client requests."
+
+  - type: "diagram"
+    title: "Multi-Paxos: Leader Failure and Recovery"
+    diagramRef: "multi_paxos_leader_failure_recovery"
+    bullets:
+      - "Existing leader fails or gets disconnected during operation"
+      - "New leader election triggered on another server"
+      - "New leader establishes higher generation number"
+      - "Runs recovery for all pending/uncommitted slots"
+      - "Executes client requests from next open slot onwards using only accept/commit phases"
+    notes: "Show the complete Multi-Paxos leader failure and recovery cycle, demonstrating how the optimization works in practice when leadership changes."
+
+  - type: "text"
     title: "From Basic Consensus to Production Systems"
     bullets:
       - "We've built the foundation: single-value consensus with recovery"

@@ -1,0 +1,150 @@
+@startuml
+!include ../../style.puml
+
+participant "Client A" as clientA
+participant "Client B" as clientB
+participant "Athens\n(Old Leader)" as athens
+participant "Byzantium\n(New Leader)" as byzantium
+participant "Cyrene" as cyrene
+
+title Multi-Paxos: Leader Failure and Recovery
+
+' [step1 {"name":"Normal Operation - Athens as Leader"}]
+note over athens: **Athens (Leader)**\nGeneration = 5\nLeadership established
+
+note over athens
+==Log==
+IncrementCounter (gen=5) ✓
+----
+DecrementCounter (gen=5) ✓
+----
+SetCounter(10) (gen=5)
+----
+<empty>
+====
+High-Water Mark = 2
+end note
+
+clientA -> athens: AddCounter(3)
+note over athens: Assign to Slot 4\nUse existing leadership
+' [/step1]
+
+' [step2 {"name":"Leader Failure", "newPage":"true"}]
+group #Red "Leader Failure"
+    athens -[#red]x athens: Athens crashes/disconnects
+    
+    note over athens #red: **Athens Failed**\nCannot complete client request
+    
+    clientA -[#red]x athens: No response
+end
+
+note over byzantium, cyrene #yellow: **Leadership Lost**\nNeed new leader for slot 4 and beyond
+' [/step2]
+
+' [step3 {"name":"New Leader Election", "newPage":"true"}]
+group #LightBlue "Leader Election (Prepare Phase)"
+    note over byzantium: **Byzantium triggers leader election**\nChooses Generation = 6 (higher than 5)
+    
+    byzantium -> byzantium: Prepare(gen=6)
+    byzantium -> cyrene: Prepare(gen=6)
+    
+    byzantium -> byzantium: Promise(gen=6)
+    cyrene -> byzantium: Promise(gen=6, found slots with pending entries)
+    
+    note over byzantium #lightgreen: **Byzantium becomes Leader**\nGeneration = 6 established
+end
+' [/step3]
+
+' [step4 {"name":"Recovery Phase", "newPage":"true"}]
+group #LightYellow "Recovery for All Uncommitted Slots"
+    note over byzantium: **Recovery Process:**\n1. Check all slots for uncommitted entries\n2. Apply highest generation rule\n3. Re-commit with new generation
+    
+    note over byzantium: Slot 3: Found SetCounter(10) (gen=5)\nMust re-commit with gen=6
+    
+    byzantium -> byzantium: Accept(gen=6, slot=3, "SetCounter(10)")
+    byzantium -> cyrene: Accept(gen=6, slot=3, "SetCounter(10)")
+    
+    byzantium -> byzantium: Accepted(slot=3)
+    cyrene -> byzantium: Accepted(slot=3)
+    
+    note over byzantium #lightgreen: Slot 3 committed!\nHigh-Water Mark = 3
+end
+' [/step4]
+
+' [step5 {"name":"Process Pending Client Request", "newPage":"true"}]
+group #LightGreen "Handle Client Request (No Prepare Needed)"
+    note over byzantium: **Optimization in Action:**\nLeadership already established\nJust run Accept/Commit phases
+    
+    byzantium -> byzantium: Accept(gen=6, slot=4, "AddCounter(3)")
+    byzantium -> cyrene: Accept(gen=6, slot=4, "AddCounter(3)")
+    
+    byzantium -> byzantium: Accepted(slot=4)
+    cyrene -> byzantium: Accepted(slot=4)
+    
+    note over byzantium #lightgreen: Slot 4 committed!\nHigh-Water Mark = 4
+end
+
+byzantium -> clientA: Success: AddCounter(3) executed
+' [/step5]
+
+' [step6 {"name":"Final State", "newPage":"true"}]
+note over byzantium
+**Byzantium (New Leader)**
+Generation = 6
+==Log==
+IncrementCounter (gen=5) ✓
+----
+DecrementCounter (gen=5) ✓
+----
+SetCounter(10) (gen=6) ✓
+----
+AddCounter(3) (gen=6) ✓
+====
+High-Water Mark = 4
+end note
+
+note over cyrene
+**Cyrene**
+Generation = 6
+==Log==
+IncrementCounter (gen=5) ✓
+----
+DecrementCounter (gen=5) ✓
+----
+SetCounter(10) (gen=6) ✓
+----
+AddCounter(3) (gen=6) ✓
+====
+High-Water Mark = 4
+end note
+
+note across #lightgreen: **Multi-Paxos Recovery Complete:**\nNew leader established, all slots recovered,\nclient request processed seamlessly
+' [/step6]
+
+' [step7 {"name":"Subsequent Requests - Optimization", "newPage":"true"}]
+clientB -> byzantium: MultiplyCounter(2)
+
+note over byzantium #lightblue: **Multi-Paxos Optimization:**\nNo prepare phase needed!\nLeadership already established
+
+group #LightGreen "Direct Accept/Commit"
+    byzantium -> byzantium: Accept(gen=6, slot=5, "MultiplyCounter(2)")
+    byzantium -> cyrene: Accept(gen=6, slot=5, "MultiplyCounter(2)")
+    
+    byzantium -> byzantium: Accepted(slot=5)
+    cyrene -> byzantium: Accepted(slot=5)
+end
+
+byzantium -> clientB: Success: MultiplyCounter(2) executed
+
+note across #lightgreen
+**Multi-Paxos Key Benefits:**
+
+✓ **One-time leadership**: Prepare phase executed once per leader
+✓ **Fast subsequent requests**: Only accept/commit phases needed
+✓ **Automatic recovery**: Handles leader failures gracefully
+✓ **Consistency**: Maintains safety through generation numbers
+✓ **Production ready**: Optimal performance for real systems
+end note
+' [/step7]
+
+@enduml 

@@ -1,0 +1,184 @@
+@startuml
+!include ../../style.puml
+
+participant "Client A" as clientA
+participant "Client B" as clientB
+participant "Athens" as athens
+participant "Byzantium" as byzantium
+participant "Cyrene" as cyrene
+
+title Multi-Paxos: Initial Leader Election
+
+' [step1 {"name":"System Startup - No Leader"}]
+note over athens, cyrene: **System Startup**\nNo existing leader\nAll nodes have empty logs
+
+note over athens
+==Log==
+<empty>
+----
+<empty>
+----
+<empty>
+====
+High-Water Mark = 0
+end note
+
+note over byzantium
+==Log==
+<empty>
+----
+<empty>
+----
+<empty>
+====
+High-Water Mark = 0
+end note
+
+note over cyrene
+==Log==
+<empty>
+----
+<empty>
+----
+<empty>
+====
+High-Water Mark = 0
+end note
+' [/step1]
+
+' [step2 {"name":"Client Requests Arrive", "newPage":"true"}]
+clientA -> athens: IncrementCounter
+clientB -> byzantium: DecrementCounter
+
+note over athens #yellow: **No Leader Exists**\nCannot process client requests\nMust establish leadership first
+
+note over byzantium #yellow: **No Leader Exists**\nForward request to potential leader\nor trigger leader election
+' [/step2]
+
+' [step3 {"name":"Athens Triggers Leader Election", "newPage":"true"}]
+group #LightBlue "Leader Election (Prepare Phase)"
+    note over athens: **Athens triggers leader election**\nChooses Generation = 1 (initial)
+    
+    athens -> athens: Prepare(gen=1)
+    athens -> byzantium: Prepare(gen=1)
+    athens -> cyrene: Prepare(gen=1)
+    
+    athens -> athens: Promise(gen=1, no previous entries)
+    byzantium -> athens: Promise(gen=1, no previous entries)
+    cyrene -> athens: Promise(gen=1, no previous entries)
+    
+    note over athens #lightgreen: **Athens becomes Leader**\nGeneration = 1 established\nNo recovery needed (clean state)
+end
+' [/step3]
+
+' [step4 {"name":"Process First Request", "newPage":"true"}]
+group #LightGreen "First Request (Full Two-Phase)"
+    note over athens: **Process IncrementCounter**\nUse established leadership (gen=1)
+    
+    athens -> athens: Accept(gen=1, slot=1, "IncrementCounter")
+    athens -> byzantium: Accept(gen=1, slot=1, "IncrementCounter")
+    athens -> cyrene: Accept(gen=1, slot=1, "IncrementCounter")
+    
+    athens -> athens: Accepted(slot=1)
+    byzantium -> athens: Accepted(slot=1)
+    cyrene -> athens: Accepted(slot=1)
+    
+    note over athens #lightgreen: Slot 1 committed!\nHigh-Water Mark = 1
+end
+
+athens -> clientA: Success: IncrementCounter executed
+' [/step4]
+
+' [step5 {"name":"Process Second Request - Optimization", "newPage":"true"}]
+group #LightYellow "Second Request (Accept Only - No Prepare)"
+    note over athens: **Multi-Paxos Optimization:**\nLeadership already established\nSkip prepare phase entirely!
+    
+    athens -> athens: Accept(gen=1, slot=2, "DecrementCounter")
+    athens -> byzantium: Accept(gen=1, slot=2, "DecrementCounter")
+    athens -> cyrene: Accept(gen=1, slot=2, "DecrementCounter")
+    
+    athens -> athens: Accepted(slot=2)
+    byzantium -> athens: Accepted(slot=2)
+    cyrene -> athens: Accepted(slot=2)
+    
+    note over athens #lightgreen: Slot 2 committed!\nHigh-Water Mark = 2
+end
+
+athens -> clientB: Success: DecrementCounter executed
+' [/step5]
+
+' [step6 {"name":"Steady State Operation", "newPage":"true"}]
+note over athens
+**Athens (Leader)**
+Generation = 1
+==Log==
+IncrementCounter (gen=1) ✓
+----
+DecrementCounter (gen=1) ✓
+----
+<empty>
+====
+High-Water Mark = 2
+end note
+
+note over byzantium
+**Byzantium**
+Generation = 1
+==Log==
+IncrementCounter (gen=1) ✓
+----
+DecrementCounter (gen=1) ✓
+----
+<empty>
+====
+High-Water Mark = 2
+end note
+
+note over cyrene
+**Cyrene**
+Generation = 1
+==Log==
+IncrementCounter (gen=1) ✓
+----
+DecrementCounter (gen=1) ✓
+----
+<empty>
+====
+High-Water Mark = 2
+end note
+
+note across #lightgreen: **Steady State Achieved:**\nAthens is leader, all requests processed efficiently
+' [/step6]
+
+' [step7 {"name":"Continued Efficient Operation", "newPage":"true"}]
+participant "Client C" as clientC
+clientC -> athens: SetCounter(10)
+
+note over athens #lightblue: **Multi-Paxos Advantage:**\nOnce leader is established,\nall subsequent requests are FAST!
+
+group #LightGreen "Efficient Request Processing"
+    athens -> athens: Accept(gen=1, slot=3, "SetCounter(10)")
+    athens -> byzantium: Accept(gen=1, slot=3, "SetCounter(10)")
+    athens -> cyrene: Accept(gen=1, slot=3, "SetCounter(10)")
+    
+    athens -> athens: Accepted(slot=3)
+    byzantium -> athens: Accepted(slot=3)
+    cyrene -> athens: Accepted(slot=3)
+end
+
+athens -> clientC: Success: SetCounter(10) executed
+
+note across #lightgreen
+**Multi-Paxos Initial Operation Summary:**
+
+✓ **One-time setup**: Leader election done once at startup
+✓ **Clean recovery**: No prior state to recover from
+✓ **Immediate optimization**: Subsequent requests skip prepare phase
+✓ **High performance**: Minimal message overhead for ongoing operations
+✓ **Production efficiency**: Optimal for steady-state distributed systems
+
+**Ready to handle leader failures with graceful recovery!**
+end note
+' [/step7]
+
+@enduml 
