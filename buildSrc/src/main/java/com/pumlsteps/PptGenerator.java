@@ -889,6 +889,58 @@ public class PptGenerator {
     }
 
     /**
+     * Adds a section separator slide with professional styling.
+     *
+     * @param sectionTitle The title of the section.
+     */
+    public void addSectionSeparatorSlide(String sectionTitle) {
+        try {
+            XSLFSlide slide = ppt.createSlide();
+            int slideWidth = ppt.getPageSize().width;
+            int slideHeight = ppt.getPageSize().height;
+            
+            // Create a gradient background for a more professional look
+            XSLFAutoShape bgShape = slide.createAutoShape();
+            bgShape.setShapeType(ShapeType.RECT);
+            bgShape.setAnchor(new Rectangle(0, 0, slideWidth, slideHeight));
+            bgShape.setFillColor(ColorScheme.BACKGROUND_DARK);
+            
+            // Add a subtle accent bar on the left side
+            XSLFAutoShape accentBar = slide.createAutoShape();
+            accentBar.setShapeType(ShapeType.RECT);
+            accentBar.setAnchor(new Rectangle(0, 0, 20, slideHeight));
+            accentBar.setFillColor(ColorScheme.SECONDARY);
+            
+            // Create a text box with enhanced styling
+            XSLFTextBox textBox = slide.createTextBox();
+            textBox.setAnchor(new Rectangle(80, slideHeight/2 - 120, slideWidth - 160, 240));
+            textBox.setHorizontalCentered(true);
+            textBox.setVerticalAlignment(VerticalAlignment.MIDDLE);
+            
+            // Create a paragraph with proper styling
+            XSLFTextParagraph paragraph = textBox.addNewTextParagraph();
+            paragraph.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.CENTER);
+            
+            // Create a text run with enhanced styling
+            XSLFTextRun run = paragraph.addNewTextRun();
+            run.setText(sectionTitle.toUpperCase()); // Use uppercase for section names
+            run.setFontFamily("Calibri Light"); // Use a lighter font weight for modern look
+            run.setFontSize(52.0); // Larger font for section title
+            run.setBold(true);
+            run.setFontColor(ColorScheme.TEXT_LIGHT);
+            
+            // Add a small decorative line under the text
+            XSLFAutoShape underline = slide.createAutoShape();
+            underline.setShapeType(ShapeType.RECT);
+            int lineWidth = Math.min(600, sectionTitle.length() * 25); // Scale with text length
+            underline.setAnchor(new Rectangle((slideWidth - lineWidth)/2, slideHeight/2 + 80, lineWidth, 5));
+            underline.setFillColor(ColorScheme.SECONDARY);
+        } catch (Exception e) {
+            throw new RuntimeException("Error adding section separator slide: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Saves the PowerPoint to the specified file.
      *
      * @param filePath The file path to save the PowerPoint.

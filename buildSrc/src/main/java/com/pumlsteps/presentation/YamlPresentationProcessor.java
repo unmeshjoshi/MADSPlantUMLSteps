@@ -93,6 +93,11 @@ public class YamlPresentationProcessor {
     }
 
     private void processSectionSlides(SectionConfig section, PptGenerator generator) {
+        // Add section separator slide
+        if (section.getTitle() != null && !section.getTitle().trim().isEmpty()) {
+            generator.addSectionSeparatorSlide(section.getTitle());
+        }
+        
         // Process each slide in the section
         if (section.getSlides() != null) {
             for (SlideConfig slide : section.getSlides()) {
