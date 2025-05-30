@@ -8,7 +8,15 @@ participant "Athens\n(Leader)" as athens
 participant "Byzantium" as byzantium
 participant "Cyrene" as cyrene
 
-note over athens: **Current Log State:**\n[1] IncrementCounter (committed)\n[2] <empty>\n[3] <empty>
+note over athens
+==Log==
+IncrementCounter (gen=1)
+----
+<empty>
+----
+<empty>
+====
+end note
 
 note over athens: New request:\nDecrementCounter
 ' [/step1]
@@ -48,11 +56,35 @@ end
 ' [/step4]
 
 ' [step5 {"name":"Final Log State", "newPage":"true"}]
-note over athens: **Updated Log State:**\n[1] IncrementCounter (committed)\n[2] DecrementCounter (committed)\n[3] <empty>
+note over athens
+==Log==
+IncrementCounter (gen=1)
+----
+DecrementCounter (gen=5)
+----
+<empty>
+====
+end note
 
-note over byzantium: **Updated Log State:**\n[1] IncrementCounter (committed)\n[2] DecrementCounter (committed)\n[3] <empty>
+note over byzantium
+==Log==
+IncrementCounter (gen=1)
+----
+DecrementCounter (gen=5)
+----
+<empty>
+====
+end note
 
-note over cyrene: **Updated Log State:**\n[1] IncrementCounter (committed)\n[2] DecrementCounter (committed)\n[3] <empty>
+note over cyrene
+==Log==
+IncrementCounter (gen=1)
+----
+DecrementCounter (gen=5)
+----
+<empty>
+====
+end note
 
 note over athens, cyrene #lightgreen: Both requests now committed!\nCan execute in order: Slot 1, then Slot 2
 ' [/step5]

@@ -9,56 +9,32 @@ participant "Byzantium" as byzantium
 participant "Cyrene" as cyrene
 
 note over athens
-ballot=1
 ==Log==
---index 1--
-IncrementCounter
+IncrementCounter (gen=1)
 ----
---index 2--
-DecrementCounter
+DecrementCounter (gen=1)
 ----
---index 3--
-IncrementCounter
-----
---index 4--
-<empty>
-----
+IncrementCounter (gen=1)
 ====
 end note
 
-note over byzantium
-ballot=1
+/ note over byzantium
 ==Log==
---index 1--
-IncrementCounter
+IncrementCounter (gen=1)
 ----
---index 2--
-DecrementCounter
+DecrementCounter (gen=1)
 ----
---index 3--
-IncrementCounter
-----
---index 4--
-<empty>
-----
+IncrementCounter (gen=1)
 ====
 end note
 
-note over cyrene
-ballot=1
+/ note over cyrene
 ==Log==
---index 1--
-IncrementCounter
+IncrementCounter (gen=1)
 ----
---index 2--
-DecrementCounter
+DecrementCounter (gen=1)
 ----
---index 3--
-IncrementCounter
-----
---index 4--
-<empty>
-----
+IncrementCounter (gen=1)
 ====
 end note
 ' [/step1]
@@ -67,28 +43,28 @@ end note
 note across #lightblue
 **Replicated Log Properties:**
 
-• **Ordered Slots**: Each index holds one request
-• **Consensus Per Slot**: Run separate consensus for each index
+• **Ordered Slots**: Each slot holds one request with generation number
+• **Consensus Per Slot**: Run separate consensus for each slot
 • **Same Order**: All nodes have identical logs
-• **Sequential Execution**: Execute requests in index order
+• **Sequential Execution**: Execute requests in log order
 end note
 ' [/step2]
 
 ' [step3 {"name":"Multiple Requests Handling", "newPage":"true"}]
 note over athens, cyrene: **How Multiple Requests Are Handled:**
 
-note over athens: Index 1: Run consensus\nfor "IncrementCounter"
-note over byzantium: Index 2: Run consensus\nfor "DecrementCounter"  
-note over cyrene: Index 3: Run consensus\nfor "IncrementCounter"
+note over athens: Slot 1: Run consensus\nfor "IncrementCounter" (gen=1)
+note over byzantium: Slot 2: Run consensus\nfor "DecrementCounter" (gen=1)
+note over cyrene: Slot 3: Run consensus\nfor "IncrementCounter" (gen=1)
 
-note over athens, cyrene #lightgreen: Each index is independent!\nCan handle unlimited requests
+note over athens, cyrene #lightgreen: Each slot is independent!\nCan handle unlimited requests
 ' [/step3]
 
 ' [step4 {"name":"Execution Order", "newPage":"true"}]
 group #LightYellow "Execution Process"
-    note over athens: Execute Index 1:\nCounter = 5 + 1 = 6
-    note over athens: Execute Index 2:\nCounter = 6 - 1 = 5
-    note over athens: Execute Index 3:\nCounter = 5 + 1 = 6
+    note over athens: Execute Slot 1:\nCounter = 5 + 1 = 6
+    note over athens: Execute Slot 2:\nCounter = 6 - 1 = 5
+    note over athens: Execute Slot 3:\nCounter = 5 + 1 = 6
 end
 
 note over athens, cyrene: **All nodes execute in same order**\n**Final state: Counter = 6**
@@ -98,7 +74,7 @@ note over athens, cyrene: **All nodes execute in same order**\n**Final state: Co
 note across #lightgreen
 **Benefits of Replicated Logs:**
 
-✓ **Unlimited Requests**: No single-value limitation
+✓ **Unlimited Requests**: No single-request limitation
 ✓ **Ordered Execution**: Maintains consistency
 ✓ **Fault Tolerance**: Consensus ensures agreement
 ✓ **Practical**: Foundation for real distributed systems

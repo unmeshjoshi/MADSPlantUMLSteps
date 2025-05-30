@@ -10,7 +10,18 @@ participant "Athens\n(Leader)" as athens
 participant "Byzantium" as byzantium
 participant "Cyrene" as cyrene
 
-note over athens: **Current Log:**\n[1] <empty>\n[2] <empty>\n[3] <empty>\nHigh-Water Mark = 0
+note over athens
+ballot=1
+==Log==
+--index 1--
+<empty>
+--index 2--
+<empty>
+--index 3--
+<empty>
+====
+High-Water Mark = 0
+end note
 ' [/step1]
 
 ' [step2 {"name":"Multiple Client Requests"}]
@@ -56,13 +67,24 @@ end
 note over athens #lightgreen: Slot 2 committed!\nHigh-Water Mark = 2
 ' [/step4]
 
-' [step5 {"name":"Execution Phase", "newPage":"true"}]
+' [step5 {"name":"Execute Both Requests", "newPage":"true"}]
 group #LightYellow "Execute Up to High-Water Mark"
     note over athens: Execute Slot 1:\nIncrementCounter\nCounter = 5 + 1 = 6
     
     note over athens: Execute Slot 2:\nDecrementCounter\nCounter = 6 - 1 = 5
     
-    note over athens: **High-Water Mark = 2**\nBoth slots executed
+    note over athens
+    ballot=1
+    ==Log==
+    --index 1--
+    IncrementCounter ✓
+    --index 2--
+    DecrementCounter ✓
+    --index 3--
+    <empty>
+    ====
+    High-Water Mark = 2
+    end note
 end
 
 athens --> clientA: Success: IncrementCounter executed
@@ -97,7 +119,20 @@ end
 ' [/step7]
 
 ' [step8 {"name":"Final State", "newPage":"true"}]
-note over athens: **Final Log State:**\n[1] IncrementCounter (committed, executed)\n[2] DecrementCounter (committed, executed)\n[3] IncrementCounter (committed)\n[4] SetCounter(10) (pending)\nHigh-Water Mark = 3
+note over athens
+ballot=1
+==Log==
+--index 1--
+IncrementCounter ✓
+--index 2--
+DecrementCounter ✓
+--index 3--
+IncrementCounter
+--index 4--
+SetCounter(10) (pending)
+====
+High-Water Mark = 3
+end note
 
 note across #lightgreen
 **Multi-Paxos Complete Flow Achieved:**

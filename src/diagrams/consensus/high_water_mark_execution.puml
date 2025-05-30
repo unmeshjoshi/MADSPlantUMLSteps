@@ -8,11 +8,47 @@ participant "Athens" as athens
 participant "Byzantium" as byzantium
 participant "Cyrene" as cyrene
 
-note over athens: **Athens' Log:**\n[1] IncrementCounter (committed)\n[2] ??? (uncommitted)\n[3] DecrementCounter (committed)\n[4] <empty>
+note over athens
+ballot=1
+==Log==
+--index 1--
+IncrementCounter
+--index 2--
+??? (uncommitted)
+--index 3--
+DecrementCounter
+--index 4--
+<empty>
+====
+end note
 
-note over byzantium: **Byzantium's Log:**\n[1] IncrementCounter (committed)\n[2] ??? (uncommitted)\n[3] DecrementCounter (committed)\n[4] <empty>
+note over byzantium
+ballot=1
+==Log==
+--index 1--
+IncrementCounter
+--index 2--
+??? (uncommitted)
+--index 3--
+DecrementCounter
+--index 4--
+<empty>
+====
+end note
 
-note over cyrene: **Cyrene's Log:**\n[1] IncrementCounter (committed)\n[2] ??? (uncommitted)\n[3] DecrementCounter (committed)\n[4] <empty>
+note over cyrene
+ballot=1
+==Log==
+--index 1--
+IncrementCounter
+--index 2--
+??? (uncommitted)
+--index 3--
+DecrementCounter
+--index 4--
+<empty>
+====
+end note
 
 note over athens, cyrene #yellow: **Problem**: Slot 2 is not committed yet!\nCannot execute Slot 3 out of order
 ' [/step1]
@@ -30,7 +66,20 @@ end note
 ' [/step2]
 
 ' [step3 {"name":"Current Execution State", "newPage":"true"}]
-note over athens: **Execution Status:**\n✓ Slot 1: IncrementCounter (executed)\n⏸ Slot 2: Waiting for commit\n⏸ Slot 3: Cannot execute yet
+note over athens
+ballot=1
+==Log==
+--index 1--
+IncrementCounter ✓
+--index 2--
+??? (waiting)
+--index 3--
+DecrementCounter ⏸
+--index 4--
+<empty>
+====
+High-Water Mark = 1
+end note
 
 note over athens, cyrene #pink: **Cannot execute Slot 3**\neven though it's committed!\n\nMust wait for Slot 2 to maintain order
 ' [/step3]
@@ -39,7 +88,19 @@ note over athens, cyrene #pink: **Cannot execute Slot 3**\neven though it's comm
 group #LightGreen "Slot 2 Consensus Completes"
     note over athens: Slot 2 consensus finishes:\nSetCounter(value=10) committed
     
-    note over athens: **Updated Log:**\n[1] IncrementCounter (committed, executed)\n[2] SetCounter(10) (committed)\n[3] DecrementCounter (committed)\n[4] <empty>
+    note over athens
+    ballot=1
+    ==Log==
+    --index 1--
+    IncrementCounter ✓
+    --index 2--
+    SetCounter(10)
+    --index 3--
+    DecrementCounter
+    --index 4--
+    <empty>
+    ====
+    end note
 end
 
 note over athens, cyrene #lightgreen: **High-Water Mark = 3**\nAll slots 1, 2, 3 are now committed!
@@ -51,7 +112,20 @@ group #LightYellow "Sequential Execution"
     
     note over athens: Execute Slot 3:\nDecrementCounter\nCounter = 10 - 1 = 9
     
-    note over athens: **High-Water Mark = 3**\nAll requests executed in order
+    note over athens
+    ballot=1
+    ==Log==
+    --index 1--
+    IncrementCounter ✓
+    --index 2--
+    SetCounter(10) ✓
+    --index 3--
+    DecrementCounter ✓
+    --index 4--
+    <empty>
+    ====
+    High-Water Mark = 3
+    end note
 end
 
 note over athens, cyrene #lightgreen: **Final State: Counter = 9**\nConsistent across all nodes
