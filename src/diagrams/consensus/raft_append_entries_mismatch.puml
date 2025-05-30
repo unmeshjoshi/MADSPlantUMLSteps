@@ -1,0 +1,134 @@
+@startuml
+!include ../../style.puml
+
+participant "Byzantium\n(Leader)" as byzantium
+participant "Cyrene\n(Follower)" as cyrene
+participant "Athens\n(Leader)" as athens
+participant "Delphi\n(Follower)" as delphi
+participant "Leader" as leader
+participant "Follower" as follower
+
+title RAFT AppendEntries Mismatch Handling
+
+' [step1 {"name":"Initial Mismatch Scenario"}]
+note over byzantium: **Leader Log:**\n[1:Inc(T1), 2:Dec(T1), 3:Add(T2),\n 4:Set(T2), 5:Mul(T3)]\nNextIndex[Cyrene] = 6
+
+note over cyrene: **Follower Log:**\n[1:Inc(T1), 2:Dec(T1)]\nMissing entries 3, 4, 5
+
+note over byzantium: **Initial attempt:** send from current nextIndex
+
+note across #lightblue
+**Step 1: Initial Mismatch Scenario**
+
+Leader and follower have diverged logs.
+Follower is missing several entries.
+Leader needs to find common point.
+end note
+' [/step1]
+
+' [step2 {"name":"First AppendEntries Attempt", "newPage":"true"}]
+byzantium -> cyrene: AppendEntries(term=4, prevLogIndex=5, prevLogTerm=3,\nentries=[6:Div], leaderCommit=4)
+
+note over cyrene #orange: **Consistency Check:**\nLeader expects: index=5, term=3\nMy log: only goes to index=2\nMISMATCH! Reject.
+
+cyrene -> byzantium: AppendReply(term=4, success=false, nextIndex=3)
+
+note over cyrene: "I don't have entry at index 5!\nPlease start from index 3."
+
+note across #lightyellow
+**Step 2: First AppendEntries Attempt**
+
+Leader sends new entry assuming follower
+is up to date. Follower rejects because
+it doesn't have the required previous entry.
+end note
+' [/step2]
+
+' [step3 {"name":"Leader Backtracks", "newPage":"true"}]
+note over byzantium #orange: **Backtrack:**\nNextIndex[Cyrene]: 6 → 3\nSend from index 3 onwards
+
+byzantium -> cyrene: AppendEntries(term=4, prevLogIndex=2, prevLogTerm=1,\nentries=[3:Add, 4:Set, 5:Mul, 6:Div], leaderCommit=4)
+
+note over byzantium: **Send multiple missing entries**\nto catch up follower
+
+note across #orange
+**Step 3: Leader Backtracks**
+
+Leader reduces nextIndex and tries again.
+Sends multiple entries to catch up follower.
+Still checking for consistency.
+end note
+' [/step3]
+
+' [step4 {"name":"Successful Consistency Check", "newPage":"true"}]
+note over cyrene #lightgreen: **Consistency Check:**\nLeader expects: index=2, term=1\nMy log: index=2 has term=1 ✓\nAccept all new entries!
+
+note over cyrene: **Append Process:**\nAdd: [3:Add, 4:Set, 5:Mul, 6:Div]\nUpdate commitIndex to 4
+
+cyrene -> byzantium: AppendReply(term=4, success=true, matchIndex=6)
+
+note across #lightgreen
+**Step 4: Successful Consistency Check**
+
+Follower has entry at index 2 with correct term.
+Can now append all missing entries from leader.
+Synchronization successful.
+end note
+' [/step4]
+
+' [step5 {"name":"Complex Mismatch Scenario", "newPage":"true"}]
+note over athens: **Leader Log:**\n[1:Inc(T1), 2:Dec(T1), 3:Add(T2)]\nTerm 3 leader
+
+note over delphi #lightcoral: **Follower Log:**\n[1:Inc(T1), 2:Dec(T1), 3:Set(T2)]\nConflicting entry at index 3!
+
+athens -> delphi: AppendEntries(term=3, prevLogIndex=2, prevLogTerm=1,\nentries=[3:Add], leaderCommit=2)
+
+note across #lightblue
+**Step 5: Complex Mismatch Scenario**
+
+What if follower has conflicting entries?
+Demonstrates truncation during backtracking.
+More complex conflict resolution.
+end note
+' [/step5]
+
+' [step6 {"name":"Conflict Detection and Resolution", "newPage":"true"}]
+note over delphi #lightcoral: **Conflict Detection:**\nLeader wants: 3:Add(T2)\nI have:      3:Set(T2)\nSame index, same term, different operation!\nTruncate and accept leader's version.
+
+note over delphi: **Truncation Process:**\n1. Remove conflicting entry at index 3\n2. Append leader's entry: 3:Add(T2)\n3. Update log state
+
+delphi -> athens: AppendReply(term=3, success=true, matchIndex=3)
+
+note across #lightcoral
+**Step 6: Conflict Detection and Resolution**
+
+Follower detects conflicting entry at same index.
+Must truncate its log and accept leader's version.
+Conflict resolution through truncation.
+end note
+' [/step6]
+
+' [step7 {"name":"Mismatch Handling Summary", "newPage":"true"}]
+note over leader, follower: **Final Synchronized State:**
+
+note over leader: **All Followers Synchronized:**\n✓ Consistent log state\n✓ No manual intervention\n✓ Automatic conflict resolution
+
+note across #lightgreen
+**RAFT AppendEntries Mismatch Benefits:**
+
+• **Automatic backtracking to find consistency**
+• **Efficient batch synchronization**
+• **Handles both missing and conflicting entries**
+• **Leader's log is always authoritative**
+
+**Backtracking Algorithm:**
+1. Start from current nextIndex
+2. If mismatch: decrement nextIndex
+3. Send entries from new position
+4. Repeat until consistency found
+5. Follower truncates conflicts
+6. Append leader's entries
+end note
+' [/step7]
+
+@enduml 

@@ -564,7 +564,7 @@ sections:
           - "Server detects duplicate and returns cached response"
         notes: "Show the complete flow of the Idempotent Receiver pattern, demonstrating how it prevents duplicate execution while ensuring clients get responses."
 
-  - title: "Production-Ready Consensus Systems"
+  - title: "What we have built so far?"
     slides:
       - type: "text"
         title: "From Basic Consensus to Production Systems"
@@ -574,3 +574,138 @@ sections:
           - "This is the core of systems like Chubby, etcd, and Raft"
           - "Real systems add optimizations, but the principles remain the same"
         notes: "Connect the concepts learned to real-world distributed systems."
+
+  - title: "RAFT: Optimizing Multi-Paxos for Practical Implementation"
+    slides:
+      - type: "text"
+        title: "Multi-Paxos Recovery Limitations"
+        bullets:
+          - "Multi-Paxos with heartbeats detects leader failures efficiently"
+          - "However, recovery process requires checking ALL uncommitted log entries"
+          - "New leader must query followers for pending requests in the log"
+          - "All uncommitted entries must be sent to leader and re-proposed with new generation number"
+          - "This creates significant overhead during leader election and recovery"
+        notes: "Explain the inefficiency in Multi-Paxos recovery process. This sets up the motivation for RAFT's optimizations."
+
+      - type: "diagram"
+        title: "Multi-Paxos Recovery Overhead"
+        diagramRef: "multi_paxos_recovery_overhead"
+        bullets:
+          - "New leader queries all followers for uncommitted entries"
+          - "Multiple uncommitted entries must be collected and analyzed"
+          - "Each entry must be re-proposed with new generation number"
+          - "Recovery time increases with number of uncommitted entries"
+        notes: "Show the step-by-step Multi-Paxos recovery process highlighting the overhead and complexity involved."
+
+      - type: "text"
+        title: "RAFT's First Optimization: Leader Election with Latest Log"
+        bullets:
+          - "RAFT optimizes leader election by considering both generation number AND latest log"
+          - "Log entries include generation numbers (called 'term' in RAFT) as part of their metadata"
+          - "Latest log is determined by: (latest term, highest log index)"
+          - "Prepare requests include both generation number and log state information"
+          - "Only nodes with the most up-to-date log can become leader"
+        notes: "Introduce RAFT's key insight: the leader should already have the latest log, eliminating the need for post-election recovery queries."
+
+      - type: "diagram"
+        title: "RAFT Leader Election with Log Information"
+        diagramRef: "raft_leader_election_with_log"
+        bullets:
+          - "Candidate includes (term, lastLogIndex, lastLogTerm) in vote requests"
+          - "Followers only vote for candidates with logs at least as up-to-date as theirs"
+          - "Winner already has the most current log state"
+          - "No need to query followers for uncommitted entries after election"
+        notes: "Show how RAFT's leader election process includes log information, ensuring the elected leader has the most up-to-date log."
+
+      - type: "text"
+        title: "RAFT's Second Optimization: Direct Log Replication"
+        bullets:
+          - "Since leader has the latest log, no need to re-propose existing entries"
+          - "Leader directly appends new entries and replicates to followers"
+          - "Uses AppendEntries RPC instead of separate prepare/accept phases"
+          - "Followers receive entries directly without intermediate recovery phase"
+          - "Significantly reduces leader election and recovery time"
+        notes: "Explain how RAFT eliminates the re-proposal overhead by ensuring the leader already has the latest state."
+
+      - type: "diagram"
+        title: "RAFT Direct Log Replication"
+        diagramRef: "raft_direct_log_replication"
+        bullets:
+          - "New leader immediately starts sending AppendEntries to followers"
+          - "No recovery phase or re-proposal of existing entries needed"
+          - "Followers receive entries with previous log index for consistency checking"
+          - "Much faster recovery compared to Multi-Paxos"
+        notes: "Demonstrate RAFT's streamlined approach where the leader immediately starts replicating entries without recovery overhead."
+
+      - type: "text"
+        title: "Handling Log Inconsistencies: The Truncation Challenge"
+        bullets:
+          - "Problem: Followers might have more entries than leader, but from older terms"
+          - "Example: Follower has entries 1-10 from term 3, new leader has entries 1-8 from term 4"
+          - "Follower's extra entries (9-10) are from old term and must be removed"
+          - "RAFT uses AppendEntries consistency check to detect and resolve conflicts"
+        notes: "Introduce the complexity that arises when log histories diverge and need to be reconciled."
+
+      - type: "diagram"
+        title: "RAFT Log Consistency and Truncation"
+        diagramRef: "raft_log_truncation"
+        bullets:
+          - "Leader sends AppendEntries with prevLogIndex and prevLogTerm"
+          - "Follower checks if its log matches at the previous position"
+          - "If mismatch detected, AppendEntries is rejected"
+          - "Leader decrements index and retries until consistency point found"
+          - "Follower truncates conflicting entries and appends leader's entries"
+        notes: "Show the step-by-step process of how RAFT detects log inconsistencies and resolves them through truncation and re-replication."
+
+      - type: "text"
+        title: "The Commitment Safety Problem"
+        bullets:
+          - "Critical issue: Leader cannot immediately commit entries from previous terms"
+          - "Even if entries exist on majority of servers, they might not be committed"
+          - "Example: Entry from term 3 exists on 3/5 servers, but was never committed"
+          - "New leader in term 4 cannot safely commit term 3 entries directly"
+          - "Risk: Committing old entries might violate safety if another leader was elected"
+        notes: "Explain the subtle but critical safety issue in RAFT regarding committing entries from previous terms."
+
+      - type: "diagram"
+        title: "RAFT Previous Term Commitment Problem"
+        diagramRef: "raft_previous_term_commitment_problem"
+        bullets:
+          - "Leader has entries from previous term on majority of servers"
+          - "Cannot directly commit these entries due to safety concerns"
+          - "Must ensure no competing leader could have committed different entries"
+          - "Demonstrates the complexity of maintaining safety across term changes"
+        notes: "Illustrate the scenario where a leader has old entries on majority but cannot safely commit them immediately."
+
+      - type: "text"
+        title: "RAFT's Solution: No-Op Entry Commitment"
+        bullets:
+          - "RAFT leader must propose and commit a new no-op entry in current term"
+          - "Once the no-op entry is committed, it proves current leader has true majority"
+          - "CommitIndex (RAFT's high-water mark) is updated to include the no-op"
+          - "All previous entries up to the no-op are now safe to commit and execute"
+          - "This ensures safety while allowing progress on old entries"
+        notes: "Explain RAFT's elegant solution to the previous term commitment problem using no-op entries."
+
+      - type: "diagram"
+        title: "RAFT No-Op Entry Commitment Process"
+        diagramRef: "raft_no_op_entry_solution"
+        bullets:
+          - "New leader proposes no-op entry in current term"
+          - "Once no-op is committed, proves leader has stable majority"
+          - "CommitIndex updated to include no-op and all previous entries"
+          - "All entries up to commitIndex are executed in order"
+          - "Ensures both safety and liveness for old entries"
+        notes: "Show the complete process of how RAFT uses no-op entries to safely commit and execute entries from previous terms."
+
+      - type: "text"
+        title: "RAFT vs Multi-Paxos: Key Differences Summary"
+        bullets:
+          - "Leader Election: RAFT includes log state, Multi-Paxos only generation number"
+          - "Recovery: RAFT eliminates recovery queries, Multi-Paxos requires re-proposal"
+          - "Log Consistency: RAFT uses direct truncation, Multi-Paxos uses re-proposal"
+          - "Commitment: RAFT requires no-op for old entries, Multi-Paxos can commit any recovered entry"
+          - "Performance: RAFT optimizes for common case, Multi-Paxos more general but slower"
+        notes: "Summarize the key architectural differences between RAFT and Multi-Paxos, highlighting the trade-offs in each approach."
+
+    

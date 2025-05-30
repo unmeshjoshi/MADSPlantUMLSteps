@@ -1,0 +1,134 @@
+@startuml
+!include ../../style.puml
+
+participant "Athens" as athens
+participant "Byzantium" as byzantium 
+participant "Cyrene" as cyrene
+
+title RAFT Leader Election with Log Information
+
+' [step1 {"name":"Initial State"}]
+note over athens: **Athens Log:**\nTerm 3: [1:Inc, 2:Dec]\nLast: (term=3, index=2)
+
+note over byzantium: **Byzantium Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nLast: (term=3, index=3)
+
+note over cyrene: **Cyrene Log:**\nTerm 2: [1:Inc]\nLast: (term=2, index=1)
+
+note across #lightblue
+**Step 1: Initial State**
+
+All nodes have logs with different states.
+Each entry has term number and index.
+No current leader exists.
+end note
+' [/step1]
+
+' [step2 {"name":"Election Timeout", "newPage":"true"}]
+note over athens #orange: **Election timeout!**\nBecome candidate for term 4\nNote: Athens does NOT have most up-to-date log
+
+athens -> byzantium: RequestVote(term=4, candidateId=Athens,\nlastLogTerm=3, lastLogIndex=2)
+athens -> cyrene: RequestVote(term=4, candidateId=Athens,\nlastLogTerm=3, lastLogIndex=2)
+
+note over athens: **Vote Request includes:**\n• Current term (4)\n• Last log term (3)\n• Last log index (2)
+
+note across #lightyellow
+**Step 2: Election Timeout**
+
+Athens times out and starts election.
+Note: Athens does NOT have the most
+up-to-date log compared to Byzantium.
+end note
+' [/step2]
+
+' [step3 {"name":"Log Comparison and Rejection", "newPage":"true"}]
+note over byzantium #lightblue: **Log Comparison:**\nAthens: (term=3, index=2)\nSelf:   (term=3, index=3)\n\nIndex 3 > 2, so I'm more recent
+
+byzantium -> athens: VoteReply(term=4, voteGranted=false)
+note over byzantium: "I won't vote for Athens\nbecause my log is more up-to-date"
+
+note over cyrene: **Log Comparison:**\nAthens: (term=3, index=2)\nSelf:   (term=2, index=1)\n\nTerm 3 > 2, so Athens is more recent
+
+cyrene -> athens: VoteReply(term=4, voteGranted=true)
+
+note across #lightcoral
+**Step 3: Log Comparison and Rejection**
+
+Byzantium compares logs and rejects Athens.
+Byzantium has more recent entries than Athens.
+RAFT's "at least as up-to-date" rule.
+end note
+' [/step3]
+
+' [step4 {"name":"Athens Wins Election", "newPage":"true"}]
+note over athens #lightgreen: **Election Result:**\nVotes received: 2/3 (self + Cyrene)\nMajority achieved: 2/3 ✓\n\nAthens WINS the election!
+
+note over athens: **Athens becomes leader for term 4**\nEven though Byzantium had more recent log\nAthens still had more recent log than Cyrene
+
+note across #lightgreen
+**Step 4: Athens Wins Election**
+
+Athens gets majority (2 out of 3 votes).
+In 3-node system, any 2 nodes = majority.
+Athens becomes leader despite having less recent log than Byzantium.
+end note
+' [/step4]
+
+' [step5 {"name":"Higher Priority Election", "newPage":"true"}]
+note over byzantium #orange: **Byzantium realizes problem:**\nAthens became leader but has stale log\nByzantium starts election with higher term 5
+
+byzantium -> athens: RequestVote(term=5, candidateId=Byzantium,\nlastLogTerm=3, lastLogIndex=3)
+byzantium -> cyrene: RequestVote(term=5, candidateId=Byzantium,\nlastLogTerm=3, lastLogIndex=3)
+
+note over byzantium: **Vote Request includes:**\n• Current term (5) - higher than Athens' term 4\n• Last log term (3) \n• Last log index (3) ← Most recent
+
+note across #orange
+**Step 5: Higher Priority Election**
+
+Byzantium starts new election with higher term.
+Byzantium HAS the most up-to-date log.
+Higher term overrides Athens' leadership.
+end note
+' [/step5]
+
+' [step6 {"name":"Successful Election", "newPage":"true"}]
+note over athens #lightblue: **Log Comparison:**\nByzantium: (term=3, index=3)\nSelf:      (term=3, index=2)\n\nByzantium is more recent!
+
+athens -> byzantium: VoteReply(term=5, voteGranted=true)
+
+note over cyrene #lightblue: **Log Comparison:**\nByzantium: (term=3, index=3)\nSelf:      (term=2, index=1)\n\nByzantium is much more recent!
+
+cyrene -> byzantium: VoteReply(term=5, voteGranted=true)
+
+note over byzantium #lightgreen: **Election Success!**\nVotes: 3/3\nI already have latest log
+
+note across #lightgreen
+**Step 6: Successful Election**
+
+Both Athens and Cyrene accept Byzantium.
+Byzantium has the most up-to-date log.
+No recovery queries needed!
+end note
+' [/step6]
+
+' [step7 {"name":"Immediate Operation", "newPage":"true"}]
+participant "Client" as client
+
+client -> byzantium: New request: SetCounter(5)
+
+note over byzantium: **No Recovery Needed:**\n• I already have latest log\n• No need to query followers\n• Can immediately process new requests
+
+byzantium -> athens: AppendEntries(term=5, entries=[4:SetCounter(5)])
+byzantium -> cyrene: AppendEntries(term=5, entries=[4:SetCounter(5)])
+
+note over byzantium: **Direct replication**\nwithout recovery overhead!
+
+note across #lightgreen
+**Key RAFT Advantage:**
+
+Leader already has most recent log state.
+No recovery phase needed.
+Can immediately start serving clients.
+end note
+' [/step7]
+
+@enduml 

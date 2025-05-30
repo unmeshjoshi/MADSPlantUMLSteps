@@ -1,0 +1,143 @@
+@startuml
+!include ../../style.puml
+
+participant "ClientA" as CA
+participant "ClientB" as CB  
+participant "Athens\n(Failed Leader)" as athens
+participant "Byzantium\n(New Leader)" as byzantium
+participant "Cyrene\n(Follower)" as cyrene
+participant "Delphi\n(Follower)" as delphi
+participant "Ephesus\n(Follower)" as ephesus
+
+title Multi-Paxos Recovery Overhead
+
+' [step1 {"name":"Leader Failure Detected"}]
+note over athens #lightcoral: **Athens (Failed Leader)**\nProcessing multiple requests\nUncommitted entries in log
+
+CA -x athens: Request 1
+CB -x athens: Request 2
+athens -x byzantium: (connection lost)
+athens -x cyrene: (connection lost)
+
+note over byzantium, cyrene: **Heartbeat timeout detected**\nMultiple uncommitted entries exist
+
+note across #lightblue
+**Step 1: Leader Failure Detected**
+
+Athens (leader) fails while processing requests.
+Multiple uncommitted entries exist in the log.
+Followers detect failure via heartbeat timeout.
+end note
+' [/step1]
+
+' [step2 {"name":"New Leader Election", "newPage":"true"}]
+note over byzantium #lightgreen: **Byzantium triggers election**\nGeneration = 5\nStandard Paxos leader election
+
+byzantium -> cyrene: Prepare(generation=5)
+note over byzantium: "I want to become leader\nwith generation 5"
+
+cyrene -> byzantium: Promise(generation=5)
+note over cyrene: "I promise not to accept\nlower generation numbers"
+
+note over byzantium #lightgreen: **Becomes leader**\nNo log information in vote requests
+
+note across #lightblue
+**Step 2: New Leader Election**
+
+Byzantium triggers leader election.
+Standard generation number negotiation.
+No log information included in vote requests.
+end note
+' [/step2]
+
+' [step3 {"name":"Query All Followers", "newPage":"true"}]
+note over byzantium #lightyellow: **Recovery Phase Required**\nMust discover all uncommitted entries\nQuery all reachable followers
+
+byzantium -> cyrene: "What uncommitted entries do you have?"
+byzantium -> delphi: "What uncommitted entries do you have?"
+byzantium -> ephesus: "What uncommitted entries do you have?"
+
+note over byzantium: **Must wait for responses**\nfrom all reachable nodes\nCreates recovery overhead
+
+note across #lightyellow
+**Step 3: Query All Followers**
+
+New leader must query ALL followers
+to discover uncommitted entries.
+This creates recovery overhead.
+end note
+' [/step3]
+
+' [step4 {"name":"Collect Recovery Information", "newPage":"true"}]
+cyrene -> byzantium: "I have: Slot 5: IncrementCounter(gen=3)"
+delphi -> byzantium: "I have: Slot 6: DecrementCounter(gen=4)"
+ephesus -> byzantium: "I have: Slot 5: IncrementCounter(gen=3)\nSlot 7: AddCounter(gen=4)"
+
+note over byzantium #orange: **Complex reconciliation:**\n- Multiple conflicting entries\n- Different generation numbers\n- Gaps in log sequences
+
+note across #lightyellow
+**Step 4: Collect Recovery Information**
+
+Followers respond with their uncommitted entries.
+Leader must analyze and reconcile all responses.
+Complexity increases with number of nodes.
+end note
+' [/step4]
+
+' [step5 {"name":"Re-propose All Entries", "newPage":"true"}]
+note over byzantium #orange: **Must re-propose ALL entries**\nwith new generation number (5)\nEach entry requires full consensus
+
+byzantium -> cyrene: Accept(Slot 5: IncrementCounter, gen=5)
+byzantium -> delphi: Accept(Slot 5: IncrementCounter, gen=5)
+cyrene -> byzantium: Accepted(Slot 5, gen=5)
+delphi -> byzantium: Accepted(Slot 5, gen=5)
+
+note over byzantium: **Must re-run consensus**\nfor EVERY uncommitted entry
+
+note across #orange
+**Step 5: Re-propose All Entries**
+
+Leader must re-propose ALL discovered entries
+with new generation number (5).
+Each entry requires full consensus.
+end note
+' [/step5]
+
+' [step6 {"name":"Continue Re-proposing", "newPage":"true"}]
+byzantium -> cyrene: Accept(Slot 6: DecrementCounter, gen=5)
+byzantium -> delphi: Accept(Slot 6: DecrementCounter, gen=5)
+
+byzantium -> cyrene: Accept(Slot 7: AddCounter, gen=5)
+byzantium -> delphi: Accept(Slot 7: AddCounter, gen=5)
+
+note over byzantium: **Each entry requires:**\n1. Accept phase\n2. Commit phase\n3. Majority agreement
+
+note across #orange
+**Step 6: Continue Re-proposing**
+
+Process continues for each discovered entry.
+Recovery time proportional to number
+of uncommitted entries.
+end note
+' [/step6]
+
+' [step7 {"name":"Recovery Overhead Summary", "newPage":"true"}]
+note over byzantium #lightgreen: **Recovery Complete**\n\n**Total Overhead:**\n- Query all followers\n- Analyze responses\n- Re-propose all entries\n- Multiple consensus rounds
+
+note across #lightcoral
+**Multi-Paxos Recovery Problems:**
+
+• **Query phase:** O(nodes) messages
+• **Analysis phase:** Complex reconciliation  
+• **Re-proposal phase:** O(entries × nodes) messages
+• **Total time:** O(uncommitted_entries)
+
+**Performance Impact:**
+• Recovery time grows with uncommitted entries
+• Network overhead during query phase  
+• Complex conflict resolution logic
+• Delayed client request processing
+end note
+' [/step7]
+
+@enduml 

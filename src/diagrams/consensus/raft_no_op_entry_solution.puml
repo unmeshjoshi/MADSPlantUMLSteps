@@ -1,0 +1,138 @@
+@startuml
+!include ../../style.puml
+
+participant "Athens" as athens
+participant "Byzantium\n(Leader)" as byzantium
+participant "Cyrene" as cyrene
+participant "Client" as client
+participant "Leader" as leader
+
+title RAFT No-Op Entry Solution
+
+' [step1 {"name":"Leader with Previous Term Entries"}]
+note over athens: **Athens Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add, 4:Set] ← Prev term\nCommitIndex: 2
+
+note over byzantium: **Byzantium Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add, 4:Set] ← Prev term\nCommitIndex: 2\n**New Leader (Term 4)**
+
+note over cyrene: **Cyrene Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add, 4:Set] ← Prev term\nCommitIndex: 2
+
+note over byzantium: **Problem:**\nEntries 3:Add, 4:Set from Term 3\nexist on majority but cannot commit them!
+
+note across #lightblue
+**Step 1: Leader with Previous Term Entries**
+
+New leader inherits entries from previous terms.
+These entries exist on majority but cannot
+be committed directly due to safety rules.
+end note
+' [/step1]
+
+' [step2 {"name":"No-Op Entry Creation", "newPage":"true"}]
+note over byzantium: **Solution: Add No-Op Entry**\nCreate entry 5:NoOp in Term 4\nThis establishes current term in log
+
+note over byzantium: **Updated Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add, 4:Set]\nTerm 4: [5:NoOp] ← Current term
+
+note over byzantium: **No-Op entry contains:**\n• Current term (4)\n• No operation to execute\n• Placeholder for commitment
+
+note across #lightgreen
+**Step 2: No-Op Entry Creation**
+
+Leader creates a no-operation entry in current term.
+This entry does nothing but establishes
+current term presence in the log.
+end note
+' [/step2]
+
+' [step3 {"name":"Replicate No-Op Entry", "newPage":"true"}]
+byzantium -> athens: AppendEntries(term=4, prevLogIndex=4, prevLogTerm=3,\nentries=[5:NoOp], leaderCommit=2)
+byzantium -> cyrene: AppendEntries(term=4, prevLogIndex=4, prevLogTerm=3,\nentries=[5:NoOp], leaderCommit=2)
+
+note over athens: **Accept no-op entry**\nLog: [1:Inc, 2:Dec, 3:Add, 4:Set, 5:NoOp]
+note over cyrene: **Accept no-op entry**\nLog: [1:Inc, 2:Dec, 3:Add, 4:Set, 5:NoOp]
+
+athens -> byzantium: AppendReply(term=4, success=true, matchIndex=5)
+cyrene -> byzantium: AppendReply(term=4, success=true, matchIndex=5)
+
+note across #lightgreen
+**Step 3: Replicate No-Op Entry**
+
+Leader replicates no-op entry to followers.
+Uses standard AppendEntries protocol.
+Majority replication needed for commitment.
+end note
+' [/step3]
+
+' [step4 {"name":"No-Op Entry Committed", "newPage":"true"}]
+note over byzantium: **Commitment Decision:**\nNo-op entry (index 5, term 4) replicated on majority\nSafe to commit current-term entry!
+
+note over byzantium: **Update Commit Index:**\nCommitIndex: 2 → 5\nAll entries up to index 5 now committed!
+
+note over byzantium: **Result:**\n✓ Entries 3:Add, 4:Set now committed\n✓ Entry 5:NoOp now committed\n✓ All previous term entries are safe
+
+note across #lightgreen
+**Step 4: No-Op Entry Committed**
+
+Majority has replicated no-op entry.
+Leader can now commit the no-op entry.
+This is a current-term entry, so safe to commit.
+end note
+' [/step4]
+
+' [step5 {"name":"Propagate Commit Information", "newPage":"true"}]
+byzantium -> athens: AppendEntries(term=4, entries=[], leaderCommit=5)
+byzantium -> cyrene: AppendEntries(term=4, entries=[], leaderCommit=5)
+
+note over athens: **Update Commit Index:**\nCommitIndex: 2 → 5\nExecute: 3:Add, 4:Set, 5:NoOp
+
+note over cyrene: **Update Commit Index:**\nCommitIndex: 2 → 5\nExecute: 3:Add, 4:Set, 5:NoOp
+
+note over athens, cyrene: **All nodes synchronized:**\nSame committed state\nSafe from overwrites
+
+note across #lightgreen
+**Step 5: Propagate Commit Information**
+
+Leader informs followers about updated commitIndex.
+All previous term entries become committed.
+State machine can now execute all entries.
+end note
+' [/step5]
+
+' [step6 {"name":"Safety Guarantee Achieved", "newPage":"true"}]
+client -> byzantium: Query("Status of entries 3 and 4?")
+byzantium -> client: "Both committed and executed:\n3:Add ✓, 4:Set ✓"
+
+note over byzantium: **Safety Properties:**\n• Previous term entries now committed\n• Cannot be overwritten by future leaders\n• Election safety ensures log consistency
+
+note over athens, cyrene: **Future Leader Requirement:**\nAny new leader must have:\n[1:Inc, 2:Dec, 3:Add, 4:Set, 5:NoOp]\nto be elected
+
+note across #lightblue
+**Step 6: Safety Guarantee Achieved**
+
+Previous term entries are now safe from overwrites.
+Any future leader must have the complete log
+including the committed no-op entry.
+end note
+' [/step6]
+
+' [step7 {"name":"No-Op Solution Summary", "newPage":"true"}]
+note over leader: **No-Op Entry Pattern:**\n1. Create no-op in current term\n2. Replicate to majority\n3. Commit current-term entry\n4. Previous entries auto-committed
+
+note across #lightgreen
+**RAFT No-Op Entry Benefits:**
+
+• **Enables safe commitment of previous term entries**
+• **Maintains all safety guarantees**
+• **Simple and elegant solution**
+• **Minimal performance overhead**
+
+**No-Op Solution Advantages:**
+✅ Preserves RAFT safety properties
+✅ Enables previous term commitment
+✅ Prevents log inconsistencies
+✅ Minimal overhead (one extra entry)
+✅ Automatic with leader election
+✅ Foundation for practical RAFT systems
+end note
+' [/step7]
+
+@enduml 

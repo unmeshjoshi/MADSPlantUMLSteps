@@ -1,0 +1,133 @@
+@startuml
+!include ../../style.puml
+
+participant "Client" as client
+participant "Athens" as athens
+participant "Byzantium\n(Leader)" as byzantium
+participant "Cyrene" as cyrene
+
+title RAFT Direct Log Replication
+
+' [step1 {"name":"Leader Ready State"}]
+note over byzantium #lightgreen: **Current Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [] (ready for new entries)\nCommitIndex: 3
+
+note over byzantium: **Leader elected!**\nReady to serve clients
+
+note across #lightblue
+**Step 1: Leader Ready State**
+
+Byzantium is elected leader with complete log.
+Leader can immediately start appending new entries.
+No recovery phase required.
+end note
+' [/step1]
+
+' [step2 {"name":"Client Request", "newPage":"true"}]
+client -> byzantium: SetCounter(value=10)
+
+note over byzantium: **Immediate Append:**\n1. Append to local log\n2. No need to query followers\n3. No re-proposal needed
+
+note over byzantium: **New Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [4:SetCounter(10)]\nCommitIndex: 3
+
+note across #lightgreen
+**Step 2: Client Request**
+
+Client sends new request to leader.
+Leader can immediately append to log
+without checking followers first.
+end note
+' [/step2]
+
+' [step3 {"name":"Direct Replication", "newPage":"true"}]
+byzantium -> athens: AppendEntries(term=5, prevLogIndex=3, prevLogTerm=3,\nentries=[4:SetCounter(10)], leaderCommit=3)
+byzantium -> cyrene: AppendEntries(term=5, prevLogIndex=3, prevLogTerm=3,\nentries=[4:SetCounter(10)], leaderCommit=3)
+
+note over byzantium: **AppendEntries includes:**\n• Current term (5)\n• Previous entry for consistency\n• New entries to append\n• Leader's commit index
+
+note across #lightgreen
+**Step 3: Direct Replication**
+
+Leader sends AppendEntries directly.
+Includes previous log entry for consistency check.
+No separate consensus rounds needed.
+end note
+' [/step3]
+
+' [step4 {"name":"Consistency Check", "newPage":"true"}]
+note over athens #lightblue: **Consistency Check:**\nExpected: prevIndex=3, prevTerm=3\nMy log:   index=3 has term=3 ✓\nConsistency maintained!
+
+athens -> byzantium: AppendReply(term=5, success=true, matchIndex=4)
+
+note over cyrene #lightyellow: **Consistency Check:**\nExpected: prevIndex=3, prevTerm=3\nMy log:   only goes to index=1 ✗\nNeed synchronization!
+
+cyrene -> byzantium: AppendReply(term=5, success=false, nextIndex=2)
+
+note across #lightyellow
+**Step 4: Consistency Check**
+
+Followers check if previous entry matches.
+If match: append new entries.
+If mismatch: reject and request synchronization.
+end note
+' [/step4]
+
+' [step5 {"name":"Handle Lagging Follower", "newPage":"true"}]
+note over byzantium: **Cyrene needs catch-up!**\nSend missing entries starting from index 2
+
+byzantium -> cyrene: AppendEntries(term=5, prevLogIndex=1, prevLogTerm=2,\nentries=[2:Dec, 3:Add, 4:SetCounter(10)], leaderCommit=3)
+
+note over cyrene #orange: **Catch-up Process:**\nReceive multiple missing entries\nto synchronize with leader
+
+note across #orange
+**Step 5: Handle Lagging Follower**
+
+Cyrene is behind. Leader sends missing entries
+to bring it up to date. RAFT handles this
+automatically through AppendEntries.
+end note
+' [/step5]
+
+' [step6 {"name":"Successful Replication", "newPage":"true"}]
+cyrene -> byzantium: AppendReply(term=5, success=true, matchIndex=4)
+
+note over byzantium #lightgreen: **Replication Success:**\nAthens: ✓ (matchIndex=4)\nCyrene: ✓ (matchIndex=4)\nMajority achieved!
+
+note over byzantium: **Update Commit Index:**\nCommitIndex: 3 → 4\nEntry 4 is now committed
+
+byzantium -> client: Success: SetCounter(10) committed
+
+note across #lightgreen
+**Step 6: Successful Replication**
+
+All followers synchronized and caught up.
+Majority has replicated the new entry.
+Leader can now commit and respond to client.
+end note
+' [/step6]
+
+' [step7 {"name":"RAFT Efficiency Summary", "newPage":"true"}]
+note over athens, cyrene: **Final State - All Synchronized:**
+
+note over athens: **Athens Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [4:SetCounter(10)]\nCommitIndex: 4
+
+note over byzantium: **Byzantium Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [4:SetCounter(10)]\nCommitIndex: 4
+
+note over cyrene: **Cyrene Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [4:SetCounter(10)]\nCommitIndex: 4
+
+note across #lightgreen
+**RAFT Direct Replication Benefits:**
+
+✓ No recovery queries needed
+✓ Immediate entry appending
+✓ Automatic follower synchronization
+✓ Single AppendEntries protocol
+
+**Key Advantages:**
+✓ No multi-round consensus
+✓ No recovery overhead  
+✓ Automatic synchronization
+✓ Single replication protocol
+end note
+' [/step7]
+
+@enduml 

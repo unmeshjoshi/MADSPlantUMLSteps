@@ -1,0 +1,145 @@
+@startuml
+!include ../../style.puml
+
+participant "Athens" as athens
+participant "Byzantium\n(Leader)" as byzantium
+participant "Cyrene" as cyrene
+participant "Delphi" as delphi
+participant "Client" as client
+participant "Client1" as client1
+participant "Client2" as client2
+participant "Leader" as leader
+
+title RAFT Previous Term Commitment Problem
+
+' [step1 {"name":"Previous Term Entries Exist"}]
+note over athens: **Athens Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add] ← Prev term\nCommitIndex: 2
+
+note over byzantium: **Byzantium Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add] ← Prev term\nCommitIndex: 2\n**New Leader (Term 4)**
+
+note over cyrene: **Cyrene Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add] ← Prev term\nCommitIndex: 2
+
+note over byzantium: **Entry 3:Add from Term 3**\nexists on majority (3/3)\nCan I commit it directly?
+
+note across #lightblue
+**Step 1: Previous Term Entries Exist**
+
+New leader has entries from previous terms
+that are replicated on majority of servers.
+Question: Can leader commit these entries?
+end note
+' [/step1]
+
+' [step2 {"name":"The Commitment Dilemma", "newPage":"true"}]
+client -> byzantium: "What's the status of 3:Add?"
+
+note over byzantium: **Dilemma:**\n✓ Entry exists on majority\n✓ Entry appears committed\n✗ But it's from previous term!\n✗ RAFT rule: Can't commit prev term entries
+
+byzantium -> client: "Entry not yet committed.\nWaiting for current term entry."
+
+note over byzantium: **RAFT Safety Rule:**\nLeader can only commit entries\nfrom its own current term
+
+note across #orange
+**Step 2: The Commitment Dilemma**
+
+Entry 3:Add is on majority but from previous term.
+RAFT safety requires leader cannot directly
+commit entries from previous terms.
+end note
+' [/step2]
+
+' [step3 {"name":"Why This Restriction Exists", "newPage":"true"}]
+note over athens, byzantium: **Majority has:**\n[1:Inc, 2:Dec, 3:Add(T3)]
+note over cyrene: **Cyrene has:**\n[1:Inc, 2:Dec, 3:Add(T3)]
+note over delphi #lightcoral: **Delphi (partitioned):**\n[1:Inc, 2:Dec, 3:Set(T3)]
+
+note over delphi: **Delphi was partitioned**\nhas conflicting entry 3:Set\nfrom same term 3!
+
+note across #lightcoral
+**Step 3: Why This Restriction Exists**
+
+Demonstrates the safety issue that could occur
+if leaders committed previous term entries.
+Scenario showing potential inconsistency.
+end note
+' [/step3]
+
+' [step4 {"name":"Network Partition Scenario", "newPage":"true"}]
+note over athens #orange: **Network partition!**\nAthens unreachable from others
+
+note across #lightyellow
+**New Election in Partition:**
+Byzantium, Cyrene & Delphi form majority (3/4)
+Delphi becomes leader (Term 5)
+end note
+
+note over delphi #lightgreen: **Delphi's perspective:**\nMy log: [1:Inc, 2:Dec, 3:Set(T3)]\nI have the "correct" state
+
+delphi -> cyrene: AppendEntries(term=5, entries=[3:Set])
+delphi -> byzantium: AppendEntries(term=5, entries=[3:Set])
+
+note over delphi: **Delphi overwrites others'**\nentry 3:Add with 3:Set!
+
+note across #lightcoral
+**Step 4: Network Partition Scenario**
+
+If Delphi rejoins and becomes leader,
+it could overwrite the "committed" entry.
+This violates RAFT's safety guarantees.
+end note
+' [/step4]
+
+' [step5 {"name":"Safety Violation Illustrated", "newPage":"true"}]
+note over byzantium #orange: **If previous term commit was allowed:**\nClient1 saw: "3:Add committed"
+note over delphi #lightgreen: **Current state:**\nEntry 3 is now: "3:Set"
+
+client1 -> byzantium: Query("What's in slot 3?")
+byzantium --> client1: "3:Add (committed)"
+
+client2 -> delphi: Query("What's in slot 3?")
+delphi -> client2: "3:Set (current)"
+
+note across #lightcoral
+**Safety Violation:**
+
+Two clients see different committed values
+for the same log position!
+This breaks linearizability.
+end note
+' [/step5]
+
+' [step6 {"name":"RAFT's Solution Preview", "newPage":"true"}]
+note over byzantium: **RAFT Solution:**\n1. Never commit previous term entries directly\n2. Add a no-op entry in current term\n3. Once no-op is committed, all previous entries become committed
+
+note over byzantium: **Safe Commitment:**\nCurrentTerm entry committed\n→ Previous entries are safe\n→ Cannot be overwritten
+
+note across #orange
+**Step 6: RAFT's Solution Preview**
+
+RAFT prevents this by requiring leaders
+to commit a current-term entry first.
+This ensures previous entries are "safe".
+end note
+' [/step6]
+
+' [step7 {"name":"Problem Summary", "newPage":"true"}]
+note over leader: **Key Insight:**\nCommitting previous term entries\ncould create safety violations
+
+note across #orange
+**Why Previous Term Commitment is Prohibited:**
+
+• **Prevents safety violations during partitions**
+• **Ensures linearizability guarantees**
+• **Requires explicit current-term commitment**
+• **Foundation for RAFT's safety properties**
+
+**Previous Term Commitment Problem:**
+❌ Direct commitment of previous term entries
+❌ Could lead to inconsistent client views
+❌ Violates linearizability guarantees
+✅ Solved by no-op entry pattern
+✅ Ensures safety during partitions
+end note
+' [/step7]
+
+@enduml 

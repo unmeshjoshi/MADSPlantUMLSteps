@@ -1,0 +1,130 @@
+@startuml
+!include ../../style.puml
+
+participant "Athens" as athens
+participant "Byzantium\n(Leader)" as byzantium
+participant "Cyrene" as cyrene
+
+title RAFT Log Truncation Mechanism
+
+' [step1 {"name":"Conflicting Log States"}]
+note over athens: **Athens Log:**\nTerm 3: [1:Inc, 2:Dec]\nTerm 5: [] (new leader)
+
+note over byzantium: **Byzantium Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [] (current leader)
+
+note over cyrene #orange: **Cyrene Log:**\nTerm 3: [1:Inc, 2:Dec]\nTerm 4: [3:SetVal] ← Conflicting entry!
+
+note across #lightblue
+**Step 1: Conflicting Log States**
+
+After leader election, nodes have conflicting entries.
+Some followers have entries from older terms
+that conflict with leader's log.
+end note
+' [/step1]
+
+' [step2 {"name":"Leader Sends AppendEntries", "newPage":"true"}]
+byzantium -> athens: AppendEntries(term=5, prevLogIndex=2, prevLogTerm=3,\nentries=[3:Add], leaderCommit=2)
+byzantium -> cyrene: AppendEntries(term=5, prevLogIndex=2, prevLogTerm=3,\nentries=[3:Add], leaderCommit=2)
+
+note over byzantium: **Trying to append entry 3:Add**\nafter entry 2 (term 3)
+
+note across #lightyellow
+**Step 2: Leader Sends AppendEntries**
+
+Leader attempts to replicate its log entries.
+Includes previous log information for consistency check.
+Cyrene will detect mismatch.
+end note
+' [/step2]
+
+' [step3 {"name":"Consistency Check Failure", "newPage":"true"}]
+note over athens #lightblue: **Consistency Check:**\nExpected: prevIndex=2, prevTerm=3\nMy log:   index=2 has term=3 ✓\nAccept new entry!
+
+athens -> byzantium: AppendReply(term=5, success=true, matchIndex=3)
+
+note over cyrene #lightcoral: **Consistency Check:**\nExpected: prevIndex=2, prevTerm=3\nMy log:   index=2 has term=3 ✓\nBUT: index=3 already exists with term=4!\nConflict detected!
+
+cyrene -> byzantium: AppendReply(term=5, success=false, nextIndex=3)
+
+note across #lightcoral
+**Step 3: Consistency Check Failure**
+
+Athens accepts (has matching previous entry).
+Cyrene rejects because it has different entry
+at index 3 from different term.
+end note
+' [/step3]
+
+' [step4 {"name":"Leader Detects Conflict", "newPage":"true"}]
+note over byzantium #orange: **Conflict Resolution:**\nCyrene failed at index 3\nTry sending from earlier point\nDecrement nextIndex: 3 → 2
+
+byzantium -> cyrene: AppendEntries(term=5, prevLogIndex=1, prevLogTerm=3,\nentries=[2:Dec, 3:Add], leaderCommit=2)
+
+note over byzantium: **Send multiple entries**\nstarting from known good point
+
+note across #orange
+**Step 4: Leader Detects Conflict**
+
+Leader recognizes Cyrene has conflicting entry.
+Must find the point where logs diverge.
+Decrements nextIndex to find matching point.
+end note
+' [/step4]
+
+' [step5 {"name":"Truncation Required", "newPage":"true"}]
+note over cyrene #lightcoral: **Truncation Decision:**\nLeader wants: [2:Dec, 3:Add]\nI have:       [2:Dec, 3:SetVal(term=4)]\n\nIndex 3 conflicts! Must truncate.
+
+note over cyrene: **Truncation Process:**\n1. Remove entries from index 3 onwards\n2. Append leader's entries\n3. Update log state
+
+note over cyrene: **Before:** [1:Inc, 2:Dec, 3:SetVal(term=4)]\n**After:**  [1:Inc, 2:Dec, 3:Add(term=3)]
+
+note across #lightcoral
+**Step 5: Truncation Required**
+
+Cyrene detects it needs to truncate its log.
+Entry at index 3 conflicts with leader's entry.
+Must remove conflicting entries before appending.
+end note
+' [/step5]
+
+' [step6 {"name":"Successful Synchronization", "newPage":"true"}]
+cyrene -> byzantium: AppendReply(term=5, success=true, matchIndex=3)
+
+note over byzantium #lightgreen: **Synchronization Complete:**\nAll followers match leader's log\nConsistent state achieved
+
+note over athens, cyrene: **Final State - All Synchronized:**
+
+note over athens: **Athens:**\n[1:Inc, 2:Dec, 3:Add]
+note over byzantium: **Byzantium:**\n[1:Inc, 2:Dec, 3:Add]
+note over cyrene: **Cyrene:**\n[1:Inc, 2:Dec, 3:Add]
+
+note across #lightgreen
+**Step 6: Successful Synchronization**
+
+Cyrene truncates conflicting entry and appends
+leader's entries. All nodes now have consistent logs.
+Replication succeeds.
+end note
+' [/step6]
+
+' [step7 {"name":"Truncation Benefits", "newPage":"true"}]
+note over byzantium #lightgreen: **Key Properties:**\n✓ Only uncommitted entries truncated\n✓ Leader's log is authoritative\n✓ Automatic synchronization\n✓ No manual intervention needed
+
+note across #lightgreen
+**RAFT Log Truncation Advantages:**
+
+• **Automatic conflict resolution**
+• **Preserves committed entries only**
+• **Ensures strong consistency**
+• **Simple append-only semantics**
+
+**Truncation Benefits:**
+• Resolves log conflicts automatically
+• Maintains consistency guarantees  
+• Simpler than multi-round consensus
+• Leader's log becomes source of truth
+end note
+' [/step7]
+
+@enduml 
