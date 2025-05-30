@@ -432,7 +432,7 @@ slides:
 
   - type: "diagram"
     title: "Multi-Paxos: Complete Flow"
-    diagramRef: "multi_paxos_complete_flow"
+    diagramRef: "multi_slot_consensus_complete_flow"
     bullets:
       - "Multiple clients sending requests"
       - "Leader assigns slots and runs consensus"

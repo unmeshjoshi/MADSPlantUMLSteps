@@ -9,43 +9,37 @@ participant "Byzantium" as byzantium
 participant "Cyrene" as cyrene
 
 note over athens
-ballot=1
 ==Log==
---index 1--
-IncrementCounter
---index 2--
+IncrementCounter (gen=1)
+----
 ??? (uncommitted)
---index 3--
-DecrementCounter
---index 4--
+----
+DecrementCounter (gen=3)
+----
 <empty>
 ====
 end note
 
 note over byzantium
-ballot=1
 ==Log==
---index 1--
-IncrementCounter
---index 2--
+IncrementCounter (gen=1)
+----
 ??? (uncommitted)
---index 3--
-DecrementCounter
---index 4--
+----
+DecrementCounter (gen=3)
+----
 <empty>
 ====
 end note
 
 note over cyrene
-ballot=1
 ==Log==
---index 1--
-IncrementCounter
---index 2--
+IncrementCounter (gen=1)
+----
 ??? (uncommitted)
---index 3--
-DecrementCounter
---index 4--
+----
+DecrementCounter (gen=3)
+----
 <empty>
 ====
 end note
@@ -67,15 +61,13 @@ end note
 
 ' [step3 {"name":"Current Execution State", "newPage":"true"}]
 note over athens
-ballot=1
 ==Log==
---index 1--
-IncrementCounter ✓
---index 2--
+IncrementCounter (gen=1) ✓
+----
 ??? (waiting)
---index 3--
-DecrementCounter ⏸
---index 4--
+----
+DecrementCounter (gen=3) ⏸
+----
 <empty>
 ====
 High-Water Mark = 1
@@ -89,15 +81,13 @@ group #LightGreen "Slot 2 Consensus Completes"
     note over athens: Slot 2 consensus finishes:\nSetCounter(value=10) committed
     
     note over athens
-    ballot=1
     ==Log==
-    --index 1--
-    IncrementCounter ✓
-    --index 2--
-    SetCounter(10)
-    --index 3--
-    DecrementCounter
-    --index 4--
+    IncrementCounter (gen=1) ✓
+    ----
+    SetCounter(10) (gen=4)
+    ----
+    DecrementCounter (gen=3)
+    ----
     <empty>
     ====
     end note
@@ -113,15 +103,13 @@ group #LightYellow "Sequential Execution"
     note over athens: Execute Slot 3:\nDecrementCounter\nCounter = 10 - 1 = 9
     
     note over athens
-    ballot=1
     ==Log==
-    --index 1--
-    IncrementCounter ✓
-    --index 2--
-    SetCounter(10) ✓
-    --index 3--
-    DecrementCounter ✓
-    --index 4--
+    IncrementCounter (gen=1) ✓
+    ----
+    SetCounter(10) (gen=4) ✓
+    ----
+    DecrementCounter (gen=3) ✓
+    ----
     <empty>
     ====
     High-Water Mark = 3

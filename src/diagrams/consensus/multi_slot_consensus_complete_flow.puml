@@ -1,7 +1,7 @@
 @startuml
 !include ../../style.puml
 
-title Multi-Paxos: Complete Flow
+title Multi-Slot Consensus: Complete Flow
 
 ' [step1 {"name":"Initial Setup"}]
 participant "Client A" as clientA
@@ -11,13 +11,11 @@ participant "Byzantium" as byzantium
 participant "Cyrene" as cyrene
 
 note over athens
-ballot=1
 ==Log==
---index 1--
 <empty>
---index 2--
+----
 <empty>
---index 3--
+----
 <empty>
 ====
 High-Water Mark = 0
@@ -74,13 +72,11 @@ group #LightYellow "Execute Up to High-Water Mark"
     note over athens: Execute Slot 2:\nDecrementCounter\nCounter = 6 - 1 = 5
     
     note over athens
-    ballot=1
     ==Log==
-    --index 1--
-    IncrementCounter ✓
-    --index 2--
-    DecrementCounter ✓
-    --index 3--
+    IncrementCounter (gen=1) ✓
+    ----
+    DecrementCounter (gen=2) ✓
+    ----
     <empty>
     ====
     High-Water Mark = 2
@@ -120,22 +116,20 @@ end
 
 ' [step8 {"name":"Final State", "newPage":"true"}]
 note over athens
-ballot=1
 ==Log==
---index 1--
-IncrementCounter ✓
---index 2--
-DecrementCounter ✓
---index 3--
-IncrementCounter
---index 4--
+IncrementCounter (gen=1) ✓
+----
+DecrementCounter (gen=2) ✓
+----
+IncrementCounter (gen=3)
+----
 SetCounter(10) (pending)
 ====
 High-Water Mark = 3
 end note
 
 note across #lightgreen
-**Multi-Paxos Complete Flow Achieved:**
+**Multi-Slot Consensus Complete Flow Achieved:**
 
 ✓ **Multiple Clients**: Handled concurrent requests
 ✓ **Slot Assignment**: Each request gets appropriate slot  
