@@ -296,6 +296,16 @@ slides:
       - "This ensures all nodes agree on same sequence and maintain consistent state"
     notes: "Summarize the complete four-step consensus process before revealing it's Paxos."
 
+  - type: "diagram"
+    title: "Quorum Overlap: Mathematical Foundation"
+    diagramRef: "quorum_overlap_foundation"
+    bullets:
+      - "Scenario: Two different consensus rounds with different majority quorums"
+      - "Round 1: Athens, Byzantium, Cyrene (majority) accept IncrementCounter"
+      - "Round 2: Cyrene, Delphi, Ephesus (majority) run recovery phase"
+      - "Cyrene is the overlap node - guarantees information transfer"
+      - "This overlap ensures no committed request can be lost"
+    notes: "Visually demonstrate how quorum overlap works in practice. Show two different majority quorums and how their overlap guarantees that information about committed requests is preserved across different consensus rounds."
 
   - type: "text"
     title: "Challenges in Practice"

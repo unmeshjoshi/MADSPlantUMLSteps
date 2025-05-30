@@ -1,0 +1,134 @@
+@startuml
+!include ../../style.puml
+
+participant Athens
+participant Byzantium 
+participant Cyrene
+participant Delphi
+participant Ephesus
+
+title Quorum Overlap: Mathematical Foundation
+
+' [step1 {"name":"Round 1: Initial Majority Accepts Request"}]
+
+hnote over Athens, Cyrene #lightblue
+**Round 1 Majority Quorum**
+Athens + Byzantium + Cyrene
+end note
+
+note over Athens
+Accept: IncrementCounter
+Generation: 3
+Status: ACCEPTED
+end note
+
+note over Byzantium
+Accept: IncrementCounter
+Generation: 3
+Status: ACCEPTED
+end note
+
+note over Cyrene #yellow
+Accept: IncrementCounter
+Generation: 3
+Status: ACCEPTED
+**OVERLAP NODE**
+end note
+
+note over Delphi
+No request accepted
+Status: NONE
+end note
+
+note over Ephesus
+No request accepted
+Status: NONE
+end note
+
+note across #lightgreen
+Round 1 Result: IncrementCounter accepted by majority
+(Athens, Byzantium, Cyrene)
+end note
+
+' [/step1]
+
+' [step2 {"name":"Round 2: Different Majority Runs Recovery", "newPage":"true"}]
+
+hnote over Cyrene, Ephesus #lightgreen
+**Round 2 Majority Quorum**
+Cyrene + Delphi + Ephesus
+end note
+
+note over Athens, Byzantium #lightCoral
+Not part of Round 2 majority
+Status: UNREACHABLE
+end note
+
+note over Cyrene #yellow
+Accept: IncrementCounter
+Generation: 3
+Status: ACCEPTED
+**OVERLAP NODE**
+Knows about Round 1!
+end note
+
+note over Delphi
+New leader candidate
+Running recovery phase
+Generation: 5
+end note
+
+note over Ephesus
+Part of Round 2 majority
+No previous requests
+Status: NONE
+end note
+
+' [/step2]
+
+' [step3 {"name":"Recovery Query Reveals Overlap Information", "newPage":"true"}]
+
+Delphi -> Cyrene: prepare(Generation=5)
+Delphi -> Ephesus: prepare(Generation=5)
+
+Cyrene -> Delphi: promise(Generation=5, accepted="IncrementCounter", Generation=3)
+Ephesus -> Delphi: promise(Generation=5, no_accepted_request)
+
+note over Delphi #lightgreen
+**Critical Discovery:**
+Cyrene reports IncrementCounter with Generation 3
+Must use this request (highest generation rule)
+end note
+
+note over Cyrene #yellow
+**Overlap Guarantees:**
+Even though Athens & Byzantium unreachable,
+Cyrene preserves information from Round 1
+end note
+
+' [/step3]
+
+' [step4 {"name":"Safety Preserved Through Overlap", "newPage":"true"}]
+
+note over Delphi #lightgreen
+Applies highest generation rule:
+Re-proposes IncrementCounter
+with new Generation 5
+end note
+
+Delphi -> Cyrene: accept("IncrementCounter", Generation=5)
+Delphi -> Ephesus: accept("IncrementCounter", Generation=5)
+
+Cyrene -> Delphi: accepted
+Ephesus -> Delphi: accepted
+
+note across #lightgreen
+**Safety Preserved:**
+IncrementCounter from Round 1 is preserved
+No conflicting request can be committed
+Quorum overlap ensures continuity
+end note
+
+' [/step4]
+
+@enduml 
