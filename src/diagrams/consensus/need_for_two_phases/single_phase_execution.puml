@@ -39,7 +39,7 @@ group #LightBlue "Increment Request"
 end
 ' [/step5]
 
-' [step6 {"name":"Athens fails"}]
+' [step6 {"name":"Athens fails", "newPage":"true"}]
 group #LightCoral "Node Failure"
     note over athens: Athens crashes
     athens -[#red]x athens

@@ -108,7 +108,6 @@ note across #red
 
 Without proper handling:
 • AddCounter(3) executed twice → Wrong result
-• MultiplyCounter(2) executed twice → Wrong result
 • System loses correctness guarantees
 
 **Solution: Idempotent Receiver Pattern**

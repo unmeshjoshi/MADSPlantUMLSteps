@@ -183,7 +183,7 @@ and never "forget" them, even across crashes.
 
 **The Rule:**
 During prepare phase, use the highest generation request
-from BOTH own memory AND responses from other nodes.
+that is reported in responses.
 
 **This ensures:**
 - Only one request can ever be committed

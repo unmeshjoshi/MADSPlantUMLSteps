@@ -8,9 +8,9 @@ sections:
       - type: "text"
         title: "Introduction to Consensus"
         bullets:
-          - "Consensus is fundamental to distributed systems"
-          - "Key challenges in achieving agreement"
-          - "Understanding the need for two-phase protocols"
+          - "Distributed systems require nodes to agree on shared state"
+          - "Network failures and node crashes make agreement challenging" 
+          - "Simple replication approaches lead to inconsistent states"
         notes: "Emphasize that consensus is not just about agreement, but about maintaining consistency in the face of failures. This sets up the motivation for the following diagrams."
       
       - type: "diagram"
@@ -53,10 +53,10 @@ sections:
       - type: "text"
         title: "Challenge 2: Trying Two Phases With Majority Quorum"
         bullets:
-          - "Majority quorum: A majority of nodes must agree to execute a request"
-          - "How can we ensure a majority agrees before a request is considered 'committed'?"
-          - "Introduce Phase 1 (Accept): Get majority agreement on the request"
-          - "Introduce Phase 2 (Execute): Execute the request once majority agrees" 
+          - "A majority of nodes must agree before executing any request"
+          - "Phase 1 (Accept): Get majority agreement on the request"
+          - "Phase 2 (Execute): Execute the request once majority agrees"
+          - "Two-phase approach aims to ensure consistency across nodes" 
         notes: "Introduce the concept of two-phase execution as a solution to the immediate execution problem."
 
       - type: "diagram"
@@ -71,9 +71,10 @@ sections:
       - type: "text"
         title: "Challenge 3: Failures During Agreement"
         bullets:
-          - "What if a server crashes or messages get lost during these two phases?"
-          - "Failures can leave the system in an ambiguous state"
-          - "Some nodes might know the result, others might not"
+          - "Servers can crash or messages can get lost during the two phases"
+          - "Failures leave the system in an ambiguous state"
+          - "Some nodes might know the result while others do not"
+          - "Network partitions can split the system during consensus"
         notes: "Introduce the complexity that failures add to the two-phase protocol."
 
       - type: "diagram"
@@ -126,10 +127,10 @@ sections:
       - type: "text"
         title: "Recovery Ambiguity: The Core Dilemma"
         bullets:
-          - "Before executing ANY new request, a server must first check for existing accepted requests"
-          - "It queries a majority and might see a request accepted on one server, but not another"
-          - "The Dilemma: Was that request committed, or did it only reach one node?"
-          - "Since decisions are made with majority responses (for fault tolerance), it's impossible to know for sure!"
+          - "Every server must check for existing accepted requests before proceeding"
+          - "Majority queries might reveal requests accepted on some servers but not others"
+          - "The fundamental question: Was that request committed or not?"
+          - "Majority-based decisions create unavoidable ambiguity for fault tolerance"
         notes: "Introduce the fundamental ambiguity that arises from making decisions with only majority information for fault tolerance."
 
       - type: "diagram"
@@ -169,9 +170,10 @@ sections:
       - type: "text"
         title: "Recovery Dilemma: Multiple Conflicting Requests"
         bullets:
-          - "What if Athens discovers TWO different accepted requests from the majority it can reach?"
-          - "Each server in the majority reports a different request"
-          - "Athens must decide: Which request should be preserved and re-proposed?"
+          - "Recovery can discover TWO different accepted requests from majority servers"
+          - "Each server in the majority reports a different accepted request"
+          - "Multiple conflicting requests create a choice dilemma for the new leader"
+          - "The leader must decide which request to preserve and re-propose safely"
         notes: "Introduce the more complex scenario where multiple conflicting accepted requests are discovered when checking with majority."
 
       - type: "diagram"
@@ -314,10 +316,10 @@ sections:
       - type: "text"
         title: "Challenges in Practice"
         bullets:
-          - "Livelock: Competing proposers can prevent progress"
-          - "Solution: Random backoff and leader election"
-          - "Single Request Problem: Once a request is committed, no other request can be executed"
-          - "Solution: Replicated Log of Requests"
+          - "Livelock occurs when competing proposers prevent progress"
+          - "Random backoff and leader election solve livelock problems"
+          - "Single request limitation makes the system impractical for real use"
+          - "Replicated logs extend consensus to handle multiple requests over time"
         notes: "Discuss practical challenges and solutions."
 
       - type: "diagram"
@@ -371,7 +373,7 @@ sections:
       - type: "text"
         title: "Solution: Replicated Log of Requests"
         bullets:
-          - "Instead of agreeing on a single value, maintain an ordered log of requests"
+          - "Instead of building consensus for only one request, maintain an ordered log of requests"
           - "Each log slot can hold one committed request"
           - "Run consensus separately for each slot"
           - "Execute requests in log order to maintain consistency"
@@ -493,11 +495,11 @@ sections:
       - type: "text"
         title: "Heartbeat Mechanism: Detecting Leader Failures"
         bullets:
-          - "Problem: How do followers know when the leader has failed?"
-          - "Solution: Leader periodically sends heartbeat messages to all followers"
-          - "Heartbeat interval should be greater than network round-trip time between servers"
-          - "Followers wait for timeout interval (multiple of heartbeat interval)"
-          - "If heartbeat doesn't arrive within timeout, followers trigger leader election"
+          - "Leaders must periodically send heartbeat messages to prove they are alive"
+          - "Heartbeat intervals should exceed network round-trip time between servers"
+          - "Followers maintain timeout intervals as multiples of heartbeat intervals"
+          - "Missing heartbeats beyond the timeout threshold trigger leader election"
+          - "This mechanism enables rapid detection of leader failures"
         notes: "Introduce the heartbeat pattern as described in Martin Fowler's Patterns of Distributed Systems. Emphasize the importance of timely failure detection for maintaining system availability."
 
       - type: "diagram"
@@ -571,7 +573,7 @@ sections:
         bullets:
           - "We've built the foundation: single-value consensus with recovery"
           - "Extended it to replicated logs for practical use"
-          - "This is the core of systems like Chubby, etcd, and Raft"
+          - "This is the core of systems like Zookeeper, etcd, and Consul"
           - "Real systems add optimizations, but the principles remain the same"
         notes: "Connect the concepts learned to real-world distributed systems."
 
