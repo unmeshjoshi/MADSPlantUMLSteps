@@ -9,16 +9,18 @@ participant "Cyrene" as cyrene
 title RAFT Direct Log Replication
 
 ' [step1 {"name":"Leader Ready State"}]
-note over byzantium #lightgreen: **Current Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [] (ready for new entries)\nCommitIndex: 3
+note over athens: **Athens Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]
 
-note over byzantium: **Leader elected!**\nReady to serve clients
+note over byzantium #lightgreen: **Byzantium Log (Leader):**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [] (ready for new entries)\nCommitIndex: 3
+
+note over cyrene: **Cyrene Log:**\nTerm 3: [1:Inc, 2:Dec]\nTerm 4: [3:Set, 4:Mul, 5:Sub] ← Old term!
 
 note across #lightblue
-**Step 1: Leader Ready State**
+**Step 1: Initial State**
 
-Byzantium is elected leader with complete log.
-Leader can immediately start appending new entries.
-No recovery phase required.
+Byzantium elected as leader with authoritative log.
+Cyrene has MORE entries but from older term 4.
+These conflicting entries need truncation.
 end note
 ' [/step1]
 
@@ -27,106 +29,107 @@ client -> byzantium: SetCounter(value=10)
 
 note over byzantium: **Immediate Append:**\n1. Append to local log\n2. No need to query followers\n3. No re-proposal needed
 
-note over byzantium: **New Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [4:SetCounter(10)]\nCommitIndex: 3
+note over byzantium: **Updated Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [4:SetCounter(10)]\nCommitIndex: 3
 
 note across #lightgreen
 **Step 2: Client Request**
 
-Client sends new request to leader.
-Leader can immediately append to log
-without checking followers first.
+Leader immediately appends new entry.
+Ready to replicate to followers.
+No recovery phase needed.
 end note
 ' [/step2]
 
-' [step3 {"name":"Direct Replication", "newPage":"true"}]
+' [step3 {"name":"Initial Replication Attempt", "newPage":"true"}]
 byzantium -> athens: AppendEntries(term=5, prevLogIndex=3, prevLogTerm=3,\nentries=[4:SetCounter(10)], leaderCommit=3)
 byzantium -> cyrene: AppendEntries(term=5, prevLogIndex=3, prevLogTerm=3,\nentries=[4:SetCounter(10)], leaderCommit=3)
 
-note over byzantium: **AppendEntries includes:**\n• Current term (5)\n• Previous entry for consistency\n• New entries to append\n• Leader's commit index
-
-note across #lightgreen
-**Step 3: Direct Replication**
-
-Leader sends AppendEntries directly.
-Includes previous log entry for consistency check.
-No separate consensus rounds needed.
-end note
-' [/step3]
-
-' [step4 {"name":"Consistency Check", "newPage":"true"}]
 note over athens #lightblue: **Consistency Check:**\nExpected: prevIndex=3, prevTerm=3\nMy log:   index=3 has term=3 ✓\nConsistency maintained!
 
 athens -> byzantium: AppendReply(term=5, success=true, matchIndex=4)
 
-note over cyrene #lightyellow: **Consistency Check:**\nExpected: prevIndex=3, prevTerm=3\nMy log:   only goes to index=1 ✗\nNeed synchronization!
+note over cyrene #lightcoral: **Consistency Check FAILS:**\nExpected: prevIndex=3, prevTerm=3\nMy log:   index=3 has term=4 ✗\nConflict detected!
 
-cyrene -> byzantium: AppendReply(term=5, success=false, nextIndex=2)
+cyrene -> byzantium: AppendReply(term=5, success=false)
 
-note across #lightyellow
-**Step 4: Consistency Check**
+note across #lightcoral
+**Step 3: Conflict Detection**
 
-Followers check if previous entry matches.
-If match: append new entries.
-If mismatch: reject and request synchronization.
+Athens accepts (log matches).
+Cyrene rejects due to term mismatch at index 3.
+Leader will backtrack to find divergence.
+end note
+' [/step3]
+
+' [step4 {"name":"Backtracking Algorithm", "newPage":"true"}]
+note over byzantium: **Backtracking process:**\nCyrene failed at index 3\nDecrement and try index 2
+
+byzantium -> cyrene: AppendEntries(term=5, prevLogIndex=2, prevLogTerm=3,\nentries=[3:Add, 4:SetCounter(10)], leaderCommit=3)
+
+note over cyrene #lightblue: **Consistency Check:**\nExpected: prevIndex=2, prevTerm=3\nMy log:   index=2 has term=3 ✓\n\n**Truncation required:**\nRemove conflicting entries from index 3 onwards
+
+note across #orange
+**Step 4: Backtracking Success**
+
+Leader finds divergence point at index 2.
+Cyrene will truncate conflicting entries
+and accept leader's authoritative log.
 end note
 ' [/step4]
 
-' [step5 {"name":"Handle Lagging Follower", "newPage":"true"}]
-note over byzantium: **Cyrene needs catch-up!**\nSend missing entries starting from index 2
+' [step5 {"name":"Log Truncation and Repair", "newPage":"true"}]
+note over cyrene: **Log Truncation Process:**\n1. Truncate from index 3 onwards\n2. Remove: [3:Set(T4), 4:Mul(T4), 5:Sub(T4)]\n3. Append: [3:Add(T3), 4:SetCounter(T5)]
 
-byzantium -> cyrene: AppendEntries(term=5, prevLogIndex=1, prevLogTerm=2,\nentries=[2:Dec, 3:Add, 4:SetCounter(10)], leaderCommit=3)
+cyrene -> byzantium: AppendReply(term=5, success=true, matchIndex=4)
 
-note over cyrene #orange: **Catch-up Process:**\nReceive multiple missing entries\nto synchronize with leader
+note over byzantium #lightgreen: **Replication Success:**\nAthens: ✓ (matchIndex=4)\nCyrene: ✓ (matchIndex=4) - after truncation\nMajority achieved!
 
-note across #orange
-**Step 5: Handle Lagging Follower**
+note across #lightgreen
+**Step 5: Log Truncation and Repair**
 
-Cyrene is behind. Leader sends missing entries
-to bring it up to date. RAFT handles this
-automatically through AppendEntries.
+Cyrene truncates conflicting entries from old term.
+Accepts leader's authoritative entries.
+RAFT ensures safety through truncation.
 end note
 ' [/step5]
 
-' [step6 {"name":"Successful Replication", "newPage":"true"}]
-cyrene -> byzantium: AppendReply(term=5, success=true, matchIndex=4)
-
-note over byzantium #lightgreen: **Replication Success:**\nAthens: ✓ (matchIndex=4)\nCyrene: ✓ (matchIndex=4)\nMajority achieved!
-
+' [step6 {"name":"Commit and Response", "newPage":"true"}]
 note over byzantium: **Update Commit Index:**\nCommitIndex: 3 → 4\nEntry 4 is now committed
 
 byzantium -> client: Success: SetCounter(10) committed
 
-note across #lightgreen
-**Step 6: Successful Replication**
+byzantium -> athens: AppendEntries(term=5, leaderCommit=4) [heartbeat]
+byzantium -> cyrene: AppendEntries(term=5, leaderCommit=4) [heartbeat]
 
-All followers synchronized and caught up.
-Majority has replicated the new entry.
-Leader can now commit and respond to client.
+note across #lightgreen
+**Step 6: Commit and Response**
+
+Entry successfully committed on majority.
+Leader updates commit index and responds.
+Followers will execute committed entries.
 end note
 ' [/step6]
 
-' [step7 {"name":"RAFT Efficiency Summary", "newPage":"true"}]
-note over athens, cyrene: **Final State - All Synchronized:**
+' [step7 {"name":"Final Consistent State", "newPage":"true"}]
+note over athens, cyrene: **Final State - All Logs Consistent:**
 
 note over athens: **Athens Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [4:SetCounter(10)]\nCommitIndex: 4
 
 note over byzantium: **Byzantium Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [4:SetCounter(10)]\nCommitIndex: 4
 
-note over cyrene: **Cyrene Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [4:SetCounter(10)]\nCommitIndex: 4
+note over cyrene: **Cyrene Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nTerm 5: [4:SetCounter(10)]\nCommitIndex: 4\n~~[3:Set(T4), 4:Mul(T4), 5:Sub(T4)]~~ ← Truncated
 
 note across #lightgreen
-**RAFT Direct Replication Benefits:**
+**RAFT Direct Replication with Conflict Resolution:**
 
-✓ No recovery queries needed
-✓ Immediate entry appending
-✓ Automatic follower synchronization
-✓ Single AppendEntries protocol
+✓ Immediate leader operation (no recovery)
+✓ Automatic conflict detection
+✓ Backtracking to find divergence
+✓ Follower log truncation and repair
+✓ Safety through term-based authority
 
-**Key Advantages:**
-✓ No multi-round consensus
-✓ No recovery overhead  
-✓ Automatic synchronization
-✓ Single replication protocol
+**Key Advantage over Multi-Paxos:**
+Leader already has authoritative log state
 end note
 ' [/step7]
 

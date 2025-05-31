@@ -12,14 +12,14 @@ note over athens: **Athens Log:**\nTerm 3: [1:Inc, 2:Dec]\nLast: (term=3, index=
 
 note over byzantium: **Byzantium Log:**\nTerm 3: [1:Inc, 2:Dec, 3:Add]\nLast: (term=3, index=3)
 
-note over cyrene: **Cyrene Log:**\nTerm 2: [1:Inc]\nLast: (term=2, index=1)
+note over cyrene: **Cyrene Log:**\nTerm 2: [1:Set(T2)]\nLast: (term=2, index=1)
 
 note across #lightblue
 **Step 1: Initial State**
 
 All nodes have logs with different states.
 Byzantium has the most up-to-date log.
-No current leader exists.
+Cyrene has CONFLICTING entry at index 1.
 end note
 ' [/step1]
 
@@ -90,21 +90,50 @@ end note
 ' [step6 {"name":"Client Request Processing", "newPage":"true"}]
 client -> byzantium: New request: SetCounter(5)
 
-note over byzantium: **Direct processing:**\n• I already have latest log\n• No recovery overhead\n• Can immediately append new entry
+note over byzantium: **First attempt:**\nTry to append new entry at index 4\nAssume followers are up to date
 
-byzantium -> athens: AppendEntries(term=4, entries=[4:SetCounter(5)])
-byzantium -> cyrene: AppendEntries(term=4, entries=[4:SetCounter(5)])
+byzantium -> athens: AppendEntries(term=4, prevLogIndex=3, prevLogTerm=3,\nentries=[4:SetCounter(5)])
+byzantium -> cyrene: AppendEntries(term=4, prevLogIndex=3, prevLogTerm=3,\nentries=[4:SetCounter(5)])
 
-note across #lightgreen
-**Step 6: Client Request Processing**
+note over athens: **Consistency check FAILS:**\nI don't have entry 3 ✗
 
-Byzantium immediately processes client request.
-Uses AppendEntries to replicate to followers.
-Much faster than Multi-Paxos recovery.
+note over cyrene: **Consistency check FAILS:**\nI don't have entry 3 ✗
+
+athens -> byzantium: AppendEntriesReply(success=false)
+cyrene -> byzantium: AppendEntriesReply(success=false)
+
+note across #lightcoral
+**Step 6: Initial Append Attempt Fails**
+
+Byzantium tries to append at expected position.
+Both followers reject due to missing entries.
+This triggers RAFT's backtracking algorithm.
 end note
 ' [/step6]
 
-' [step7 {"name":"Key RAFT Advantage", "newPage":"true"}]
+' [step7 {"name":"Backtracking and Log Repair", "newPage":"true"}]
+note over byzantium: **Backtracking algorithm:**\nDecrement nextIndex for failed followers\nFind where logs diverge
+
+byzantium -> athens: AppendEntries(term=4, prevLogIndex=2, prevLogTerm=3,\nentries=[3:Add, 4:SetCounter(5)])
+byzantium -> cyrene: AppendEntries(term=4, prevLogIndex=0, prevLogTerm=0,\nentries=[1:Inc, 2:Dec, 3:Add, 4:SetCounter(5)])
+
+note over athens: **Consistency check passes:**\nI have entry 2 with term 3 ✓
+
+note over cyrene: **Starting from beginning:**\nPrevLogIndex=0 always succeeds ✓\n**Truncate conflicting log:**\nRemove: [1:Set(T2)]\nAppend entire leader log
+
+athens -> byzantium: AppendEntriesReply(success=true)
+cyrene -> byzantium: AppendEntriesReply(success=true)
+
+note across #lightgreen
+**Step 7: Successful Log Synchronization**
+
+Athens: Append missing entries 3 and 4
+Cyrene: Truncate conflicting log and rebuild completely
+All followers now have consistent logs
+end note
+' [/step7]
+
+' [step8 {"name":"Key RAFT Advantage", "newPage":"true"}]
 note across #lightgreen
 **Key RAFT Advantage:**
 
@@ -117,6 +146,6 @@ Can immediately start serving clients.
 • No post-election recovery queries needed
 • Much faster than Multi-Paxos recovery process
 end note
-' [/step7]
+' [/step8]
 
 @enduml 

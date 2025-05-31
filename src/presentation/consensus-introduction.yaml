@@ -648,17 +648,6 @@ sections:
           - "RAFT uses AppendEntries consistency check to detect and resolve conflicts"
         notes: "Introduce the complexity that arises when log histories diverge and need to be reconciled."
 
-      - type: "diagram"
-        title: "RAFT Log Consistency and Truncation"
-        diagramRef: "raft_log_truncation"
-        bullets:
-          - "Leader sends AppendEntries with prevLogIndex and prevLogTerm"
-          - "Follower checks if its log matches at the previous position"
-          - "If mismatch detected, AppendEntries is rejected"
-          - "Leader decrements index and retries until consistency point found"
-          - "Follower truncates conflicting entries and appends leader's entries"
-        notes: "Show the step-by-step process of how RAFT detects log inconsistencies and resolves them through truncation and re-replication."
-
       - type: "text"
         title: "The Commitment Safety Problem"
         bullets:

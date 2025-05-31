@@ -15,11 +15,11 @@ title RAFT Previous Term Commitment Problem
 ' [step1 {"name":"Previous Term Entries Exist"}]
 note over athens: **Athens Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add] ← Prev term\nCommitIndex: 2
 
-note over byzantium: **Byzantium Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add] ← Prev term\nCommitIndex: 2\n**New Leader (Term 4)**
+note over byzantium: **Byzantium Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add] ← Prev term\nCommitIndex: 2\n**New Leader (Term 5)**
 
 note over cyrene: **Cyrene Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add] ← Prev term\nCommitIndex: 2
 
-note over byzantium: **Entry 3:Add from Term 3**\nexists on majority (3/3)\nCan I commit it directly?
+note over byzantium: **Entry 3:Add from Term 3**\nexists on majority (3/4)\nCan I commit it directly?
 
 note across #lightblue
 **Step 1: Previous Term Entries Exist**
@@ -51,16 +51,16 @@ end note
 ' [step3 {"name":"Why This Restriction Exists", "newPage":"true"}]
 note over athens, byzantium: **Majority has:**\n[1:Inc, 2:Dec, 3:Add(T3)]
 note over cyrene: **Cyrene has:**\n[1:Inc, 2:Dec, 3:Add(T3)]
-note over delphi #lightcoral: **Delphi (partitioned):**\n[1:Inc, 2:Dec, 3:Set(T3)]
+note over delphi #lightcoral: **Delphi (partitioned):**\n[1:Inc, 2:Dec, 3:Set(T4)] ← HIGHER term!
 
-note over delphi: **Delphi was partitioned**\nhas conflicting entry 3:Set\nfrom same term 3!
+note over delphi: **Delphi was partitioned**\nhas conflicting entry 3:Set\nfrom HIGHER term 4!
 
 note across #lightcoral
 **Step 3: Why This Restriction Exists**
 
 Demonstrates the safety issue that could occur
 if leaders committed previous term entries.
-Scenario showing potential inconsistency.
+Delphi has entry from HIGHER term 4.
 end note
 ' [/step3]
 
@@ -70,22 +70,22 @@ note over athens #orange: **Network partition!**\nAthens unreachable from others
 note across #lightyellow
 **New Election in Partition:**
 Byzantium, Cyrene & Delphi form majority (3/4)
-Delphi becomes leader (Term 5)
+Delphi becomes leader (Term 6)
 end note
 
-note over delphi #lightgreen: **Delphi's perspective:**\nMy log: [1:Inc, 2:Dec, 3:Set(T3)]\nI have the "correct" state
+note over delphi #lightgreen: **Delphi's perspective:**\nMy log: [1:Inc, 2:Dec, 3:Set(T4)]\nI have entry from HIGHER term!\nI should be the authority
 
-delphi -> cyrene: AppendEntries(term=5, entries=[3:Set])
-delphi -> byzantium: AppendEntries(term=5, entries=[3:Set])
+delphi -> cyrene: AppendEntries(term=6, entries=[3:Set])
+delphi -> byzantium: AppendEntries(term=6, entries=[3:Set])
 
-note over delphi: **Delphi overwrites others'**\nentry 3:Add with 3:Set!
+note over delphi: **Delphi overwrites others'**\nentry 3:Add(T3) with 3:Set(T4)!
 
 note across #lightcoral
 **Step 4: Network Partition Scenario**
 
-If Delphi rejoins and becomes leader,
-it could overwrite the "committed" entry.
-This violates RAFT's safety guarantees.
+Delphi becomes leader with Term 6.
+Its entry 3:Set(T4) is from higher term than others.
+Could overwrite the "committed" entry 3:Add(T3).
 end note
 ' [/step4]
 
