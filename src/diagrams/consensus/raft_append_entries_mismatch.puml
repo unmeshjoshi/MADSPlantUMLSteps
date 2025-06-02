@@ -1,6 +1,11 @@
 @startuml
 !include ../../style.puml
 
+skinparam dpi 150
+skinparam minClassWidth 100
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 150
+
 participant "Byzantium\n(Leader)" as byzantium
 participant "Cyrene\n(Follower)" as cyrene
 participant "Athens\n(Leader)" as athens
@@ -27,27 +32,25 @@ end note
 ' [/step1]
 
 ' [step2 {"name":"First AppendEntries Attempt", "newPage":"true"}]
-byzantium -> cyrene: AppendEntries(term=4, prevLogIndex=5, prevLogTerm=3,\nentries=[6:Div], leaderCommit=4)
+byzantium -> cyrene: AppendEntries(term=4, prevIndex=5, prevTerm=3,\nentries=[6:Div], leaderCommit=4)
 
-note over cyrene #orange: **Consistency Check:**\nLeader expects: index=5, term=3\nMy log: only goes to index=2\nMISMATCH! Reject.
+note over cyrene: **Log consistency check:**\nI don't have entry at index 5\nOR entry 5 has different term ✗
 
-cyrene -> byzantium: AppendReply(term=4, success=false, nextIndex=3)
+cyrene -> byzantium: AppendReply(term=4, success=false, matchIndex=2)
 
-note over cyrene: "I don't have entry at index 5!\nPlease start from index 3."
+note across #lightcoral
+**Step 1: AppendEntries Mismatch**
 
-note across #lightyellow
-**Step 2: First AppendEntries Attempt**
-
-Leader sends new entry assuming follower
-is up to date. Follower rejects because
-it doesn't have the required previous entry.
+Leader tries to append at wrong position.
+Follower rejects due to missing/mismatched entry.
+Returns failure with last matching index.
 end note
 ' [/step2]
 
 ' [step3 {"name":"Leader Backtracks", "newPage":"true"}]
-note over byzantium #orange: **Backtrack:**\nNextIndex[Cyrene]: 6 → 3\nSend from index 3 onwards
+note over byzantium: **Backtracking Algorithm:**\n1. Decrease nextIndex for Cyrene\n2. Try sending missing entries\n3. Find common prefix
 
-byzantium -> cyrene: AppendEntries(term=4, prevLogIndex=2, prevLogTerm=1,\nentries=[3:Add, 4:Set, 5:Mul, 6:Div], leaderCommit=4)
+byzantium -> cyrene: AppendEntries(term=4, prevIndex=2, prevTerm=1,\nentries=[3:Add, 4:Set, 5:Mul, 6:Div], leaderCommit=4)
 
 note over byzantium: **Send multiple missing entries**\nto catch up follower
 

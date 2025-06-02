@@ -2,20 +2,19 @@
 !include ../../style.puml
 
 participant "Athens" as athens
-participant "Byzantium\n(Leader)" as byzantium
+participant "Byzantium" as byzantium
 participant "Cyrene" as cyrene
 participant "Delphi" as delphi
 participant "Client" as client
 participant "Client1" as client1
 participant "Client2" as client2
-participant "Leader" as leader
 
 title RAFT Previous Term Commitment Problem
 
 ' [step1 {"name":"Previous Term Entries Exist"}]
 note over athens: **Athens Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add] ← Prev term\nCommitIndex: 2
 
-note over byzantium: **Byzantium Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add] ← Prev term\nCommitIndex: 2\n**New Leader (Term 5)**
+note over byzantium: **Byzantium Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add] ← Prev term\nCommitIndex: 2\n**Current Leader (Term 5)**
 
 note over cyrene: **Cyrene Log:**\nTerm 2: [1:Inc, 2:Dec]\nTerm 3: [3:Add] ← Prev term\nCommitIndex: 2
 
@@ -24,8 +23,8 @@ note over byzantium: **Entry 3:Add from Term 3**\nexists on majority (3/4)\nCan 
 note across #lightblue
 **Step 1: Previous Term Entries Exist**
 
-New leader has entries from previous terms
-that are replicated on majority of servers.
+Byzantium is leader for Term 5 with entries
+from previous terms replicated on majority.
 Question: Can leader commit these entries?
 end note
 ' [/step1]
@@ -73,63 +72,69 @@ Byzantium, Cyrene & Delphi form majority (3/4)
 Delphi becomes leader (Term 6)
 end note
 
-note over delphi #lightgreen: **Delphi's perspective:**\nMy log: [1:Inc, 2:Dec, 3:Set(T4)]\nI have entry from HIGHER term!\nI should be the authority
+note over delphi #lightgreen: **Delphi becomes leader (Term 6)**\nMy log has 3:Set(T4) - HIGHER term!\nI'm the authority for index 3
 
-delphi -> cyrene: AppendEntries(term=6, entries=[3:Set])
-delphi -> byzantium: AppendEntries(term=6, entries=[3:Set])
+note over delphi: **Delphi's reasoning:**\n[1:Inc, 2:Dec, 3:Set(T4)]\nMy entry 3 has term 4 > their term 3\nI should overwrite their "wrong" entry
 
-note over delphi: **Delphi overwrites others'**\nentry 3:Add(T3) with 3:Set(T4)!
+delphi -> cyrene: AppendEntries(term=6, prevIndex=2, prevTerm=2,\nentries=[3:Set])
+delphi -> byzantium: AppendEntries(term=6, prevIndex=2, prevTerm=2,\nentries=[3:Set])
 
 note across #lightcoral
 **Step 4: Network Partition Scenario**
 
 Delphi becomes leader with Term 6.
-Its entry 3:Set(T4) is from higher term than others.
-Could overwrite the "committed" entry 3:Add(T3).
+Delphi forces its higher-term entry 3:Set(T4)
+to overwrite others' 3:Add(T3).
 end note
 ' [/step4]
 
 ' [step5 {"name":"Safety Violation Illustrated", "newPage":"true"}]
-note over byzantium #orange: **If previous term commit was allowed:**\nClient1 saw: "3:Add committed"
-note over delphi #lightgreen: **Current state:**\nEntry 3 is now: "3:Set"
+note over cyrene: **Cyrene accepts:**\nTruncate 3:Add(T3)\nAppend 3:Set(T4)
 
-client1 -> byzantium: Query("What's in slot 3?")
-byzantium --> client1: "3:Add (committed)"
+note over byzantium: **Byzantium accepts:**\nTruncate 3:Add(T3)\nAppend 3:Set(T4)
+
+cyrene -> delphi: AppendReply(term=6, success=true)
+byzantium -> delphi: AppendReply(term=6, success=true)
+
+note over delphi #lightgreen: **Delphi commits:**\nEntry 3:Set is now committed\nIndex 3 has been "corrected"
+
+note over byzantium #orange: **The safety violation:**\nIf I had committed 3:Add(T3) earlier,\nClient1 would have seen it as committed!
+
+client1 -> byzantium: Query("What happened to 3:Add?")
+byzantium --> client1: "It was overwritten by 3:Set\n(but you might have seen it committed)"
 
 client2 -> delphi: Query("What's in slot 3?")
-delphi -> client2: "3:Set (current)"
+delphi -> client2: "3:Set (correctly committed)"
 
 note across #lightcoral
 **Safety Violation:**
 
-Two clients see different committed values
-for the same log position!
-This breaks linearizability.
+Client1 might have previously seen 3:Add as committed,
+but now slot 3 contains 3:Set!
+A "committed" entry was overwritten.
 end note
 ' [/step5]
 
 ' [step6 {"name":"RAFT's Solution Preview", "newPage":"true"}]
-note over byzantium: **RAFT Solution:**\n1. Never commit previous term entries directly\n2. Add a no-op entry in current term\n3. Once no-op is committed, all previous entries become committed
+note over delphi: **Why this happened:**\nPrevious leader committed entry\nfrom previous term without safety
 
-note over byzantium: **Safe Commitment:**\nCurrentTerm entry committed\n→ Previous entries are safe\n→ Cannot be overwritten
+note over delphi: **RAFT Solution:**\n1. Never commit previous term entries directly\n2. Add a no-op entry in current term\n3. Once no-op is committed, all previous entries become committed\n4. Higher-term conflicting entries get truncated
 
 note across #orange
 **Step 6: RAFT's Solution Preview**
 
 RAFT prevents this by requiring leaders
-to commit a current-term entry first.
-This ensures previous entries are "safe".
+to commit current-term entries first.
+This forces conflicting higher-term entries to be truncated.
 end note
 ' [/step6]
 
 ' [step7 {"name":"Problem Summary", "newPage":"true"}]
-note over leader: **Key Insight:**\nCommitting previous term entries\ncould create safety violations
-
 note across #orange
 **Why Previous Term Commitment is Prohibited:**
 
 • **Prevents safety violations during partitions**
-• **Ensures linearizability guarantees**
+• **Ensures linearizability guarantees**  
 • **Requires explicit current-term commitment**
 • **Foundation for RAFT's safety properties**
 
@@ -139,6 +144,11 @@ note across #orange
 ❌ Violates linearizability guarantees
 ✅ Solved by no-op entry pattern
 ✅ Ensures safety during partitions
+
+**Key Insight:**
+Committing previous term entries could create
+safety violations when partitions expose
+conflicting entries from higher terms.
 end note
 ' [/step7]
 

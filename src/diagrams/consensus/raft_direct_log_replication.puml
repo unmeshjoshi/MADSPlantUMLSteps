@@ -1,6 +1,11 @@
 @startuml
 !include ../../style.puml
 
+skinparam dpi 150
+skinparam minClassWidth 100
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 150
+
 participant "Client" as client
 participant "Athens" as athens
 participant "Byzantium\n(Leader)" as byzantium

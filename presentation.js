@@ -747,6 +747,38 @@ function toggleDiagramBullets(element) {
     element.classList.toggle('active');
 }
 
+// Diagram zoom functionality
+function toggleDiagramZoom(container) {
+    // Prevent zoom when in drawing or laser mode
+    if (document.body.classList.contains('drawing-mode') || 
+        document.body.classList.contains('laser-mode')) {
+        return;
+    }
+    
+    container.classList.toggle('zoomed');
+    
+    if (container.classList.contains('zoomed')) {
+        // Disable scrolling on body when zoomed
+        document.body.style.overflow = 'hidden';
+        // Add ESC key listener
+        document.addEventListener('keydown', handleZoomEscape);
+    } else {
+        // Re-enable scrolling
+        document.body.style.overflow = '';
+        // Remove ESC key listener
+        document.removeEventListener('keydown', handleZoomEscape);
+    }
+}
+
+function handleZoomEscape(e) {
+    if (e.key === 'Escape') {
+        const zoomedContainer = document.querySelector('.diagram-container.zoomed');
+        if (zoomedContainer) {
+            toggleDiagramZoom(zoomedContainer);
+        }
+    }
+}
+
 // Initialize the presentation viewer when DOM is loaded
 document.addEventListener("DOMContentLoaded", function () {
     window.presentationViewer = new PresentationViewer();

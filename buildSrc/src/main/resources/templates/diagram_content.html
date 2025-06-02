@@ -1,5 +1,9 @@
 <div class='diagram-slide-content{{#fullSize}} full-size{{/fullSize}}'>
-    <div class='diagram-container'>
+    <div class='diagram-container' onclick="toggleDiagramZoom(this)">
+        <div class='diagram-zoom-hint'>
+            <i class='fas fa-search-plus'></i>
+            <span>Click to zoom</span>
+        </div>
         {{diagramContent}}
     </div>
     {{#hasBullets}}

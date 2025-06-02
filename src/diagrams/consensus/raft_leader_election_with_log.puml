@@ -1,6 +1,11 @@
 @startuml
 !include ../../style.puml
 
+skinparam dpi 150
+skinparam minClassWidth 100
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 150
+
 participant "Athens" as athens
 participant "Byzantium" as byzantium 
 participant "Cyrene" as cyrene
@@ -92,15 +97,15 @@ client -> byzantium: New request: SetCounter(5)
 
 note over byzantium: **First attempt:**\nTry to append new entry at index 4\nAssume followers are up to date
 
-byzantium -> athens: AppendEntries(term=4, prevLogIndex=3, prevLogTerm=3,\nentries=[4:SetCounter(5)])
-byzantium -> cyrene: AppendEntries(term=4, prevLogIndex=3, prevLogTerm=3,\nentries=[4:SetCounter(5)])
+byzantium -> athens: AppendEntries(term=4, prevIndex=3, prevTerm=3,\nentries=[4:SetCounter])
+byzantium -> cyrene: AppendEntries(term=4, prevIndex=3, prevTerm=3,\nentries=[4:SetCounter])
 
 note over athens: **Consistency check FAILS:**\nI don't have entry 3 ✗
 
 note over cyrene: **Consistency check FAILS:**\nI don't have entry 3 ✗
 
-athens -> byzantium: AppendEntriesReply(success=false)
-cyrene -> byzantium: AppendEntriesReply(success=false)
+athens -> byzantium: AppendReply(term=4, success=false)
+cyrene -> byzantium: AppendReply(term=4, success=false)
 
 note across #lightcoral
 **Step 6: Initial Append Attempt Fails**
@@ -114,15 +119,15 @@ end note
 ' [step7 {"name":"Backtracking and Log Repair", "newPage":"true"}]
 note over byzantium: **Backtracking algorithm:**\nDecrement nextIndex for failed followers\nFind where logs diverge
 
-byzantium -> athens: AppendEntries(term=4, prevLogIndex=2, prevLogTerm=3,\nentries=[3:Add, 4:SetCounter(5)])
-byzantium -> cyrene: AppendEntries(term=4, prevLogIndex=0, prevLogTerm=0,\nentries=[1:Inc, 2:Dec, 3:Add, 4:SetCounter(5)])
+byzantium -> athens: AppendEntries(term=4, prevIndex=2, prevTerm=3,\nentries=[3:Add, 4:SetCounter])
+byzantium -> cyrene: AppendEntries(term=4, prevIndex=0, prevTerm=0,\nentries=[1:Inc, 2:Dec, 3:Add, 4:SetCounter])
 
 note over athens: **Consistency check passes:**\nI have entry 2 with term 3 ✓
 
 note over cyrene: **Starting from beginning:**\nPrevLogIndex=0 always succeeds ✓\n**Truncate conflicting log:**\nRemove: [1:Set(T2)]\nAppend entire leader log
 
-athens -> byzantium: AppendEntriesReply(success=true)
-cyrene -> byzantium: AppendEntriesReply(success=true)
+athens -> byzantium: AppendReply(term=4, success=true)
+cyrene -> byzantium: AppendReply(term=4, success=true)
 
 note across #lightgreen
 **Step 7: Successful Log Synchronization**
@@ -130,6 +135,10 @@ note across #lightgreen
 Athens: Append missing entries 3 and 4
 Cyrene: Truncate conflicting log and rebuild completely
 All followers now have consistent logs
+
+**Note**: AppendEntries messages abbreviated for clarity.
+Full format includes: term, prevLogIndex, prevLogTerm, 
+entries array, and leaderCommit parameters.
 end note
 ' [/step7]
 

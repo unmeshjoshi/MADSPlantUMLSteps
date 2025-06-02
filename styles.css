@@ -277,11 +277,108 @@ body {
     position: relative;
     width: 100%;
     height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
 .diagram-container img {
     max-width: 100%;
+    min-height: 400px; /* Ensure minimum size */
     height: auto;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+}
+
+/* Zoom hint */
+.diagram-zoom-hint {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.diagram-container:hover .diagram-zoom-hint {
+    opacity: 1;
+}
+
+.diagram-zoom-hint i {
+    margin-right: 6px;
+}
+
+/* Zoomed state */
+.diagram-container.zoomed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 2000;
+    cursor: zoom-out;
+    overflow: auto;
+    padding: 20px;
+}
+
+.diagram-container.zoomed img {
+    max-width: none;
+    min-height: none;
+    width: auto;
+    height: auto;
+    max-height: 90vh;
+    transform: scale(1.2);
+}
+
+.diagram-container.zoomed .diagram-zoom-hint {
+    opacity: 1;
+}
+
+.diagram-container.zoomed .diagram-zoom-hint i:before {
+    content: "\f00e"; /* fa-search-minus */
+}
+
+.diagram-container.zoomed .diagram-zoom-hint span {
+    content: "Click to close";
+}
+
+.diagram-container.zoomed .diagram-zoom-hint span:after {
+    content: " (or press ESC)";
+}
+
+/* Better sizing for complex diagrams */
+.diagram-container svg {
+    min-width: 600px;
+    min-height: 400px;
+    max-width: 100%;
+    height: auto;
+}
+
+/* Responsive diagram sizing */
+@media screen and (max-width: 768px) {
+    .diagram-container img,
+    .diagram-container svg {
+        min-width: 100%;
+        min-height: 300px;
+    }
+    
+    .diagram-container.zoomed {
+        padding: 10px;
+    }
+    
+    .diagram-container.zoomed img {
+        transform: scale(1.1);
+    }
 }
 
 /* Version info */
@@ -310,21 +407,6 @@ body {
     justify-content: center;
     padding: 1.5rem;
     overflow: hidden;
-}
-
-.diagram-container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow-y: auto;
-}
-
-/* When no bullets are present - same as with bullets now */
-.diagram-slide-content.full-size .diagram-container {
-    width: 100%;
-    height: 100%;
 }
 
 .diagram-bullets {
