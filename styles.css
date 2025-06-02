@@ -307,6 +307,8 @@ body {
     transition: opacity 0.3s ease;
     z-index: 10;
     pointer-events: none;
+    max-width: 200px;
+    text-align: center;
 }
 
 .diagram-container:hover .diagram-zoom-hint {
@@ -329,31 +331,50 @@ body {
     cursor: zoom-out;
     overflow: auto;
     padding: 20px;
+    box-sizing: border-box;
 }
 
 .diagram-container.zoomed img {
     max-width: none;
+    max-height: none;
     min-height: none;
-    width: auto;
+    width: 150%;
     height: auto;
-    max-height: 90vh;
-    transform: scale(1.2);
+    transform: none;
+    cursor: zoom-out;
+    display: block;
+    margin: 0;
+    min-width: 150%;
+}
+
+.diagram-container.zoomed svg {
+    max-width: none;
+    max-height: none;
+    min-height: none;
+    width: 150%;
+    height: auto;
+    transform: none;
+    cursor: zoom-out;
+    display: block;
+    margin: 0;
+    min-width: 150%;
 }
 
 .diagram-container.zoomed .diagram-zoom-hint {
     opacity: 1;
+    background: rgba(0, 0, 0, 0.8);
+    top: 20px;
+    right: 20px;
+    max-width: 250px;
 }
 
-.diagram-container.zoomed .diagram-zoom-hint i:before {
-    content: "\f00e"; /* fa-search-minus */
-}
-
-.diagram-container.zoomed .diagram-zoom-hint span {
-    content: "Click to close";
-}
-
-.diagram-container.zoomed .diagram-zoom-hint span:after {
-    content: " (or press ESC)";
+.diagram-container.zoomed .diagram-zoom-hint:after {
+    content: "\A📱 Scroll to pan around\A🖱️ Click anywhere to close";
+    white-space: pre;
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    opacity: 0.9;
 }
 
 /* Better sizing for complex diagrams */
@@ -376,8 +397,14 @@ body {
         padding: 10px;
     }
     
-    .diagram-container.zoomed img {
-        transform: scale(1.1);
+    .diagram-container.zoomed img,
+    .diagram-container.zoomed svg {
+        width: 200%;
+        min-width: 200%;
+    }
+    
+    .diagram-container.zoomed .diagram-zoom-hint:after {
+        content: "\A👆 Swipe to pan around\A🖱️ Tap anywhere to close";
     }
 }
 
@@ -559,7 +586,7 @@ body {
     /* Ensure step container maintains size */
     min-height: 500px;
     overflow-y: auto; /* Allow vertical scrolling for tall diagrams */
-    overflow-x: hidden; /* Prevent horizontal scrolling */
+    overflow-x: auto; /* Prevent horizontal scrolling */
 }
 
 .step img {
