@@ -303,7 +303,7 @@ sections:
         notes: "Summarize the complete four-step consensus process before revealing it's Paxos."
 
       - type: "diagram"
-        title: "Quorum Overlap: Mathematical Foundation"
+        title: "Quorum Overlap"
         diagramRef: "quorum_overlap_foundation"
         bullets:
           - "Scenario: Two different consensus rounds with different majority quorums"
@@ -428,13 +428,14 @@ sections:
         notes: "Show how high-water mark ensures ordered execution."
 
       - type: "text"
-        title: "Complete Multi-Paxos Flow"
+        title: "Multi-Paxos"
         bullets:
-          - "1. Client sends request to leader"
-          - "2. Leader finds next available slot"
-          - "3. Run consensus for that slot (with recovery)"
-          - "4. Update high-water mark when consecutive slots are committed"
-          - "5. Execute all requests up to high-water mark in order"
+          - "Replicated Log with multislot consensus and high-water mark is called Multi-Paxos"
+          - "Client sends request to leader"
+          - "Leader finds next available slot"
+          - "Run consensus for that slot (with recovery)"
+          - "Update high-water mark when consecutive slots are committed"
+          - "Execute all requests up to high-water mark in order"
         notes: "Summarize the complete Multi-Paxos process."
 
       - type: "diagram"

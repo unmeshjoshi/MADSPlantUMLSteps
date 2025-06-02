@@ -1,8 +1,6 @@
 @startuml
 !include ../../style.puml
 
-title Multi-Slot Consensus: Complete Flow
-
 ' [step1 {"name":"Initial Setup"}]
 participant "Client A" as clientA
 participant "Client B" as clientB
@@ -129,8 +127,6 @@ High-Water Mark = 3
 end note
 
 note across #lightgreen
-**Multi-Slot Consensus Complete Flow Achieved:**
-
 ✓ **Multiple Clients**: Handled concurrent requests
 ✓ **Slot Assignment**: Each request gets appropriate slot  
 ✓ **Conflict Resolution**: Preserved existing accepted values
