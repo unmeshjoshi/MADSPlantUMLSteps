@@ -1,11 +1,17 @@
 !$back = "#F7F8FE"
 !$border = "#070D4A"
 !$lightyellow = "#FFFFE0"
+
+' Color palette for consensus roles (from TODO Phase D-3)
+!$leader_color = "#0063B1"
+!$quorum_color = "#15803D"  
+!$follower_color = "#94A3B8"
+
 !procedure $box()
   skinparam Shadowing true
   skinparam RoundCorner 10
   skinparam DefaultFontName "Roboto"
-  skinparam DefaultFontSize 14
+  skinparam DefaultFontSize 18
   skinparam DefaultFontColor Black
   skinparam ParticipantBackgroundColor White
   skinparam ParticipantBorderColor Black
@@ -40,6 +46,117 @@ skinparam actor {
   $box()
 }
 
-skinparam dpi 600
+' Set DPI for high resolution export (1920px width target)
+skinparam dpi 300
+skinparam minClassWidth 100
 
 hide footbox
+
+' Color procedures for consensus roles
+!procedure $leader_style()
+  skinparam ParticipantBackgroundColor $leader_color
+  skinparam ParticipantFontColor White
+!endprocedure
+
+!procedure $quorum_style()
+  skinparam ParticipantBackgroundColor $quorum_color
+  skinparam ParticipantFontColor White
+!endprocedure
+
+!procedure $follower_style()
+  skinparam ParticipantBackgroundColor $follower_color
+  skinparam ParticipantFontColor White
+!endprocedure
+
+' ===== CONSENSUS-SPECIFIC STYLING =====
+
+' Apply leader styling to a participant
+!procedure $apply_leader_style($participant)
+  $participant --> $participant : <color:white><back:#0063B1>  
+!endprocedure
+
+' Apply quorum member styling  
+!procedure $apply_quorum_style($participant)
+  $participant --> $participant : <color:white><back:#15803D>
+!endprocedure
+
+' Apply follower styling
+!procedure $apply_follower_style($participant)
+  $participant --> $participant : <color:black><back:#94A3B8>
+!endprocedure
+
+' Participant stereotypes for consensus roles
+skinparam participant {
+  BackgroundColor White
+  BorderColor Black
+  FontColor Black
+}
+
+' Leader color - deep blue
+skinparam participant<<leader>> {
+  BackgroundColor #0063B1
+  BorderColor #004080
+  FontColor White
+  FontStyle bold
+}
+
+' Quorum/Acceptor color - green
+skinparam participant<<quorum>> {
+  BackgroundColor #15803D
+  BorderColor #0F5F2E  
+  FontColor White
+  FontStyle bold
+}
+
+' Follower color - gray
+skinparam participant<<follower>> {
+  BackgroundColor #94A3B8
+  BorderColor #6B7280
+  FontColor White
+}
+
+' Candidate color (transitioning to leader)
+skinparam participant<<candidate>> {
+  BackgroundColor #0EA5E9
+  BorderColor #0369A1
+  FontColor White
+  FontStyle italic
+}
+
+' Client color
+skinparam participant<<client>> {
+  BackgroundColor #F3F4F6
+  BorderColor #6B7280
+  FontColor Black
+}
+
+' Server color
+skinparam participant<<server>> {
+  BackgroundColor #E5E7EB
+  BorderColor #4B5563
+  FontColor Black
+}
+
+' Failed state color
+skinparam participant<<failed>> {
+  BackgroundColor #FEE2E2
+  BorderColor #DC2626
+  FontColor #DC2626
+  FontStyle italic
+}
+
+' Note colors to match roles and importance
+skinparam note<<important>> {
+  BackgroundColor #FEF3C7
+  BorderColor #F59E0B
+}
+
+skinparam note<<leader>> {
+  BackgroundColor #DBEAFE
+  BorderColor #0063B1
+}
+
+skinparam note<<error>> {
+  BackgroundColor #FEE2E2
+  BorderColor #DC2626
+}

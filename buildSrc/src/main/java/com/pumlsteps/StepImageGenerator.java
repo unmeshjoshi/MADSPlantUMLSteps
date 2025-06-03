@@ -120,6 +120,8 @@ public class StepImageGenerator {
                 System.err.println("Error copying style.puml to output directory: " + e.getMessage());
             }
         }
+        
+        // No longer need to copy domain-specific color files since they're in style.puml
     }
 
     /**
@@ -196,22 +198,20 @@ public class StepImageGenerator {
 
         List<String> command = new ArrayList<>();
         command.add("java");
-        command.add("-DPLANTUML_LIMIT_SIZE=8192");  // Increase maximum diagram size
+        command.add("-DPLANTUML_LIMIT_SIZE=16384");  // JVM parameter - keep this before -jar
         command.add("-jar");
         command.add(plantUmlJarPath);
 
         // Add format-specific options
         if (format == ImageFormat.SVG) {
-            command.add("-tsvg");    // Generate SVG files
-            command.add("-SdefaultFontSize=12");  // Set consistent font size
-            command.add("-Sdpi=96");              // Standard DPI for web
-            command.add("-scale 0.8");            // Smaller scaling for SVG
+            command.add("-tsvg");                    // Generate SVG files
+            command.add("-SdefaultFontSize=18");     // Increased font size for 1920px resolution (TODO D-2)
+            command.add("-Sdpi=300");                // Higher DPI for crisp export
         } else {
             // Default is PNG
-            command.add("-tpng");               // Generate PNG files
-            command.add("-SdefaultFontSize=12"); // Set consistent font size
-            command.add("-Sdpi=300");           // Higher DPI for better quality
-            command.add("-scale 1.0");          // Full scale for better visibility
+            command.add("-tpng");                    // Generate PNG files
+            command.add("-SdefaultFontSize=18");     // Consistent font size with SVG (TODO D-2)
+            command.add("-Sdpi=300");                // Higher DPI for better quality
         }
 
         // We don't specify a global output directory because we want files to be generated

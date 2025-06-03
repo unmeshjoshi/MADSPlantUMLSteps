@@ -1,0 +1,111 @@
+@startuml
+!include ../../style.puml
+
+title **Snapshotting & Log Compaction: Managing Log Growth**
+
+' [step1 {"name":"Log Growth Problem"}]
+participant "Athens\n(Leader)" as athens <<leader>>
+participant "Byzantium\n(Follower)" as byzantium <<follower>>
+participant "Cyrene\n(Follower)" as cyrene <<follower>>
+
+note over athens: **Log entries: 1..10000**\nMemory usage: 500MB\nDisk usage: 2GB
+note over byzantium: **Log entries: 1..10000**\nMemory usage: 500MB\nDisk usage: 2GB
+note over cyrene: **Log entries: 1..9500**\nMissing recent entries
+
+note across: **Problem: Unbounded log growth affects performance**
+' [/step1]
+
+' [step2 {"name":"Snapshot Creation", "newPage":"true"}]
+athens -> athens: **Create Snapshot**\n• State: Counter=5000\n• LastIncludedIndex=9000\n• LastIncludedTerm=8
+
+note over athens <<important>>: **Snapshot Process:**\n1. Save current state machine state\n2. Record last applied log index/term\n3. Can safely discard logs ≤ 9000
+
+athens -> athens: **Compact Log**\nDiscard entries 1..9000\nKeep entries 9001..10000
+
+note over athens: **After Compaction:**\n• Snapshot: entries 1-9000\n• Log: entries 9001-10000\n• Memory reduced by 90%
+
+note across: **Leader creates snapshot and compacts log**
+' [/step2]
+
+' [step3 {"name":"Normal Follower Catch-up", "newPage":"true"}]
+[-> athens: **New log entry 10001**
+
+athens -> athens: AppendEntry(10001, term=8)
+
+athens -> byzantium: AppendEntries(prevIndex=10000, entry=10001)
+athens -> cyrene: AppendEntries(prevIndex=10000, entry=10001)
+
+note over byzantium: Has entry 10000 ✓\nCan accept 10001
+byzantium --> athens: Success
+
+note over cyrene: Missing entry 10000 ❌\nConsistency check fails
+cyrene --> athens: Failure(nextIndex=9500)
+
+note across: **Byzantium succeeds, Cyrene fails consistency check**
+' [/step3]
+
+' [step4 {"name":"Log Compaction Challenge", "newPage":"true"}]
+athens -> athens: **Check requested index 9500**\nEntry 9500 was compacted!\nNo longer in log
+
+note over athens <<important>>: **Compaction Problem:**\nCyrene needs entry 9500, but it's\nno longer available in leader's log\n\n**Solution:** Send snapshot instead
+
+athens -> cyrene: **InstallSnapshot RPC**\n• LastIncludedIndex=9000\n• LastIncludedTerm=8\n• State=Counter:5000\n• Data=<snapshot_chunk>
+
+note across: **InstallSnapshot RPC used when needed entry was compacted**
+' [/step4]
+
+' [step5 {"name":"Snapshot Installation Process", "newPage":"true"}]
+note over cyrene: **Receive Snapshot:**\n• Discard conflicting log entries\n• Install snapshot as new baseline\n• Update state machine
+
+cyrene -> cyrene: **Install Snapshot**\n1. Clear log entries ≤ 9000\n2. Set state = Counter:5000\n3. Set lastApplied = 9000
+
+cyrene --> athens: Success(nextIndex=9001)
+
+note over cyrene: **After Installation:**\n• State: Counter=5000\n• Log: entries 9501-9500 (gaps)\n• Ready for normal replication
+
+note across: **Follower installs snapshot and is ready for normal replication**
+' [/step5]
+
+' [step6 {"name":"Resume Normal Replication", "newPage":"true"}]
+athens -> cyrene: AppendEntries(prevIndex=9000, entries=9001..10000)
+
+note over cyrene: Batch catch-up\nfrom snapshot point
+
+cyrene --> athens: Success
+
+athens -> cyrene: AppendEntries(prevIndex=10000, entry=10001)
+
+cyrene --> athens: Success
+
+note over cyrene: **Fully Caught Up:**\n• Log: entries 9001-10001\n• State: Counter=5001\n• Normal replication resumed
+
+note across: **Follower catches up and resumes normal operation**
+' [/step6]
+
+' [step7 {"name":"Snapshot Benefits & Trade-offs", "newPage":"true"}]
+note as summary <<important>>
+**Snapshotting Benefits:**
+• **Memory Efficiency:** Bounded log size prevents memory bloat
+• **Disk Efficiency:** Old entries can be garbage collected
+• **Fast Recovery:** New nodes can catch up via snapshot + recent logs
+• **Network Efficiency:** Transfer state instead of entire log history
+
+**Implementation Considerations:**
+• **Consistency:** Snapshots must represent consistent state
+• **Atomicity:** Snapshot installation must be atomic operation
+• **Performance:** Large snapshots can impact system performance
+• **Frequency:** Balance between compaction overhead and log growth
+
+**When to Snapshot:**
+• Log size exceeds threshold (e.g., 10MB or 10k entries)
+• Memory pressure detected
+• Before major configuration changes
+• Periodic maintenance (e.g., daily)
+
+**InstallSnapshot vs AppendEntries:**
+• AppendEntries: Fast, incremental, for small gaps
+• InstallSnapshot: Slower, bulk transfer, for large gaps or new nodes
+end note
+' [/step7]
+
+@enduml 

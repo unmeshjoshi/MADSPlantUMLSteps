@@ -1,0 +1,131 @@
+@startuml
+!include ../../style.puml
+
+title **Dynamic Membership: Joint Consensus Configuration Changes**
+
+' [step1 {"name":"Current Configuration - 3 Node Cluster"}]
+participant "Athens\n(Leader)" as athens <<leader>>
+participant "Byzantium\n(Follower)" as byzantium <<follower>>
+participant "Cyrene\n(Follower)" as cyrene <<follower>>
+
+note over athens, cyrene: **Current Configuration: C_old = {Athens, Byzantium, Cyrene}**
+note over athens: Majority = 2 nodes
+note over byzantium: All nodes agree on current membership
+note over cyrene: System is stable and processing requests
+
+note across: **Initial State: 3-node cluster running normally**
+' [/step1]
+
+' [step2 {"name":"Configuration Change Request", "newPage":"true"}]
+[-> athens: **AddServer(Delphi)**
+
+note over athens <<important>>: Client requests to add new server Delphi\nMust maintain safety during transition
+
+athens -> athens: Create joint configuration\nC_old,new = {Athens, Byzantium, Cyrene} ∪ {Athens, Byzantium, Cyrene, Delphi}
+
+note over athens: **Joint Configuration Active**\n• C_old = {Athens, Byzantium, Cyrene}\n• C_new = {Athens, Byzantium, Cyrene, Delphi}\n• Both majorities required for decisions
+
+note across: **Phase 1: Joint Configuration Proposal**
+' [/step2]
+
+' [step3 {"name":"Joint Configuration Replication", "newPage":"true"}]
+participant "Delphi\n(New Node)" as delphi <<candidate>>
+
+athens -> byzantium: AppendEntries(C_old,new entry)
+athens -> cyrene: AppendEntries(C_old,new entry)
+athens -> delphi: AppendEntries(C_old,new entry)
+
+note over delphi: New node receives\njoint configuration
+
+byzantium --> athens: Success (C_old,new accepted)
+cyrene --> athens: Success (C_old,new accepted)
+delphi --> athens: Success (C_old,new accepted)
+
+note over athens: **Joint configuration committed**\n• C_old majority: ✓ (Athens, Byzantium)\n• C_new majority: ✓ (Athens, Byzantium, Cyrene)
+
+note across: **Joint configuration now active on all nodes**
+' [/step3]
+
+' [step4 {"name":"Dual Majority Requirement", "newPage":"true"}]
+[-> athens: **Client Request: IncrementCounter**
+
+note over athens <<important>>: During joint configuration:\n• Must get majority from C_old (2/3)\n• AND majority from C_new (3/4)\n• Both required for safety
+
+athens -> byzantium: AppendEntries(IncrementCounter)
+athens -> cyrene: AppendEntries(IncrementCounter)  
+athens -> delphi: AppendEntries(IncrementCounter)
+
+byzantium --> athens: Success
+cyrene --> athens: Success
+delphi --> athens: Success
+
+note over athens: **Dual majority achieved:**\n• C_old: Athens, Byzantium (2/3) ✓\n• C_new: Athens, Byzantium, Cyrene (3/4) ✓\n• Request can be committed
+
+note across: **Safety guaranteed: no single majority can make decisions**
+' [/step4]
+
+' [step5 {"name":"Transition to New Configuration", "newPage":"true"}]
+athens -> athens: Create new configuration entry\nC_new = {Athens, Byzantium, Cyrene, Delphi}
+
+athens -> byzantium: AppendEntries(C_new entry)
+athens -> cyrene: AppendEntries(C_new entry)
+athens -> delphi: AppendEntries(C_new entry)
+
+byzantium --> athens: Success (C_new accepted)
+cyrene --> athens: Success (C_new accepted)  
+delphi --> athens: Success (C_new accepted)
+
+note over athens: **C_new configuration committed**\n• Only need C_new majority now (3/4)\n• C_old no longer relevant
+
+' Update Delphi to follower stereotype
+participant "Delphi\n(Follower)" as delphi2 <<follower>>
+[-> delphi2
+
+note across: **Phase 2: New configuration active**
+' [/step5]
+
+' [step6 {"name":"Normal Operation with New Membership", "newPage":"true"}]
+note over athens, delphi2: **New Configuration: C_new = {Athens, Byzantium, Cyrene, Delphi}**
+note over athens: Majority = 3 nodes
+note over byzantium, delphi2: All nodes now equal members
+note over cyrene: Joint configuration phase complete
+
+[-> athens: **Client Request: DecrementCounter**
+
+athens -> byzantium: AppendEntries(DecrementCounter)
+athens -> cyrene: AppendEntries(DecrementCounter)
+athens -> delphi2: AppendEntries(DecrementCounter)
+
+byzantium --> athens: Success
+cyrene --> athens: Success
+delphi2 --> athens: Success
+
+note over athens: **Simple majority (3/4) sufficient**\nNo dual majority requirement
+
+note across: **Dynamic membership change complete safely**
+' [/step6]
+
+' [step7 {"name":"Safety Properties Summary", "newPage":"true"}]
+note as safety_summary <<important>>
+**Joint Consensus Safety Properties**
+
+**Why Joint Configuration Works:**
+• **No Split Brain:** During transition, both old and new majorities must agree
+• **Monotonic Progress:** Once joint config is committed, system can make progress
+• **Safe Transitions:** No window where two separate majorities can exist
+
+**Two-Phase Process:**
+1. **Joint Phase:** Require both C_old and C_new majorities
+2. **New Phase:** Only C_new majority required
+
+**Key Insight:** Joint consensus prevents dangerous scenarios where
+old and new configurations could independently make conflicting decisions.
+
+**Contrast with Unsafe Approaches:**
+❌ Direct switch: Could create split-brain scenarios
+❌ Single-phase: Unsafe window during configuration propagation
+✅ Joint consensus: Mathematically safe transition
+end note
+' [/step7]
+
+@enduml 

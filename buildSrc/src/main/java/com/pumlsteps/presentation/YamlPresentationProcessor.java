@@ -245,8 +245,12 @@ public class YamlPresentationProcessor {
 
     private void copyStylePumlToTempDir(File tempDir) {
         try {
-            // Try multiple possible locations for style.puml
+            // First, find the main global style.puml file
+            File globalStyleFile = new File(projectDir, "src/diagrams/style.puml");
+            
+            // Try multiple possible locations for style.puml as fallback
             File[] possibleStyleLocations = {
+                    globalStyleFile,
                     new File(projectDir, "src/main/puml/style.puml"),
                     new File(projectDir, "src/puml/style.puml"),
                     new File(projectDir, "puml/style.puml"),
@@ -259,6 +263,7 @@ public class YamlPresentationProcessor {
             for (File possibleFile : possibleStyleLocations) {
                 if (possibleFile.exists()) {
                     sourceStyleFile = possibleFile;
+                    System.out.println("Found global style file: " + possibleFile.getAbsolutePath());
                     break;
                 }
             }
@@ -267,40 +272,119 @@ public class YamlPresentationProcessor {
             String styleContent;
             if (sourceStyleFile != null) {
                 styleContent = new String(Files.readAllBytes(sourceStyleFile.toPath()));
-                System.out.println("Using existing style.puml from: " + sourceStyleFile.getAbsolutePath());
+                System.out.println("Using existing global style.puml from: " + sourceStyleFile.getAbsolutePath());
             } else {
-                // Create a basic style.puml content
-                styleContent = "' Basic style.puml created automatically\n" +
-                        "!define FONT_SIZE 14\n" +
-                        "!define ARROW_COLOR Black\n" +
-                        "!define COMPONENT_BKCOLOR LightSkyBlue\n" +
-                        "!define COMPONENT_BORDER_COLOR Black\n" +
-                        "skinparam backgroundColor White\n" +
-                        "skinparam defaultFontName Arial\n" +
-                        "skinparam defaultFontSize 14\n" +
-                        "skinparam dpi 300\n" +
+                // Create a basic style.puml content with consistent styling
+                styleContent = "' Global style.puml created automatically\n" +
+                        "!$back = \"#F7F8FE\"\n" +
+                        "!$border = \"#070D4A\"\n" +
+                        "!$lightyellow = \"#FFFFE0\"\n\n" +
+                        "' Color palette for consensus roles\n" +
+                        "!$leader_color = \"#0063B1\"\n" +
+                        "!$quorum_color = \"#15803D\"\n" +
+                        "!$follower_color = \"#94A3B8\"\n\n" +
+                        "!procedure $box()\n" +
+                        "  skinparam Shadowing true\n" +
+                        "  skinparam RoundCorner 10\n" +
+                        "  skinparam DefaultFontName \"Roboto\"\n" +
+                        "  skinparam DefaultFontSize 18\n" +
+                        "  skinparam DefaultFontColor Black\n" +
+                        "  skinparam ParticipantBackgroundColor White\n" +
+                        "  skinparam ParticipantBorderColor Black\n" +
+                        "!endprocedure\n\n" +
                         "skinparam shadowing false\n" +
-                        "skinparam roundCorner 10\n" +
-                        "skinparam ArrowColor Black\n" +
-                        "skinparam ArrowThickness 1.5\n";
-                System.out.println("Created default style.puml content");
+                        "skinparam dpi 300\n" +
+                        "skinparam minClassWidth 100\n" +
+                        "hide footbox\n" +
+                        "$box()\n";
+                System.out.println("Created default global style.puml content");
             }
 
-            // Copy style.puml to the main directory
+            // Copy global style.puml to the main directory
             File destStyleFile = new File(tempDir, "style.puml");
             try (FileWriter writer = new FileWriter(destStyleFile)) {
                 writer.write(styleContent);
             }
-            System.out.println("Copied style.puml to: " + destStyleFile.getAbsolutePath());
+            System.out.println("Copied global style.puml to: " + destStyleFile.getAbsolutePath());
+
+            // Now copy domain-specific styling files
+            copyDomainSpecificStyles(tempDir);
 
             // Recursively copy style.puml to all subdirectories
             copyStylePumlToSubdirectories(tempDir, styleContent);
 
-            // Also ensure style.puml is in the target directory and all its subdirectories
-            copyStylePumlToSubdirectories(tempDir, styleContent);
-
         } catch (IOException e) {
             System.err.println("Error handling style.puml: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Copies domain-specific styling files (like consensus-colors.puml) to the appropriate subdirectories.
+     */
+    private void copyDomainSpecificStyles(File tempDir) {
+        try {
+            // Copy consensus-colors.puml to consensus subdirectory
+            File consensusColorsSrc = new File(projectDir, "src/diagrams/consensus/consensus-colors.puml");
+            if (consensusColorsSrc.exists()) {
+                File consensusDir = new File(tempDir, "consensus");
+                consensusDir.mkdirs();
+                
+                File consensusColorsDest = new File(consensusDir, "consensus-colors.puml");
+                String consensusColorsContent = new String(Files.readAllBytes(consensusColorsSrc.toPath()));
+                
+                // Update the include path to work from the build directory structure
+                consensusColorsContent = consensusColorsContent.replace("!include ../../style.puml", "!include ../style.puml");
+                
+                try (FileWriter writer = new FileWriter(consensusColorsDest)) {
+                    writer.write(consensusColorsContent);
+                }
+                System.out.println("Copied consensus-colors.puml to: " + consensusColorsDest.getAbsolutePath());
+            }
+            
+            // Copy kafka-colors.puml to root directory (for root-level Kafka diagrams)
+            File kafkaColorsSrc = new File(projectDir, "src/diagrams/kafka-colors.puml");
+            if (kafkaColorsSrc.exists()) {
+                File kafkaColorsDest = new File(tempDir, "kafka-colors.puml");
+                String kafkaColorsContent = new String(Files.readAllBytes(kafkaColorsSrc.toPath()));
+                
+                try (FileWriter writer = new FileWriter(kafkaColorsDest)) {
+                    writer.write(kafkaColorsContent);
+                }
+                System.out.println("Copied kafka-colors.puml to: " + kafkaColorsDest.getAbsolutePath());
+            }
+            
+            // Copy kubernetes-colors.puml to root directory (for root-level Kubernetes diagrams)
+            File kubernetesColorsSrc = new File(projectDir, "src/diagrams/kubernetes-colors.puml");
+            if (kubernetesColorsSrc.exists()) {
+                File kubernetesColorsDest = new File(tempDir, "kubernetes-colors.puml");
+                String kubernetesColorsContent = new String(Files.readAllBytes(kubernetesColorsSrc.toPath()));
+                
+                try (FileWriter writer = new FileWriter(kubernetesColorsDest)) {
+                    writer.write(kubernetesColorsContent);
+                }
+                System.out.println("Copied kubernetes-colors.puml to: " + kubernetesColorsDest.getAbsolutePath());
+            }
+            
+            // Copy parquet-colors.puml to parquet subdirectory
+            File parquetColorsSrc = new File(projectDir, "src/diagrams/parquet-colors.puml");
+            if (parquetColorsSrc.exists()) {
+                File parquetDir = new File(tempDir, "parquet");
+                parquetDir.mkdirs();
+                
+                File parquetColorsDest = new File(parquetDir, "parquet-colors.puml");
+                String parquetColorsContent = new String(Files.readAllBytes(parquetColorsSrc.toPath()));
+                
+                // Update the include path to work from the build directory structure
+                parquetColorsContent = parquetColorsContent.replace("!include style.puml", "!include ../style.puml");
+                
+                try (FileWriter writer = new FileWriter(parquetColorsDest)) {
+                    writer.write(parquetColorsContent);
+                }
+                System.out.println("Copied parquet-colors.puml to: " + parquetColorsDest.getAbsolutePath());
+            }
+            
+        } catch (IOException e) {
+            System.err.println("Error copying domain-specific styles: " + e.getMessage());
         }
     }
 

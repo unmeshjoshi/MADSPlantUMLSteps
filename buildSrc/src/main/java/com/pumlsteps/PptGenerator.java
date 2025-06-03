@@ -51,7 +51,8 @@ public class PptGenerator {
      */
     public PptGenerator() {
         ppt = new XMLSlideShow();
-        ppt.setPageSize(new Dimension(1024, 768));
+        // Set to 16:9 aspect ratio with zero gutters (TODO D-5)
+        ppt.setPageSize(new Dimension(1920, 1080));
     }
     
     /**
@@ -109,6 +110,28 @@ public class PptGenerator {
         for (GeneratedStep step : steps) {
             addStepSlide(sectionName, step.getTitle(), step.getImageFile());
         }
+    }
+
+    /**
+     * Formats a section name to be more readable as a slide title.
+     */
+    private String formatSectionNameForSlide(String sectionName) {
+        // Convert snake_case or camelCase to Title Case
+        String formatted = sectionName.replaceAll("_", " ")
+                                    .replaceAll("([a-z])([A-Z])", "$1 $2");
+        
+        // Capitalize first letter of each word
+        String[] words = formatted.split(" ");
+        StringBuilder result = new StringBuilder();
+        for (String word : words) {
+            if (word.length() > 0) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                      .append(word.substring(1).toLowerCase())
+                      .append(" ");
+            }
+        }
+        
+        return result.toString().trim();
     }
 
     /**
@@ -185,16 +208,18 @@ public class PptGenerator {
             // Create a new slide
             XSLFSlide slide = ppt.createSlide();
 
-            // Add the title
+            // Add the title with zero gutters (TODO D-5)
             XSLFTextBox titleBox = slide.createTextBox();
-            titleBox.setAnchor(new Rectangle(50, 20, slideWidth - 100, 50));
+            titleBox.setAnchor(new Rectangle(0, 0, slideWidth, 80));
             titleBox.setHorizontalCentered(true);
 
             // Create a text run to set font properties
             XSLFTextRun titleRun = titleBox.addNewTextParagraph().addNewTextRun();
             titleRun.setText(title);
-            titleRun.setFontFamily("Bitter");
-            titleRun.setFontSize(26.0);
+            titleRun.setFontFamily("Calibri");
+            titleRun.setFontSize(32.0); // Larger font for 16:9 format
+            titleRun.setBold(true);
+            titleRun.setFontColor(ColorScheme.TEXT_DARK);
 
             // Check if the file is an SVG file
             boolean isSvg = imageFile.getName().toLowerCase(Locale.ROOT).endsWith(".svg");
@@ -219,20 +244,20 @@ public class PptGenerator {
                     BufferedImage image = ImageIO.read(pngFile);
                     
                     if (image != null) {
-                        // Calculate dimensions for the image
-                        int imageY = 50;  // Below title
-                        int imageHeight = slideHeight - imageY - 20;  // Leave margin at bottom
+                        // Calculate dimensions for the image with zero gutters (TODO D-5)
+                        int imageY = 80;  // Below title
+                        int imageHeight = slideHeight - imageY;  // Use full remaining height
 
-                        double scaleX = (double) (slideWidth - 200) / image.getWidth();
+                        double scaleX = (double) slideWidth / image.getWidth();
                         double scaleY = (double) imageHeight / image.getHeight();
                         double scale = Math.min(scaleX, scaleY);
 
                         int scaledWidth = (int) (image.getWidth() * scale);
                         int scaledHeight = (int) (image.getHeight() * scale);
 
-                        // Center the image
+                        // Center the image horizontally, align to top of content area
                         int xPosition = (slideWidth - scaledWidth) / 2;
-                        int yPosition = (slideHeight - scaledHeight) / 2;
+                        int yPosition = imageY;
 
                         // Read the PNG file bytes
                         byte[] imageBytes = Files.readAllBytes(pngFile.toPath());
@@ -254,20 +279,20 @@ public class PptGenerator {
                         BufferedImage image = ImageIO.read(tempPngFile);
                         
                         if (image != null) {
-                            // Calculate dimensions for the image
-                            int imageY = 50;  // Below title
-                            int imageHeight = slideHeight - imageY - 20;  // Leave margin at bottom
+                            // Calculate dimensions for the image with zero gutters (TODO D-5)
+                            int imageY = 80;  // Below title
+                            int imageHeight = slideHeight - imageY;  // Use full remaining height
 
-                            double scaleX = (double) (slideWidth - 200) / image.getWidth();
+                            double scaleX = (double) slideWidth / image.getWidth();
                             double scaleY = (double) imageHeight / image.getHeight();
                             double scale = Math.min(scaleX, scaleY);
 
                             int scaledWidth = (int) (image.getWidth() * scale);
                             int scaledHeight = (int) (image.getHeight() * scale);
 
-                            // Center the image
+                            // Center the image horizontally, align to top of content area
                             int xPosition = (slideWidth - scaledWidth) / 2;
-                            int yPosition = (slideHeight - scaledHeight) / 2;
+                            int yPosition = imageY;
 
                             // Read the PNG file bytes
                             byte[] imageBytes = Files.readAllBytes(tempPngFile.toPath());
@@ -292,20 +317,20 @@ public class PptGenerator {
                 BufferedImage image = ImageIO.read(imageFile);
                 
                 if (image != null) {
-                    // Calculate remaining area for image
-                    int imageY = 50;  // Below title
-                    int imageHeight = slideHeight - imageY - 20;  // Leave margin at bottom
+                    // Calculate dimensions for the image with zero gutters (TODO D-5)
+                    int imageY = 80;  // Below title
+                    int imageHeight = slideHeight - imageY;  // Use full remaining height
 
-                    double scaleX = (double) (slideWidth - 200) / image.getWidth();
+                    double scaleX = (double) slideWidth / image.getWidth();
                     double scaleY = (double) imageHeight / image.getHeight();
                     double scale = Math.min(scaleX, scaleY);
 
                     int scaledWidth = (int) (image.getWidth() * scale);
                     int scaledHeight = (int) (image.getHeight() * scale);
 
-                    // Center the image
+                    // Center the image horizontally, align to top of content area
                     int xPosition = (slideWidth - scaledWidth) / 2;
-                    int yPosition = (slideHeight - scaledHeight) / 2;
+                    int yPosition = imageY;
 
                     // Read the image file bytes
                     byte[] imageBytes = Files.readAllBytes(imageFile.toPath());
@@ -410,16 +435,18 @@ public class PptGenerator {
             // Create a new slide
             XSLFSlide slide = ppt.createSlide();
 
-            // Add the title
+            // Add the title with zero gutters (TODO D-5)
             XSLFTextBox titleBox = slide.createTextBox();
-            titleBox.setAnchor(new Rectangle(50, 20, slideWidth - 100, 50));
+            titleBox.setAnchor(new Rectangle(0, 0, slideWidth, 80));
             titleBox.setHorizontalCentered(true);
 
             // Create a text run to set font properties
             XSLFTextRun titleRun = titleBox.addNewTextParagraph().addNewTextRun();
             titleRun.setText(title);
-            titleRun.setFontFamily("Bitter");
-            titleRun.setFontSize(26.0);
+            titleRun.setFontFamily("Calibri");
+            titleRun.setFontSize(32.0); // Larger font for 16:9 format
+            titleRun.setBold(true);
+            titleRun.setFontColor(ColorScheme.TEXT_DARK);
 
             // Read the PNG for dimension calculation
             BufferedImage image = ImageIO.read(pngFile);
@@ -430,20 +457,20 @@ public class PptGenerator {
                 return;
             }
             
-            // Calculate remaining area for image
-            int imageY = 50;  // Below title
-            int imageHeight = slideHeight - imageY - 20;  // Leave margin at bottom
+            // Calculate dimensions for the image with zero gutters (TODO D-5)
+            int imageY = 80;  // Below title
+            int imageHeight = slideHeight - imageY;  // Use full remaining height
 
-            double scaleX = (double) (slideWidth - 200) / image.getWidth();
+            double scaleX = (double) slideWidth / image.getWidth();
             double scaleY = (double) imageHeight / image.getHeight();
             double scale = Math.min(scaleX, scaleY);
 
             int scaledWidth = (int) (image.getWidth() * scale);
             int scaledHeight = (int) (image.getHeight() * scale);
 
-            // Center the image
+            // Center the image horizontally, align to top of content area
             int xPosition = (slideWidth - scaledWidth) / 2;
-            int yPosition = (slideHeight - scaledHeight) / 2;
+            int yPosition = imageY;
 
             // Read the SVG file bytes
             byte[] imageBytes = Files.readAllBytes(svgFile.toPath());
@@ -511,16 +538,18 @@ public class PptGenerator {
                 // Create a new slide
                 XSLFSlide slide = ppt.createSlide();
 
-                // Add the title
+                // Add the title with zero gutters (TODO D-5)
                 XSLFTextBox titleBox = slide.createTextBox();
-                titleBox.setAnchor(new Rectangle(50, 20, slideWidth - 100, 50));
+                titleBox.setAnchor(new Rectangle(0, 0, slideWidth, 80));
                 titleBox.setHorizontalCentered(true);
 
                 // Create a text run to set font properties
                 XSLFTextRun titleRun = titleBox.addNewTextParagraph().addNewTextRun();
                 titleRun.setText(title);
-                titleRun.setFontFamily("Bitter");
-                titleRun.setFontSize(26.0);
+                titleRun.setFontFamily("Calibri");
+                titleRun.setFontSize(32.0); // Larger font for 16:9 format
+                titleRun.setBold(true);
+                titleRun.setFontColor(ColorScheme.TEXT_DARK);
 
                 // Read the PNG for dimension calculation
                 BufferedImage image = null;
@@ -559,20 +588,20 @@ public class PptGenerator {
                     }
                 }
                 
-                // Calculate remaining area for image
+                // Calculate dimensions for the image with zero gutters (TODO D-5)
                 int imageY = 80;  // Below title
-                int imageHeight = slideHeight - imageY - 20;  // Leave margin at bottom
+                int imageHeight = slideHeight - imageY;  // Use full remaining height
 
-                double scaleX = (double) (slideWidth - 100) / image.getWidth();
+                double scaleX = (double) slideWidth / image.getWidth();
                 double scaleY = (double) imageHeight / image.getHeight();
                 double scale = Math.min(scaleX, scaleY);
 
                 int scaledWidth = (int) (image.getWidth() * scale);
                 int scaledHeight = (int) (image.getHeight() * scale);
 
-                // Center the image
+                // Center the image horizontally, align to top of content area
                 int xPosition = (slideWidth - scaledWidth) / 2;
-                int yPosition = imageY + ((slideHeight - imageY - 20 - scaledHeight) / 2);
+                int yPosition = imageY;
 
                 try {
                     // First try to use the PNG file directly
@@ -818,23 +847,24 @@ public class PptGenerator {
             topAccent.setAnchor(new Rectangle(0, 0, slideWidth, 12));
             topAccent.setFillColor(ColorScheme.PRIMARY);
 
-            // Add the title with consistent styling
+            // Add the title with zero gutters (TODO D-5)
             XSLFTextBox titleBox = slide.createTextBox();
-            titleBox.setAnchor(new Rectangle(60, 30, slideWidth - 120, 60));
+            titleBox.setAnchor(new Rectangle(0, 0, slideWidth, 80));
+            titleBox.setHorizontalCentered(true);
             
             XSLFTextParagraph titlePara = titleBox.addNewTextParagraph();
             titlePara.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.LEFT);
             XSLFTextRun titleRun = titlePara.addNewTextRun();
             titleRun.setText(title);
-            titleRun.setFontFamily("Calibri Light");
-            titleRun.setFontSize(32.0);
+            titleRun.setFontFamily("Calibri");
+            titleRun.setFontSize(32.0); // Larger font for 16:9 format
             titleRun.setBold(true);
-            titleRun.setFontColor(ColorScheme.PRIMARY);
+            titleRun.setFontColor(ColorScheme.TEXT_DARK);
             
             // Add a small accent line under the title
             XSLFAutoShape titleUnderline = slide.createAutoShape();
             titleUnderline.setShapeType(ShapeType.RECT);
-            titleUnderline.setAnchor(new Rectangle(60, 90, 100, 3));
+            titleUnderline.setAnchor(new Rectangle(0, 80, 100, 3));
             titleUnderline.setFillColor(ColorScheme.SECONDARY);
 
             // Read the PNG file and get its dimensions
