@@ -1,0 +1,79 @@
+@startuml latency_vs_arrival_rate
+
+!theme plain
+skinparam backgroundColor white
+skinparam defaultTextColor black
+
+title Latency vs Arrival Rate: The Hockey Stick Curve
+
+' Create visual representation of the latency curve
+participant "Low Utilization\n(p = 0.1 - 0.5)" as low
+participant "Medium Utilization\n(p = 0.5 - 0.8)" as medium
+participant "High Utilization\n(p = 0.8 - 0.95)" as high
+participant "Near Saturation\n(p = 0.95 - 1.0)" as critical
+
+note over low, critical
+  **The Famous "Hockey Stick" Latency Curve**
+end note
+
+note over low
+  **Flat Region**
+  Latency ≈ 1/mu (service time)
+  
+  • Minimal queuing
+  • Predictable response time
+  • Latency = ~10ms
+  • Very stable performance
+end note
+
+note over medium
+  **Slight Increase**
+  Latency starts to rise slowly
+  
+  • Some queuing appears
+  • Still quite manageable
+  • Latency = ~15-25ms
+  • Performance acceptable
+end note
+
+note over high
+  **Sharp Rise Begins**
+  The "knee" of the curve appears
+  
+  • Significant queuing
+  • Latency becomes variable
+  • Latency = ~50-200ms
+  • Performance degrading
+end note
+
+note over critical
+  **Exponential Explosion**
+  The "stick" part of hockey stick
+  
+  • Extreme queuing delays
+  • Highly unpredictable
+  • Latency = 500ms - several seconds
+  • System nearly unusable
+end note
+
+' Show the progression
+low ->> medium : Gradual increase
+medium ->> high : Curve steepens  
+high ->> critical : Exponential growth
+
+' Mathematical representation
+note bottom
+  **M/M/1 Queue Formula: W = 1/(mu - lambda)**
+  
+  As lambda approaches mu, denominator approaches 0
+  Result: Latency approaches infinity
+  
+  **Example at mu = 1000 req/sec:**
+  p = 0.5 → W = 2ms
+  p = 0.8 → W = 5ms  
+  p = 0.9 → W = 10ms
+  p = 0.95 → W = 20ms
+  p = 0.99 → W = 100ms
+end note
+
+@enduml 

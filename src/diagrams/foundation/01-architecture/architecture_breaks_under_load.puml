@@ -1,0 +1,45 @@
+@startuml
+skinparam rectangleBorderThickness 2
+skinparam shadowing false
+
+package "Multiple Smaller Machines" {
+  node "App Server" as AS_small
+}
+
+package "One Beefy Machine" {
+  node "App Server" as AS_beefy1
+  node "App Server" as AS_beefy2
+}
+
+database "DB" as DB #FFE6E6
+database "DB Read Replica" as DBR #FFE6E6
+
+AS_small --> DB
+AS_small --> DBR
+AS_beefy1 --> DB
+AS_beefy1 --> DBR
+AS_beefy2 --> DB
+AS_beefy2 --> DBR
+
+note top of AS_small #FFCCCC
+**ASSUMPTIONS BREAK!**
+Response Time SLA: >500ms ⚠️
+end note
+
+note right of DBR #FFCCCC
+DB Read Replica: >100ms ⚠️
+Performance degradation
+end note
+
+note as ConnectionTable
+**Connection Explosion:**
+| Application | Connections | Total      |
+| Instances   | per instance| Connections|
+|-------------|-------------|------------|
+| 1           | 50          | 50         |
+| 5           | 50          | 250        |
+| 100         | 50          | 5000??     |
+end note
+
+ConnectionTable --> DB : Overwhelming connections
+@enduml 

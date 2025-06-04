@@ -1,0 +1,62 @@
+@startuml   
+
+title Write-Ahead Log Operation Example
+
+actor Client
+participant "KVStore Server" as KVStore
+database "Write Ahead Log\n/var/log/wal0000.log" as WAL
+database "In-Memory KVStore" as MemStore
+
+note over WAL #E6F3FF
+**Existing Log Entries:**
+Set(K1,V1) - Index 1
+Set(K2,V2) - Index 2  
+Set(K3,V3) - Index 3
+end note
+
+note over MemStore #E6F3FF
+**Current State:**
+Key1: Value1
+Key2: Value2
+Key3: Value3
+end note
+
+Client -> KVStore : Set(K4,V4)
+activate KVStore
+
+note over KVStore #FFFFCC
+**Critical Ordering:**
+Durability BEFORE Visibility
+end note
+
+KVStore -> WAL : **1. Append** Set(K4,V4) with Index 4
+activate WAL
+note right of WAL #FFE6E6
+**Durability Step:**
+• Generate unique log index (4)
+• Append to log file  
+• Force fsync() to disk
+• Ensures persistence
+end note
+WAL --> KVStore : Append confirmed
+deactivate WAL
+
+KVStore -> MemStore : **2. Update** Set(K4,V4)
+activate MemStore
+note right of MemStore #E6FFE6
+**Visibility Step:**
+• Update in-memory state
+• Key4: Value4 now visible
+• Only after WAL confirms write
+end note
+MemStore --> KVStore : Update confirmed  
+deactivate MemStore
+
+KVStore --> Client : Success
+deactivate KVStore
+
+note bottom #E6F3FF
+**Recovery Guarantee:** If server crashes after WAL write but before memory update,
+the operation can be replayed from the log during startup recovery.
+end note
+@enduml 

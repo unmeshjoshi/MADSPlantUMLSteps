@@ -1,0 +1,572 @@
+title: "Foundations"
+description: "Foundational concepts (draft version)"
+icon: "fas fa-network-wired"
+category: "Distributed Systems"
+sections:
+  - title: "Introduction and Workshop Overview"
+    slides:
+      - type: "text"
+        title: "Patterns Of Distributed Systems"
+        bullets:
+          - "Patterns Of Distributed Systems"
+          - "uvjoshi@thoughtworks.com"
+          - "A practical approach to understanding distributed systems through recurring patterns"
+        notes: "Welcome participants and introduce the patterns-based approach to learning distributed systems."
+
+      - type: "text"
+        title: "Workshop Prerequisites and Setup"
+        bullets:
+          - "Prerequisites:"
+          - "  • JDK17 installed"
+          - "  • IntelliJ Idea IDE recommended"
+          - "Clone repository: https://github.com/unmeshjoshi/replicate"
+          - "Run ./gradlew clean test"
+          - "Open the project in IntelliJ Idea"
+        notes: "Ensure all participants have the necessary tools and code repository set up before proceeding."
+
+      - type: "text"
+        title: "Agenda - Day 1"
+        bullets:
+          - "Why Distribute?"
+          - "A quick look at patterns approach"
+          - "Common Problems in Distributed Systems"
+          - "Common Patterns:"
+          - "  • Write Ahead Log"
+          - "  • Quorum"
+          - "  • Replication strategies"
+        notes: "Set expectations for Day 1 content focusing on fundamentals and basic patterns."
+
+      - type: "text"
+        title: "Agenda - Day 2"
+        bullets:
+          - "Advanced Consensus Algorithms"
+          - "  • Paxos fundamentals"
+          - "  • Replicated Log implementation"
+          - "  • Raft optimization"
+          - "Production considerations and case studies"
+        notes: "Preview advanced topics for Day 2, building on Day 1 foundations."
+
+      - type: "text"
+        title: "Background Poll - Your Experience"
+        bullets:
+          - "Have you used cloud services (AWS, GCP, Azure)? (Yes / No)"
+          - "Have you used distributed databases (Cassandra, MongoDB, YugabyteDB)? (Yes / No)"
+          - "Have you used container orchestration (Kubernetes, Docker Swarm)? (Yes / No)"
+          - "Have you used message brokers (Kafka, Pulsar)? (Yes / No)"
+          - "Have you used big-data technologies (HDFS, Spark)? (Yes / No)"
+          - "Have you heard of consensus algorithms (Paxos, Raft)? (Yes / No)"
+        notes: "Interactive poll to gauge participant experience levels and adjust presentation accordingly."
+
+  - title: "Why Distribute? The Scaling Challenge"
+    slides:
+      - type: "diagram"
+        title: "A Typical Application Architecture"
+        diagramRef: "typical_application_architecture"
+        bullets:
+          - "Multiple smaller machines (8GB RAM, 4 CORES, 512GB Disk) for Application Services"
+          - "One beefy machine (32GB RAM, 16 CORES, 4TB Disk) for database"
+          - "Assumptions: DB queries < 2ms, Response time SLA < 10ms"
+          - "Connection pooling manages database connections"
+        notes: "Introduce the traditional scaling approach and its assumptions that often break under load."
+
+      - type: "diagram"
+        title: "User Load Representation"
+        diagramRef: "user_load_representation"
+        bullets:
+          - "Visual representation of increasing user requests"
+          - "Traffic patterns and load distribution"
+          - "Peak usage scenarios"
+        notes: "Show how user load creates pressure on system resources."
+
+      - type: "diagram"
+        title: "When Architecture Breaks Under Load"
+        diagramRef: "architecture_breaks_under_load"
+        bullets:
+          - "Response Time SLA degrades to >500ms"
+          - "DB Read Replica response time >100ms"
+          - "Connection explosion: 100 instances × 50 connections = 5000 total connections"
+          - "System assumptions break down under real-world load"
+        notes: "Demonstrate how the simple architecture fails when assumptions about load and resources prove incorrect."
+
+      - type: "text"
+        title: "The Fundamental Resources with Physical Limits"
+        bullets:
+          - "CPU - Processing power has upper bounds"
+          - "Memory - RAM limitations affect data handling"
+          - "Network - Bandwidth and latency constraints"
+          - "Disks - I/O throughput and storage capacity limits"
+          - "Physical limits constrain request processing capacity"
+        notes: "Establish that all computing resources have hard physical limits that create bottlenecks."
+
+      - type: "text"
+        title: "Network - Bandwidth and Latency Reality"
+        bullets:
+          - "1 Gbps line can transmit 125M Bytes per second"
+          - "For 1KB requests: maximum 125,000 requests per second"
+          - "Network becomes the bottleneck for high-throughput systems"
+          - "Latency vs throughput trade-offs"
+        notes: "Provide concrete numbers to help participants understand network limitations."
+
+      - type: "text"
+        title: "Disks and Data Transfer Reality"
+        bullets:
+          - "Database = Files on Disks + Data structures (B+/LSM Tree) + Query Processing"
+          - "Raw disk transfer rates:"
+          - "  • 1TB with 2GBps: 500 seconds"
+          - "  • 10TB with 500MBps: 5.5 hours"
+          - "Even on cloud: application capacity limited by CPU, Network, Storage, Memory"
+          - "There is no free lunch in distributed systems"
+        notes: "Ground participants in the reality of data transfer times and storage limitations."
+
+      - type: "diagram"
+        title: "Little's Law and Application Performance"
+        diagramRef: "littles_law_performance"
+        bullets:
+          - "L = λW (Little's Law)"
+          - "L = Total Users/Resources in system"
+          - "λ = request receiving rate"
+          - "W = average response time"
+          - "Throughput = Number of Users / Response Time"
+          - "Performance degrades as load increases beyond system capacity"
+        notes: "Introduce Little's Law as fundamental principle for understanding system performance under load."
+
+      - type: "diagram"
+        title: "Throughput vs Number of Users"
+        diagramRef: "throughput_vs_users"
+        bullets:
+          - "Flat throughput up to system capacity (~500 users)"
+          - "Declining performance as load increases beyond capacity"
+          - "System saturation leads to degraded response times"
+          - "Demonstrates need for horizontal scaling"
+        notes: "Show the classic performance curve that motivates distributed system design."
+
+      - type: "text"
+        title: "Real-World Case Study: Indian Railways"
+        bullets:
+          - "Scale challenges in production systems:"
+          - "  • 120,000+ concurrent sessions during peak"
+          - "  • 30+ million registered users"
+          - "  • 700,000 bookings per day"
+          - "  • 30 million queries per day"
+          - "Login issues demonstrated scaling problems"
+          - "Source: VMware Tanzu case study"
+        notes: "Use real-world example to show the scale at which traditional architectures break down."
+
+  - title: "The Probability of Failure"
+    slides:
+      - type: "text"
+        title: "Fun with Probability - Individual Failures"
+        bullets:
+          - "A disk fails once in 1000 days"
+          - "Probability of disk failure per day: 1/1000 = 0.001"
+          - "With 10,000 disks: probability of daily failure ≈ 0.99"
+          - "Scale amplifies failure probability dramatically"
+        notes: "Use simple probability to show how scale changes failure characteristics."
+
+      - type: "diagram"
+        title: "Real Data Center Failures - Google's Experience"
+        diagramRef: "datacenter_failures_google"
+        bullets:
+          - "Monthly failures in a typical data center:"
+          - "  • ~0.5 overheating events (1-2 days recovery)"
+          - "  • ~1 PDU failure (500-1000 machines, 6 hours recovery)"
+          - "  • ~20 rack failures (40-80 machines, 1-6 hours)"
+          - "  • ~1000 individual machine failures"
+          - "  • ~thousands of hard drive failures"
+          - "Failure is not the exception - it's the norm"
+        notes: "Present Google's real data center failure statistics to show that failure is constant in large systems."
+
+      - type: "text"
+        title: "Independent Failures Multiply Risk"
+        bullets:
+          - "Two 'independent' disks failing: (1/1000)² = 1/1,000,000"
+          - "But independence assumptions often break"
+          - "Correlated failures (power, cooling, network) are common"
+          - "Availability zones help but don't eliminate correlated failures"
+        notes: "Explain why simple probability calculations often underestimate real failure rates."
+
+      - type: "diagram"
+        title: "Distributed System = Distributed State + Partial Failures"
+        diagramRef: "distributed_state_partial_failures"
+        bullets:
+          - "System functions as whole even when parts fail"
+          - "One database server fails, others continue serving"
+          - "Graceful degradation vs complete system failure"
+          - "Core principle of fault-tolerant distributed systems"
+        notes: "Introduce the key insight that distributed systems must continue operating despite partial failures."
+
+  - title: "What Makes a System Distributed?"
+    slides:
+      - type: "diagram"
+        title: "Defining Distributed Systems"
+        diagramRef: "distributed_system_definition"
+        bullets:
+          - "Runs on multiple processes/servers (3 to thousands)"
+          - "Manages data - inherently stateful systems"
+          - "Processes communicate by message passing"
+          - "Tolerates partial failures"
+          - "Appears as single system to users"
+        notes: "Establish clear definition and characteristics of distributed systems."
+
+      - type: "text"
+        title: "Examples of Distributed Systems in Practice"
+        bullets:
+          - "Databases: MongoDB, Cassandra, CockroachDB, Spanner, Aurora"
+          - "Message Brokers: Apache Kafka, Pulsar, Pravega"
+          - "Infrastructure: Kubernetes, etcd, Consul, Docker Swarm"
+          - "In-Memory Grids: Hazelcast, Gemfire, Apache Ignite"
+          - "Stateful Microservices: Akka, JGroups"
+          - "File Systems: HDFS, Ceph"
+          - "Plus all cloud provider services"
+        notes: "Show breadth of distributed systems in modern technology landscape."
+
+  - title: "The Patterns Approach"
+    slides:
+      - type: "text"
+        title: "Why Patterns?"
+        bullets:
+          - "Understand design decisions in popular systems"
+          - "Identify problems that designs solve"
+          - "Recognize recurring solutions across different systems"
+          - "Learn when and how to apply specific patterns"
+        notes: "Motivate the patterns approach as a way to understand distributed systems design."
+
+      - type: "text"
+        title: "Examples from Product Documentation"
+        bullets:
+          - "AWS MemoryDB: 'provides durability with replicated transactional log'"
+          - "Amazon S3: 'provides read-your-own-writes consistency'"
+          - "Google Spanner: 'external consistency with TrueTime'"
+          - "MongoDB 4.0: 'multi-document transactions'"
+          - "CockroachDB: 'uses HybridClock to implement MVCC'"
+          - "Apache Kafka: 'no longer needs Zookeeper'"
+        notes: "Show how patterns appear in real product documentation and marketing materials."
+
+      - type: "diagram"
+        title: "How to Understand Complex Systems"
+        diagramRef: "understanding_complex_systems"
+        bullets:
+          - "Why are they designed this way?"
+          - "What problems do the designs solve?"
+          - "Find the recurring solutions"
+          - "Learn how to build them"
+          - "Understand when to use them"
+        notes: "Present systematic approach to learning distributed systems through patterns."
+
+      - type: "text"
+        title: "Patterns: A Definition"
+        bullets:
+          - "Concept introduced by Christopher Alexander"
+          - "A recurring solution to a problem in a context"
+          - "Helps specifically state what problem the solution solves"
+          - "Provides vocabulary for discussing system design"
+        notes: "Establish the theoretical foundation of patterns from architecture and software design."
+
+      - type: "diagram"
+        title: "Real Code Implementation"
+        diagramRef: "real_code_implementation"
+        bullets:
+          - "Patterns are generic enough for broad systems"
+          - "Specific enough to show actual implementation"
+          - "Real code bridges theory and practice"
+          - "Critical for distributed systems with academic heritage"
+        notes: "Emphasize importance of concrete implementations alongside theoretical understanding."
+
+      - type: "text"
+        title: "The Power of Names"
+        bullets:
+          - "Well-established names for specific solutions"
+          - "Enables describing higher-level designs"
+          - "Pattern sequences or pattern language"
+          - "Example: 'Kafka Architecture = A pattern sequence'"
+        notes: "Show how named patterns create vocabulary for system design discussions."
+
+  - title: "Pattern Sequences - Building Complex Systems"
+    slides:
+      - type: "text"
+        title: "Raft/Kafka as Pattern Sequence"
+        bullets:
+          - "Write-Ahead Log provides durability guarantees"
+          - "Segmented Log divides WAL into manageable segments"
+          - "Low-Water Mark handles log cleaning"
+          - "Leader and Followers manage replication"
+          - "Quorum updates High-Water Mark for client visibility"
+          - "Singular Update Queue processes requests in order"
+          - "Single Socket Channel maintains order to followers"
+          - "HeartBeat indicates leader availability"
+          - "Generation Clock detects network partitions"
+        notes: "Show how multiple simple patterns combine to create sophisticated systems like Raft and Kafka."
+
+      - type: "text"
+        title: "Kubernetes/Control Plane Pattern Sequence"
+        bullets:
+          - "Consistent Core as fault-tolerant metadata store"
+          - "Implemented as Replicated Write Ahead Log"
+          - "Lease for group membership and failure detection"
+          - "State Watch for notifications of cluster changes"
+          - "Idempotent Receiver ignores duplicate requests on retries"
+        notes: "Demonstrate how control plane systems use different pattern combinations."
+
+      - type: "diagram"
+        title: "Pattern Sequence Relationships"
+        diagramRef: "pattern_sequence_relationships"
+        bullets:
+          - "Visual map of pattern dependencies and relationships"
+          - "Write-Ahead Log → Segmented Log → Low-Water Mark"
+          - "Replicated Log uses Quorum and Leader/Followers"
+          - "Consistent Core combines multiple patterns"
+          - "Shows how simple patterns build complex systems"
+        notes: "Provide visual representation of how patterns interconnect to form complete systems."
+
+  - title: "Common Problems in Distributed Systems"
+    slides:
+      - type: "diagram"
+        title: "Process Crash"
+        diagramRef: "process_crash"
+        bullets:
+          - "Routine maintenance by administrators"
+          - "Unhandled exceptions kill processes"
+          - "Cloud environments: unrelated events cause failures"
+          - "Process crashes are unpredictable and common"
+        notes: "Introduce process crashes as fundamental challenge requiring system design consideration."
+
+      - type: "diagram"
+        title: "Unsynchronized Clocks"
+        diagramRef: "unsynchronized_clocks"
+        bullets:
+          - "Time-of-day clocks drift at different rates"
+          - "NTP adjustments can cause clocks to go backwards"
+          - "Clocks from different servers cannot be directly compared"
+          - "Timing assumptions in distributed systems are dangerous"
+        notes: "Explain clock synchronization problems and their impact on distributed system design."
+
+      - type: "diagram"
+        title: "Network Delays"
+        diagramRef: "network_delays"
+        bullets:
+          - "TCP/IP is asynchronous by design"
+          - "No upper bound on network delay"
+          - "Servers cannot wait indefinitely for responses"
+          - "Risk of split-brain scenarios with network partitions"
+        notes: "Cover network unreliability as core challenge requiring careful timeout and failure detection design."
+
+      - type: "diagram"
+        title: "Process Pause"
+        diagramRef: "process_pause"
+        bullets:
+          - "Garbage Collection pauses"
+          - "OS scheduler delays"
+          - "Process unaware it was paused"
+          - "Can cause false failure detection"
+        notes: "Introduce process pauses as subtle but important failure mode in distributed systems."
+
+  - title: "Write-Ahead Log Pattern"
+    slides:
+      - type: "text"
+        title: "Write-Ahead Log - Problem"
+        bullets:
+          - "Server failure requires preserving data"
+          - "Cannot afford to flush all state on every change"
+          - "State may span multiple files on disk"
+          - "Need efficient durability mechanism"
+        notes: "Establish the problem that Write-Ahead Log solves in distributed systems."
+
+      - type: "text"
+        title: "Write-Ahead Log - Solution"
+        bullets:
+          - "Store each state change as command in log file"
+          - "Single log per server process, sequentially appended"
+          - "Each log entry has unique, monotonic identifier"
+          - "Unique identifier enables other operations (segmentation, cleaning)"
+        notes: "Present the Write-Ahead Log solution and its key characteristics."
+
+      - type: "diagram"
+        title: "Write-Ahead Log Operation"
+        diagramRef: "write_ahead_log_operation"
+        bullets:
+          - "Client sends Set(K4,V4)"
+          - "1. Append command to WAL file (/var/log/wal0000.log)"
+          - "2. Update in-memory Key-Value store"
+          - "Durability before visibility principle"
+        notes: "Walk through concrete example of Write-Ahead Log operation showing order of operations."
+
+      - type: "text"
+        title: "Write-Ahead Log Examples"
+        bullets:
+          - "Consensus algorithms: Zookeeper and Raft use WAL structure"
+          - "Kafka: follows commit log pattern from databases"
+          - "Every database: Postgres, Cassandra implement WAL"
+          - "Fundamental pattern in data systems"
+        notes: "Connect Write-Ahead Log to real systems participants may recognize."
+
+  - title: "Replication and Quorum Patterns"
+    slides:
+      - type: "diagram"
+        title: "Replication - Preventing Data Loss"
+        diagramRef: "replication_preventing_data_loss"
+        bullets:
+          - "Client Alice writes data to Server1"
+          - "Server1 fails (data could be lost)"
+          - "Multiple servers needed for fault tolerance"
+          - "How many replicas are sufficient?"
+        notes: "Motivate replication as solution to single point of failure."
+
+      - type: "diagram"
+        title: "Replication - How Many Copies?"
+        diagramRef: "replication_how_many_copies"
+        bullets:
+          - "Alice reads from multiple servers"
+          - "Each server has copy of data"
+          - "Trade-off between fault tolerance and performance"
+          - "Introduces consistency challenges"
+        notes: "Show the fundamental question of replication factor and its implications."
+
+      - type: "text"
+        title: "Majority Quorum - The Problem"
+        bullets:
+          - "Server needs confidence that actions survive crashes"
+          - "Achieved by replicating to other servers"
+          - "How many confirmations needed before confident?"
+          - "Balance between performance and durability"
+        notes: "Establish the problem that quorum consensus solves."
+
+      - type: "text"
+        title: "Majority Quorum - Balancing Act"
+        bullets:
+          - "Too many replications → slow response"
+          - "Too few replications → data loss risk"
+          - "Critical balance between performance and continuity"
+          - "Need mathematical approach to this trade-off"
+        notes: "Explain the fundamental tension that quorum resolves."
+
+      - type: "text"
+        title: "Majority Quorum - Solution"
+        bullets:
+          - "Cluster agrees on update when majority acknowledges"
+          - "Quorum = majority of nodes (n/2 + 1)"
+          - "5-node cluster: quorum of 3 needed"
+          - "Failure tolerance = cluster size - quorum"
+          - "General rule: 2f+1 nodes tolerate f failures"
+        notes: "Present the mathematical foundation of quorum consensus."
+
+      - type: "diagram"
+        title: "Quorum Intersection Property"
+        diagramRef: "quorum_intersection"
+        bullets:
+          - "Any two quorums must overlap by at least one node"
+          - "Even if F nodes fail before/after operation"
+          - "Overlap ensures continuity of information"
+          - "Mathematical guarantee of consistency"
+        notes: "Explain the critical quorum intersection property that ensures consistency."
+
+      - type: "diagram"
+        title: "Quorum Write Example"
+        diagramRef: "quorum_write_example"
+        bullets:
+          - "Alice sends write to athens"
+          - "athens replicates to byzantium (success) and cyrene (success)"
+          - "One replication path may fail"
+          - "athens checks quorum reached, returns Success"
+        notes: "Walk through concrete quorum write operation."
+
+      - type: "diagram"
+        title: "Quorum Read Example"
+        diagramRef: "quorum_read_example"
+        bullets:
+          - "Alice reads from athens"
+          - "athens queries byzantium (has data) and cyrene (fails)"
+          - "athens has majority responses"
+          - "Returns value to Alice"
+        notes: "Show quorum read operation and how it handles failures."
+
+      - type: "text"
+        title: "Quorum Performance Impact"
+        bullets:
+          - "Failure tolerance vs throughput trade-off:"
+          - "1 server: 0 failures, 100% throughput"
+          - "3 servers: 1 failure, 82% throughput"
+          - "5 servers: 2 failures, 48% throughput"
+          - "Reference: Universal Scalability Law applied to distributed systems"
+        notes: "Present concrete performance numbers to show quorum overhead."
+
+  - title: "Consistency Challenges"
+    slides:
+      - type: "diagram"
+        title: "Read Repair - Synchronous"
+        diagramRef: "read_repair_synchronous"
+        bullets:
+          - "Alice reads from athens"
+          - "athens gets latest from byzantium, detects cyrene is stale"
+          - "athens repairs cyrene before responding"
+          - "Alice gets consistent value"
+        notes: "Show how read repair maintains consistency by fixing stale replicas."
+
+      - type: "diagram"
+        title: "Read Repair - Asynchronous"
+        diagramRef: "read_repair_asynchronous"
+        bullets:
+          - "Similar to synchronous but repair happens in background"
+          - "Alice gets response faster"
+          - "Eventual consistency model"
+          - "Trade-off between latency and consistency"
+        notes: "Contrast async repair with sync repair showing latency vs consistency trade-offs."
+
+      - type: "diagram"
+        title: "Selecting Latest Value with Timestamps"
+        diagramRef: "selecting_latest_value"
+        bullets:
+          - "Write creates new version with timestamp"
+          - "Some replicas miss the update"
+          - "Read repair selects highest timestamp"
+          - "Repairs stale replicas with latest value"
+        notes: "Show how timestamps enable selecting the most recent value during read repair."
+
+      - type: "text"
+        title: "Consistency Questions"
+        bullets:
+          - "Which values does a read get during concurrent writes?"
+          - "Which values do two sequential reads get?"
+          - "Can later read return older value than earlier read?"
+          - "External consistency requirements"
+        notes: "Frame the fundamental consistency questions that distributed systems must address."
+
+      - type: "diagram"
+        title: "Incomplete Writes Problem"
+        diagramRef: "incomplete_writes"
+        bullets:
+          - "Alice writes to athens"
+          - "Replication to byzantium fails"
+          - "Quorum reached with athens + cyrene"
+          - "byzantium has stale data"
+        notes: "Show how network failures can leave replicas in inconsistent states."
+
+      - type: "diagram"
+        title: "Inconsistent Reads Scenario"
+        diagramRef: "inconsistent_reads"
+        bullets:
+          - "Bob reads and gets latest value"
+          - "Nathan reads from different replica"
+          - "Gets older value due to incomplete repair"
+          - "Violates external consistency"
+        notes: "Demonstrate how basic quorum can still allow inconsistent reads."
+
+      - type: "text"
+        title: "Issues with Basic Quorum"
+        bullets:
+          - "Different clients connecting to different replicas see different values"
+          - "Later read can get older value (external consistency violation)"
+          - "Nodes make values available without knowing if others accepted them"
+          - "Need stronger consistency guarantees"
+        notes: "Summarize the limitations of basic quorum that motivate stronger consistency models."
+
+      - type: "text"
+        title: "Recap"
+        bullets:
+          - "Identified fundamental scaling limits and failure modes"
+          - "Learned core patterns: Write-Ahead Log and Quorum"
+          - "Understood replication and consistency challenges"
+          - "Saw how patterns combine to build complex systems"
+          - "Prepared foundation for advanced consensus algorithms"
+        notes: "Summarize key learning outcomes from the workshop."
+
+     

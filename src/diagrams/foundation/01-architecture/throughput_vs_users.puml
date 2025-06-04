@@ -1,0 +1,29 @@
+@startuml
+
+title Throughput vs Number of Users Performance Curve
+
+rectangle "Graph Representation" as Graph {
+  note as GraphData #F0F8FF
+**Throughput vs Users Curve:**
+
+X-axis: Number of Users (0-3000)
+Y-axis: Throughput (0-100)
+
+**Key Performance Points:**
+- 0-500 users: Flat at 100 throughput
+- 500+ users: Performance decline begins
+- 1000 users: ~80 throughput (20% degradation)
+- 1500 users: ~70 throughput (30% degradation)
+- 2000 users: ~50 throughput (50% degradation)
+- 3000 users: ~35 throughput (65% degradation)
+  end note
+}
+
+note right of Graph #FFE6E6
+**System Behavior:**
+- Constant performance until saturation
+- Graceful degradation under overload
+- Demonstrates need for horizontal scaling
+- Shows Little's Law in practice
+end note
+@enduml 

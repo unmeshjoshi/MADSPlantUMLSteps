@@ -1,0 +1,40 @@
+@startuml
+
+title What Makes a System Distributed?
+
+cloud "Distributed System Characteristics" {
+  node "Server 1" as S1
+  node "Server 2" as S2
+  node "Server 3" as S3
+  node "..." as More
+  
+  S1 <--> S2 : Message\nPassing
+  S2 <--> S3 : Message\nPassing
+  S1 <--> S3 : Message\nPassing
+  S3 <--> More : Message\nPassing
+}
+
+note right of S1 #E6F3FF
+**Key Characteristics:**
+• Multiple processes/servers (3 to thousands)
+• Manages data (inherently stateful)
+• Message passing communication
+• Tolerates partial failures
+• Appears as single system to users
+end note
+
+actor "Client" as Client
+Client --> S1 : Single System View
+Client --> S2
+Client --> S3
+
+note bottom of Client
+**User Perspective:**
+Clients see one logical system,
+not individual servers
+end note
+
+rectangle "Data Center Environment" {
+  S1 -[hidden]- S2
+}
+@enduml 

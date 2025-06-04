@@ -1,0 +1,39 @@
+@startuml
+skinparam shadowing false
+
+title Little's Law and Application Performance
+
+rectangle "Little's Law Formula" {
+  rectangle "**L = λW**" #E6F3FF
+  rectangle "L = Total Users in System" #F0F8FF
+  rectangle "λ = Request Rate (arrivals/sec)" #F0F8FF
+  rectangle "W = Average Response Time" #F0F8FF
+}
+
+note as Formula
+**Rearranged:**
+Throughput = Number of Users / Response Time
+end note
+
+note as PerfTable #FFFFCC
+**Performance Data:**
+| Users | Response Time | Throughput |
+|-------|---------------|------------|
+| 50    | 500ms        | 100 TPS    |
+| 100   | 1200ms       | 83 TPS     |
+| 200   | 4000ms       | 50 TPS     |
+end note
+
+rectangle "Performance Behavior" #FFE6E6 {
+  note as Behavior
+**System Characteristics:**
+- Flat performance until capacity (~50 users)
+- Declining throughput as load increases
+- System saturates beyond capacity
+- Response time increases exponentially
+  end note
+}
+
+Formula --> PerfTable
+PerfTable --> Behavior
+@enduml 

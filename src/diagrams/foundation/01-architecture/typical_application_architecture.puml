@@ -1,0 +1,35 @@
+@startuml
+skinparam rectangleBorderThickness 2
+skinparam shadowing false
+
+package "Multiple Smaller Machines\n8GB RAM, 4 CORES, 512GB Disk" {
+  node "App Server" as AS_small
+}
+
+package "One Beefy Machine\n32GB RAM, 16 CORES, 4TB Disk" {
+  node "App Server" as AS_beefy1
+  node "App Server" as AS_beefy2
+}
+
+database "DB" as DB
+database "DB Read Replica" as DBR
+
+AS_small --> DB : queries
+AS_small --> DBR : read queries
+AS_beefy1 --> DB : queries
+AS_beefy1 --> DBR : read queries
+AS_beefy2 --> DB : queries
+AS_beefy2 --> DBR : read queries
+
+note right of AS_small
+Response Time SLA: <10ms
+Connection pooling manages DB access
+end note
+
+note right of DB
+DB Query: <2ms
+Assumptions:
+- Handle queries quickly < few ms
+- Support connection pools from all app servers
+end note
+@enduml 

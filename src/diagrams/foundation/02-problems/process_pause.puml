@@ -1,0 +1,68 @@
+@startuml
+!include ../../../style.puml
+
+
+title Process Pause - The Silent Failure Mode
+
+participant "Process" as Process
+participant "OS Scheduler" as OS
+participant "GC Thread" as GC
+participant "Other Processes" as Others
+
+== Normal Operation ==
+Process -> Process : Processing requests
+note right : Normal operation
+
+== Pause Event ==
+alt Garbage Collection Pause
+  GC -> Process : Stop-the-world GC
+  note over Process #FFE6E6
+  **GC Pause:**
+  • 100ms - 10s pause
+  • Process unaware of pause
+  • All threads suspended
+  • Heap cleanup in progress
+  end note
+  GC -> Process : Resume
+else OS Scheduling Delay  
+  OS -> Process : Deschedule
+  note over Process #FFE6E6
+  **Scheduler Delay:**
+  • High system load
+  • Process not scheduled
+  • Can last seconds
+  • Process unaware
+  end note
+  OS -> Process : Reschedule
+end
+
+== Impact on Distributed System ==
+Process -> Process : Resume processing
+note right #FFFFCC
+**False Failure Detection:**
+• Heartbeats missed during pause
+• Other nodes assume failure
+• Leader election triggered
+• Split-brain risk
+end note
+
+== Pause Detection Challenges ==
+note over Process #E6F3FF
+**Process Cannot Detect Its Own Pause:**
+• No awareness of lost time
+• Continues as if nothing happened
+• May assume others failed
+• Clock measurements unreliable during pause
+
+**Mitigation Strategies:**
+• Longer heartbeat timeouts
+• Multiple failure detection signals
+• Lease-based coordination
+• External monitoring systems
+end note
+
+note bottom #FFE6CC
+**Key Challenge:** Process pauses are invisible to the paused process,
+making them particularly dangerous for distributed system correctness.
+end note
+@enduml

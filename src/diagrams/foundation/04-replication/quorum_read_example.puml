@@ -1,0 +1,67 @@
+@startuml
+
+title Quorum Read Operation Example
+
+actor Alice
+participant athens  
+participant byzantium
+participant cyrene
+
+note over athens, cyrene #E6F3FF
+**Initial State After Previous Write:**
+athens: "title": "Microservices"
+byzantium: "title": "Microservices"  
+cyrene: unknown/failed state
+end note
+
+note over athens
+"title": "Microservices"
+end note
+
+note over byzantium
+"title": "Microservices"
+end note
+
+Alice -> athens : get "title"
+activate athens
+
+note over athens #FFFFCC
+**Read Coordinator:**
+athens coordinates read operation
+by querying majority of nodes
+end note
+
+par Parallel Read Queries
+  athens -> byzantium : get "title"
+  activate byzantium
+  note right of byzantium #E6FFE6
+  **Successful Response:**
+  byzantium returns stored value
+  end note
+  byzantium -->> athens : "Microservices"
+  deactivate byzantium
+else
+  athens ->x cyrene : get "title"
+  note right of cyrene #FFE6E6
+  **Read Failure:**
+  cyrene unreachable or
+  timeout occurred
+  end note
+end
+
+note over athens #E6F3FF
+**Quorum Check:**
+athens (self) + byzantium = 2 responses
+2 >= 2 (majority) OK
+Can return value safely
+end note
+
+athens -> athens : isQuorumReached() OK
+athens -->> Alice : "Microservices"
+deactivate athens
+
+note bottom #FFFFCC
+**Result:** Read succeeds with 2/3 nodes responding.
+System provides availability despite cyrene being unreachable.
+end note
+@enduml 

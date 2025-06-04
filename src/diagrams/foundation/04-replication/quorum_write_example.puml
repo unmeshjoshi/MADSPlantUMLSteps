@@ -1,0 +1,64 @@
+@startuml
+
+title Quorum Write Operation Example
+
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+
+note over athens, cyrene #E6F3FF
+**Initial State:** Empty or previous values
+**Cluster Size:** 3 nodes
+**Quorum Required:** 2 nodes (majority)
+end note
+
+Alice -> athens : set "title", "Microservices"
+activate athens
+
+note over athens #FFFFCC
+**Leader Coordinates Write:**
+athens acts as coordinator
+for this write operation
+end note
+
+par Parallel Replication
+  athens -> byzantium : set "title", "Microservices"
+  activate byzantium
+  note right of byzantium #E6FFE6
+  **Replication Success:**
+  byzantium stores value
+  and acknowledges
+  end note
+  byzantium -->> athens : ack
+  note over byzantium
+  "title": "Microservices"
+  end note
+  deactivate byzantium
+else
+  athens ->x cyrene : set "title", "Microservices"
+  note right of cyrene #FFE6E6
+  **Network Failure:**
+  Message lost or
+  server unreachable
+  end note
+end
+
+note over athens #E6F3FF
+**Quorum Check:**
+athens (self) + byzantium = 2 nodes
+2 >= 2 (majority) OK
+end note
+
+athens -> athens : isQuorumReached() OK
+athens -->> Alice : Success
+
+note over athens
+"title": "Microservices"
+end note
+
+note bottom #FFFFCC
+**Result:** Write succeeds with 2/3 nodes confirming.
+System can tolerate 1 node failure (cyrene) and still operate.
+end note
+@enduml 

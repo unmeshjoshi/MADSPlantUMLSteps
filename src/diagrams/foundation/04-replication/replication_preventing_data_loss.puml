@@ -1,0 +1,47 @@
+@startuml
+
+title Replication - How Not to Lose Writes in Case of Failures
+
+actor "Alice" as Alice
+
+rectangle "Data Servers" {
+  rectangle "Server1" as S1 #FF6B6B
+  rectangle "Server2" as S2
+  rectangle "Server3" as S3  
+  rectangle "Server4" as S4
+  rectangle "Server5" as S5
+  rectangle "Server6" as S6
+  rectangle "Server7" as S7
+}
+
+Alice -> S1 : Set(Title, "Microservices")
+
+note top of S1 #FF6B6B
+**SERVER FAILURE**
+Data could be lost!
+end note
+
+note right of S2 #E6F3FF
+**The Replication Question:**
+How many servers should store
+copies of the data to ensure
+it survives failures?
+
+**Considerations:**
+• More replicas = better fault tolerance
+• More replicas = higher overhead  
+• More replicas = coordination complexity
+end note
+
+S1 -[hidden]d- S2
+S2 -[hidden]l- S3
+S3 -[hidden]d- S4
+S4 -[hidden]l- S5
+S5 -[hidden]d- S6
+S6 -[hidden]l- S7
+
+note bottom #FFFFCC
+**Critical Problem:** Single server creates single point of failure.
+Need multiple copies, but how many and how to keep them consistent?
+end note
+@enduml 

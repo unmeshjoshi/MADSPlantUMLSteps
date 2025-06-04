@@ -1,0 +1,48 @@
+@startuml
+
+title Distributed System = Distributed State + Partial Failures
+
+actor "Users" as Users
+package "Application Services" {
+  node "App Server 1" as AS1
+  node "App Server 2" as AS2
+  node "App Server 3" as AS3
+}
+
+database DB1 [
+DB1
+Active
+]
+
+database DB2_failed [
+DB2
+<color:red><b>FAILED</b></color>
+]
+
+database DB3 [
+DB3
+Active
+]
+
+Users --> AS1 : "<10ms"
+Users --> AS2 : "<10ms"
+Users --> AS3 : "<10ms"
+
+AS1 --> DB1 : "<2ms"
+AS2 -[dashed]-> DB2_failed : Failed
+AS3 --> DB3 : "<2ms"
+
+note right of AS2 #FFE6E6
+**Partial Failure Scenario:**
+- DB2 has failed
+- System continues functioning
+- AS2 can failover to DB1 or DB3
+- No complete system outage
+end note
+
+note bottom #E6F3FF
+**Core Principle:** System functions as a whole
+even when individual components fail.
+This is the essence of fault-tolerant distributed systems.
+end note
+@enduml 

@@ -1,0 +1,78 @@
+@startuml
+!include ../../../style.puml
+
+
+title Incomplete Writes - Consistency Challenge
+
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+
+note over athens, cyrene #E6F3FF
+**Initial State:** All nodes empty or have previous values
+end note
+
+Alice -> athens : set "title", "Microservices"
+activate athens
+
+note over athens #FFFFCC
+**Coordinator Role:**
+athens coordinates the write
+across multiple replicas
+end note
+
+par Replication Attempts
+  athens -> byzantium : set "title", "Microservices"
+  activate byzantium
+  byzantium -->> athens : Error FAIL
+  note over byzantium #FFE6E6
+  **Replication Failure:**
+  Network error, timeout,
+  or server overload
+  byzantium does NOT store value
+  end note
+  deactivate byzantium
+else
+  athens -> cyrene : set "title", "Microservices", time=2
+  activate cyrene
+  cyrene -->> athens : ack OK
+  note over cyrene #E6F3FF
+  **Successful Replication:**
+  cyrene stores value with timestamp
+  end note
+  deactivate cyrene
+end
+
+note over athens #E6FFE6
+**Local Storage:**
+athens stores value locally
+(counts toward quorum)
+end note
+
+athens -> athens : isQuorumReached()
+note over athens #FFFFCC
+**Quorum Analysis:**
+athens (self) + cyrene = 2 nodes
+2 >= 2 (majority of 3) OK
+Write can be considered successful
+end note
+
+athens -->> Alice : Success
+deactivate athens
+
+note bottom #FFE6CC
+**Resulting System State:**
+• athens: "title": "Microservices" OK
+• byzantium: no data FAIL
+• cyrene: "title": "Microservices", time=2 OK
+
+**Problem:** byzantium missed the write!
+Future reads from byzantium will be inconsistent.
+end note
+
+note bottom #FFE6E6
+**Consistency Challenge:** Even successful quorum writes
+can leave some replicas in inconsistent states, requiring repair mechanisms.
+end note
+@enduml 

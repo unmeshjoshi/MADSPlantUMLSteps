@@ -1,0 +1,37 @@
+@startuml
+skinparam shadowing false
+
+actor "👤" as U1
+actor "👤" as U2
+actor "👤" as U3
+actor "👤" as U4
+actor "👤" as U5
+actor "👤" as U6
+actor "👤" as U7
+actor "👤" as U8
+actor "👤" as U9
+actor "👤" as U10
+
+cloud "User Load\nIncreasing Requests" as Load
+
+U1 --> Load
+U2 --> Load
+U3 --> Load
+U4 --> Load
+U5 --> Load
+U6 --> Load
+U7 --> Load
+U8 --> Load
+U9 --> Load
+U10 --> Load
+
+Load --> [Application System] : High Volume Traffic
+
+note bottom of Load
+Peak usage scenarios create
+pressure on system resources
+- Concurrent sessions
+- Request bursts
+- Resource contention
+end note
+@enduml 

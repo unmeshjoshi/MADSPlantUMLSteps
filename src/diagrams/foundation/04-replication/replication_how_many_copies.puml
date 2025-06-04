@@ -1,0 +1,53 @@
+@startuml
+
+title Replication - How Many Copies Are Needed?
+
+actor "Alice" as Alice
+
+rectangle "Replicated Servers" {
+  rectangle "Server1" as S1 {
+    note as S1Data
+    **Key:** Title
+    **Value:** Microservices
+    end note
+  }
+  
+  rectangle "Server2" as S2 {
+    note as S2Data
+    **Key:** Title  
+    **Value:** Microservices
+    end note
+  }
+  
+  rectangle "Server3" as S3 {
+    note as S3Data
+    **Key:** Title
+    **Value:** Microservices
+    end note
+  }
+}
+
+Alice -l-> "Replicated Servers" : Read Title?
+
+note bottom of Alice #E6F3FF
+**Replication Benefits:**
+✓ Fault tolerance
+✓ Load distribution
+✓ Geographic distribution
+✓ Faster local reads
+end note
+
+note top of "Replicated Servers" #FFE6E6
+**Replication Challenges:**
+• How to keep copies synchronized?
+• What if updates fail on some servers?
+• How to handle conflicting updates?
+• Performance impact of coordination?
+**The Fundamental Trade-off:**
+More replicas provide better availability and fault tolerance,
+but introduce complexity in maintaining consistency across copies.
+end note
+
+S1 -d[#hidden]-> S2
+S2 -d[#hidden]-> S3
+@enduml 

@@ -1,0 +1,49 @@
+@startuml
+
+title Process Crash - Fundamental Distributed Systems Problem
+
+rectangle "System Output / Crash Dump" as Dump #F0F0F0 {
+  note as CrashData
+```
+155 6786649902.265340 35556497552 13245450154
+02204805440537326430219 31200124556 84987984302
+789456123098745612345678901234567890123456789
+024680135792468013579246801357924680135792468
+```
+  end note
+  
+  rectangle "SYSTEM FAILURE" as FailureText #FF0000
+  
+  note as MoreCrashData
+```
+460 26456530979 48314904153 15465465460
+135792468024680135792468024680135792468024680
+098765432109876543210987654321098765432109876
+```
+  end note
+}
+
+note left of Dump #FFE6E6
+**Common Crash Causes:**
+• Routine maintenance by admins
+• Unhandled exceptions
+• Out of memory conditions
+• Hardware failures
+• Cloud infrastructure events
+end note
+
+note right of Dump #E6F3FF
+**Impact on Distributed Systems:**
+• Data loss if not properly replicated
+• Service unavailability
+• Client request failures
+• Need for automatic failover
+• Recovery procedures required
+end note
+
+note bottom #FFFFCC
+**Design Implication:** Distributed systems must be designed
+to continue operating despite individual process crashes.
+This drives requirements for replication, consensus, and recovery mechanisms.
+end note
+@enduml 

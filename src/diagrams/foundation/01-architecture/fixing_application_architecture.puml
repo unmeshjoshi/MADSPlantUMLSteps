@@ -1,0 +1,60 @@
+@startuml
+
+title Fixing The Application Architecture with Distribution
+
+actor Users [
+Users
+----
+Multiple
+Concurrent
+Users
+]
+
+package "Application Services (on Multiple Smaller Machines)" {
+  node "App Server" as AppServer
+  note bottom of AppServer
+  8GB RAM, 4 CORES, 512GB Disk
+  end note
+}
+
+package "Data Tier (on Multiple Machines)" {
+  database DB1 [
+  DB1
+  ----
+  16GB RAM
+  8 Cores
+  4TB Disk
+  ]
+  database DB2 [
+  DB2
+  ----
+  16GB RAM
+  8 Cores
+  4TB Disk
+  ]
+  database DB3 [
+  DB3
+  ----
+  16GB RAM
+  8 Cores
+  4TB Disk
+  ]
+}
+
+Users --> AppServer
+AppServer --> DB1
+AppServer --> DB2
+AppServer --> DB3
+
+note right of AppServer
+**New Assumptions:**
+- Multiple copies of data in sync
+- Data partitioned across servers
+- Fault tolerance through replication
+end note
+
+note "<10ms Response Time SLA" as SLA_App
+note "<2ms DB query" as SLA_DB
+AppServer .. SLA_App
+DB1 .. SLA_DB
+@enduml 

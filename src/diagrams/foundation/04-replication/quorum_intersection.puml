@@ -1,0 +1,67 @@
+@startuml
+
+title Quorum Intersection - Mathematical Foundation (2f+1 nodes)
+
+rectangle "5-Node Cluster" {
+  rectangle "Server1" as S1
+  rectangle "Server2" as S2  
+  rectangle "Server3" as S3
+  rectangle "Server4" as S4
+  rectangle "Server5" as S5
+}
+
+package "Quorum A (Write Operation)" #E6F3FF {
+  S1 -[hidden]- S2
+  S2 -[hidden]- S3
+  note as QuorumA
+  **Write Quorum:**
+  Server1, Server2, Server3
+  (3 out of 5 nodes)
+  end note
+}
+
+package "Quorum B (Subsequent Read/Write)" #FFE6E6 {
+  S3 -[hidden]- S4  
+  S4 -[hidden]- S5
+  note as QuorumB
+  **Next Quorum:**
+  Server3, Server4, Server5
+  (3 out of 5 nodes)
+  end note
+}
+
+note right of S3 #FFFFCC
+**Critical Overlap:**
+Server3 participates in both quorums.
+This guarantees information transfer
+between operations.
+end note
+
+note as MathProperty #E6FFE6
+**Mathematical Property:**
+In a cluster of N nodes:
+• Quorum size = ⌊N/2⌋ + 1
+• Any two quorums overlap by ≥ 1 node
+• For N=5: quorum=3, overlap≥1
+• Overlap ensures consistency guarantees
+end note
+
+note as FailureScenario #FFE6CC
+**Failure Tolerance:**
+• F nodes might fail before operation (S4, S5)
+• F nodes might fail after operation (S1, S2)  
+• At least one server (S3) overlaps operations
+• Information cannot be lost due to overlap
+end note
+
+S1 --> MathProperty
+S5 --> FailureScenario
+S3 --> QuorumA
+S3 --> QuorumB
+
+note bottom #E6F3FF
+**Quorum Intersection Theorem:** In a cluster of 2f+1 nodes,
+any two majorities must overlap by at least one node,
+ensuring that committed values cannot be lost.
+end note
+@enduml 

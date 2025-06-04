@@ -1,0 +1,65 @@
+@startuml throughput_vs_arrival_rate
+
+!theme plain
+skinparam backgroundColor white
+skinparam defaultTextColor black
+
+title Throughput vs Arrival Rate Performance Curve
+
+' Create a simple graph representation using participants and notes
+participant "Low Load\n(p < 0.7)" as low
+participant "Approaching Saturation\n(p = 0.7-0.9)" as medium  
+participant "At Saturation\n(p = 1.0)" as saturation
+participant "Beyond Saturation\n(p > 1.0)" as overload
+
+note over low, overload
+  **System Throughput Behavior**
+end note
+
+note over low
+  **Phase 1: Linear Growth**
+  • Throughput = Arrival Rate
+  • System easily handles load
+  • No queuing delays
+  • Performance predictable
+end note
+
+note over medium
+  **Phase 2: Approaching Limit**
+  • Throughput still increases
+  • Minor queuing begins
+  • Performance starts to vary
+  • Getting close to capacity mu
+end note
+
+note over saturation
+  **Phase 3: Maximum Capacity**
+  • Throughput plateaus at mu
+  • Maximum theoretical limit
+  • Queues grow significantly
+  • Latency increases sharply
+end note
+
+note over overload
+  **Phase 4: Degradation**
+  • Throughput may decline
+  • System overhead increases
+  • Request drops/timeouts
+  • Unstable performance
+end note
+
+' Show the progression with arrows
+low ->> medium : Arrival Rate Increases
+medium ->> saturation : Reaching Service Rate mu
+saturation ->> overload : Exceeding Capacity
+
+' Add mathematical annotations
+note bottom
+  **Key Formula: p = lambda / mu**
+  
+  p < 1: Stable operation
+  p = 1: At capacity limit  
+  p > 1: Overloaded system
+end note
+
+@enduml 

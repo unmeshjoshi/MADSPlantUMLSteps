@@ -1,0 +1,68 @@
+@startuml
+
+title Read Repair - Asynchronous (Performance Optimized)
+
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+
+note over athens, cyrene #E6F3FF
+**Initial State:**
+athens: "title": "Microservices", time=1
+byzantium: "title": "Microservices", time=1
+cyrene: stale or missing data
+end note
+
+Alice -> athens : get "title"
+activate athens
+
+par Quorum Read Phase
+  athens -> byzantium : get "title"
+  activate byzantium
+  byzantium -->> athens : "Microservices", time=1
+  deactivate byzantium
+else
+  athens -> cyrene : get "title"
+  activate cyrene
+  cyrene -->> athens : (stale/empty response)
+  deactivate cyrene
+end
+
+athens -> athens : isQuorumReached() OK
+
+note over athens #E6FFE6
+**Fast Response:**
+Return to client immediately
+after quorum confirmation
+end note
+
+athens -->> Alice : "Microservices"
+note right of Alice #E6F3FF
+**Client Experience:**
+Fast response time
+Latest value returned
+end note
+
+athens -> athens : getNodesMissingLatestValues() → cyrene
+
+note over athens #FFFFCC
+**Asynchronous Repair:**
+Repair happens in background
+after client response
+end note
+
+athens ->> cyrene : set "title", "Microservices", time=1
+note over cyrene #FFE6CC
+**Background Repair:**
+Eventual consistency
+Lower read latency
+end note
+
+deactivate athens
+
+note bottom #FFFFCC
+**Trade-off:** Lower latency but temporary inconsistency.
+Repair happens eventually, providing good performance with eventual consistency.
+end note
+@enduml 

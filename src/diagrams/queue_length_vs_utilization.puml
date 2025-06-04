@@ -1,0 +1,86 @@
+@startuml queue_length_vs_utilization
+
+!theme plain
+skinparam backgroundColor white
+skinparam defaultTextColor black
+
+title Queue Length vs System Utilization
+
+note top
+  **Exponential Queue Growth: Lq = p² / (1 - p)**
+end note
+
+' Create utilization zones as simple participants
+participant "50% Util\n(p = 0.5)" as zone1
+participant "70% Util\n(p = 0.7)" as zone2  
+participant "80% Util\n(p = 0.8)" as zone3
+participant "90% Util\n(p = 0.9)" as zone4
+participant "95% Util\n(p = 0.95)" as zone5
+
+note over zone1
+  **Safe Zone**
+  Lq = 0.25 / 0.5 = 0.5 items
+  
+  Minimal queuing
+  Predictable performance
+  System responsive
+end note
+
+note over zone2
+  **Caution Zone**  
+  Lq = 0.49 / 0.3 = 1.6 items
+  
+  Moderate queuing
+  Performance still good
+  Monitor closely
+end note
+
+note over zone3
+  **Warning Zone**
+  Lq = 0.64 / 0.2 = 3.2 items
+  
+  Significant queuing
+  Performance degrading
+  Take action soon
+end note
+
+note over zone4
+  **Danger Zone**
+  Lq = 0.81 / 0.1 = 8.1 items
+  
+  Heavy queuing
+  Poor performance
+  Immediate action needed
+end note
+
+note over zone5
+  **Critical Zone**
+  Lq = 0.9025 / 0.05 = 18 items
+  
+  Extreme queuing
+  System near collapse
+  Emergency response
+end note
+
+' Show progression with arrows
+zone1 ->> zone2 : Load increases
+zone2 ->> zone3 : Queue grows
+zone3 ->> zone4 : Exponential rise
+zone4 ->> zone5 : Critical situation
+
+' Mathematical explanation
+note bottom
+  **Why Queue Length Explodes:**
+  
+  Formula: Lq = p² / (1 - p)
+  
+  As p approaches 1:
+  Numerator (p²) approaches 1
+  Denominator (1 - p) approaches 0  
+  Result: Queue length approaches infinity
+  
+  Key Insight: Small utilization increases
+  near saturation cause dramatic queue growth
+end note
+
+@enduml 

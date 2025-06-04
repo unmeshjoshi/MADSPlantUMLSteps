@@ -1,0 +1,58 @@
+@startuml
+!include ../../../style.puml
+
+
+title Network Delays - Asynchronous Communication Challenge
+
+participant "Server A" as SA
+participant "Network" as Network
+participant "Server B" as SB
+
+SA -> Network : Send Message
+note over Network #FFE6E6
+**Unpredictable Delays:**
+• No upper bound on delay
+• Packets can be lost
+• Routes can change
+• Congestion varies
+• Hardware failures
+end note
+
+Network -> SB : Message (delayed)
+note right of SB
+Message arrives much later
+than expected, or not at all
+end note
+
+SA -> SA : Timeout?
+note over SA #FFFFCC
+**Timeout Dilemma:**
+• Too short: false failures
+• Too long: slow detection
+• No way to distinguish:
+  - Slow network
+  - Failed server
+  - Lost message
+end note
+
+note over SA
+**TCP/IP Characteristics:**
+• Best-effort delivery
+• No timing guarantees  
+• Congestion control adds delays
+• Retransmissions cause variability
+• Router failures cause rerouting
+
+**Design Implications:**
+• Cannot wait indefinitely
+• Need failure detection mechanisms
+• Risk of split-brain scenarios
+• Require consensus algorithms
+end note
+
+
+note over SA #FFE6CC
+**Critical Design Principle:** Distributed systems must operate correctly
+despite arbitrary network delays and cannot rely on timing assumptions.
+end note
+@enduml 

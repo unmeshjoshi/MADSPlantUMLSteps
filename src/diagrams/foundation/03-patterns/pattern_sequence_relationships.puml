@@ -1,0 +1,63 @@
+@startuml
+!include ../../../style.puml
+
+skinparam rectangleBorderThickness 2
+
+title Pattern Sequence Relationships in Distributed Systems
+
+rectangle "Write-Ahead\nLog" as WAL #E6F3FF
+rectangle "Segmented\nLog" as SL #E6F3FF
+rectangle "Low-Water\nMark" as LWM #E6F3FF
+rectangle "Replicated\nLog" as RL #FFE6E6
+rectangle "High-Water\nMark" as HWM #FFE6E6
+rectangle "Quorum" as Q #FFE6E6
+rectangle "Leaders and\nFollowers" as LF #FFFFCC
+rectangle "HeartBeat" as HB #FFFFCC
+rectangle "Single Socket\nChannel" as SSC #FFFFCC
+rectangle "Singular Update\nQueue" as SUQ #FFFFCC
+rectangle "Generation\nClock" as GC #FFFFCC
+rectangle "Request\nPipeline" as RP #FFFFCC
+rectangle "Consistent\nCore" as CC #E6FFE6
+rectangle "Lease" as L #E6FFE6
+rectangle "State Watch" as SW #E6FFE6
+rectangle "Idempotent\nReceiver" as IR #E6FFE6
+
+' WAL pattern sequence
+WAL --> SL : divided into
+SL --> LWM : enables cleaning with
+
+' Replication pattern sequence
+WAL --> RL : extended to
+RL --> HWM : maintains
+RL --> Q : uses for agreement
+RL --> LF : managed by
+
+' Leader/Follower pattern sequence
+LF --> HB : uses for liveness
+LF --> SSC : communicates via
+SSC --> SUQ : processes through
+SUQ --> RP : feeds into
+LF --> GC : detects partitions with
+GC --> RP : coordinates with
+
+' Consistent Core pattern sequence
+CC --> RL : implemented as
+CC --> L : provides
+CC --> SW : enables
+CC --> IR : includes
+
+note top of WAL
+**Raft/Kafka Pattern Sequence**
+Basic durability and ordering
+end note
+
+note top of CC
+**Kubernetes/Control Plane Sequence**
+Metadata storage and coordination
+end note
+
+note bottom
+**Key Insight:** Complex systems like Raft, Kafka, and Kubernetes
+are built by combining multiple simple, well-understood patterns.
+end note
+@enduml 

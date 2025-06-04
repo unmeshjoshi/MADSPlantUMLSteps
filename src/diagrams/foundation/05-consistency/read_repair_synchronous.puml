@@ -1,0 +1,64 @@
+@startuml
+
+title Read Repair - Synchronous (Immediate Consistency)
+
+actor Alice
+participant athens
+participant byzantium  
+participant cyrene
+
+note over athens, cyrene #E6F3FF
+**Initial State:**
+athens: "title": "Microservices", time=1
+byzantium: "title": "Microservices", time=1
+cyrene: stale or missing data
+end note
+
+Alice -> athens : get "title"
+activate athens
+
+par Quorum Read Phase
+  athens -> byzantium : get "title"
+  activate byzantium
+  byzantium -->> athens : "Microservices", time=1
+  deactivate byzantium
+else
+  athens -> cyrene : get "title"  
+  activate cyrene
+  cyrene -->> athens : (stale/empty response)
+  deactivate cyrene
+end
+
+athens -> athens : isQuorumReached() OK
+note over athens #FFFFCC
+**Consistency Check:**
+• Majority responses received
+• Detect cyrene has stale data
+• Must repair before responding
+end note
+
+athens -> athens : getNodesMissingLatestValues() → cyrene
+
+note over athens #FFE6E6
+**Synchronous Repair:**
+Repair stale replicas BEFORE
+returning value to client
+end note
+
+athens -> cyrene : set "title", "Microservices", time=1
+activate cyrene
+note over cyrene #E6FFE6
+**Repair Applied:**
+cyrene now has latest value
+end note
+cyrene -->> athens : ack (repaired)
+deactivate cyrene
+
+athens -->> Alice : "Microservices"
+deactivate athens
+
+note bottom #E6F3FF
+**Trade-off:** Higher latency but guarantees that all replicas
+are consistent when the read operation completes.
+end note
+@enduml 

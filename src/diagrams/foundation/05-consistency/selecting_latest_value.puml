@@ -1,0 +1,98 @@
+@startuml
+
+title Read Repair - Selecting Latest Value with Timestamps
+
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+
+== Write Scenario - Creating Version Skew ==
+
+note over athens, cyrene #E6F3FF
+**Initial State:**
+All nodes: "title": "Microservices", time=1
+end note
+
+Alice -> athens : set "title", "Distributed Systems"
+activate athens
+
+note over athens #FFFFCC
+**Version Update:**
+athens increments timestamp
+time=1 → time=2
+end note
+
+par Replication Attempt
+  athens -> byzantium : set "title", "Distributed Systems", time=2
+  activate byzantium
+  byzantium -->> athens : ack
+  note over byzantium
+  "title": "Distributed Systems"
+  time=2
+  end note
+  deactivate byzantium
+else
+  athens ->x cyrene : set "title", "Distributed Systems", time=2
+  note over cyrene #FFE6E6
+  **Replication Failed:**
+  cyrene retains old value
+  "title": "Microservices", time=1
+  end note
+end
+
+athens -> athens : isQuorumReached() OK
+athens -->> Alice : Success
+
+note over athens
+"title": "Distributed Systems"
+time=2
+end note
+
+deactivate athens
+
+== Read Scenario - Latest Value Selection ==
+
+actor Bob
+Bob -> athens : get "title"
+activate athens
+
+par Read from Multiple Replicas
+  athens -> byzantium : get "title"
+  activate byzantium
+  byzantium -->> athens : "Distributed Systems", time=2
+  deactivate byzantium
+else
+  athens -> cyrene : get "title"
+  activate cyrene
+  cyrene -->> athens : "Microservices", time=1
+  deactivate cyrene
+end
+
+note over athens #E6FFE6
+**Latest Value Selection:**
+Compare timestamps:
+• byzantium: time=2 (latest)
+• cyrene: time=1 (stale)
+Select highest timestamp value
+end note
+
+athens -> athens : selectLatestValue() → "Distributed Systems", time=2
+athens -> athens : getNodesMissingLatestValues() → cyrene
+
+athens -> cyrene : set "title", "Distributed Systems", time=2
+activate cyrene
+note over cyrene #E6F3FF
+**Repair Complete:**
+cyrene updated to latest version
+end note
+deactivate cyrene
+
+athens -->> Bob : "Distributed Systems"
+deactivate athens
+
+note bottom #E6F3FF
+**Timestamp-based Consistency:** Vector clocks or logical timestamps
+enable selecting the most recent value during read repair operations.
+end note
+@enduml 

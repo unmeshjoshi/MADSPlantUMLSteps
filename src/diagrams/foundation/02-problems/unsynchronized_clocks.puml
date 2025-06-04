@@ -1,0 +1,56 @@
+@startuml
+
+title Unsynchronized Clocks Problem
+
+rectangle "Server A Environment" {
+  rectangle "Clock A" as ClockA
+  note bottom of ClockA
+  **Server A Clock:**
+  10:10 AM
+  Drift rate: +2ms/hour
+  end note
+}
+
+rectangle "Server B Environment" {
+  rectangle "Clock B" as ClockB  
+  note bottom of ClockB
+  **Server B Clock:**
+  1:50 PM  
+  Drift rate: -3ms/hour
+  end note
+}
+
+note top of ClockA #FFE6E6
+**Clock Synchronization Issues:**
+• Time-of-day clocks drift at different rates
+• NTP adjustments can cause backward time jumps
+• Clocks from different servers cannot be compared
+• Network delays affect time synchronization
+• Crystal oscillator variations cause drift
+end note
+
+rectangle "Distributed System Challenges" #E6F3FF {
+  note as Challenges
+**Problems Caused:**
+• Event ordering becomes ambiguous
+• Timeouts may be unreliable
+• Log timestamps inconsistent
+• Difficulty detecting causality
+• Race conditions in distributed algorithms
+
+**Solutions:**
+• Logical clocks (Lamport timestamps)
+• Vector clocks for causality
+• Hybrid logical clocks
+• Consensus-based ordering
+  end note
+}
+
+ClockA --> Challenges
+ClockB --> Challenges
+
+note bottom #FFFFCC
+**Key Insight:** Never rely on synchronized wall-clock time
+for correctness in distributed systems. Use logical ordering instead.
+end note
+@enduml 

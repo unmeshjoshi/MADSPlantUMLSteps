@@ -1,0 +1,91 @@
+@startuml
+
+title Inconsistent Reads - External Consistency Violation
+
+actor Bob
+actor Nathan
+participant athens
+participant byzantium
+participant cyrene
+
+== Initial Setup After Incomplete Write ==
+
+note over athens, cyrene #FFE6E6
+**System State After Previous Incomplete Write:**
+• athens: "title": "Microservices"
+• byzantium: (missed the write, has old/no data)
+• cyrene: "title": "Microservices", time=2
+end note
+
+== Bob's Read (Gets Latest Value) ==
+
+Bob -> athens : get "title"
+activate athens
+
+par Bob's Quorum Read
+  athens -> byzantium : get "title"
+  activate byzantium
+  byzantium -->> athens : "Microservices" (or latest available)
+  deactivate byzantium
+else
+  athens -> cyrene : get "title"
+  activate cyrene
+  cyrene -->> athens : "Microservices", time=2
+  deactivate cyrene
+end
+
+athens -> athens : isQuorumReached() OK
+athens -->> Bob : "Microservices"
+note right of Bob #E6F3FF
+**Bob's Experience:**
+Gets the latest value
+"Microservices"
+end note
+deactivate athens
+
+== Nathan's Read (Gets Stale Value) ==
+
+Nathan -> cyrene : get "title"
+activate cyrene
+
+par Nathan's Quorum Read
+  cyrene ->x athens : get "title"
+  note right of athens #FFE6E6
+  **Network Partition:**
+  athens unreachable from cyrene
+  due to network issues
+  end note
+else
+  cyrene -> byzantium : get "title"
+  activate byzantium
+  byzantium -->> cyrene : (old/stale value or empty)
+  note over byzantium #FFE6E6
+  **Stale Data:**
+  byzantium missed previous write
+  returns outdated information
+  end note
+  deactivate byzantium
+end
+
+cyrene -> cyrene : isQuorumReached() FAIL
+note over cyrene #FFE6CC
+**Insufficient Quorum:**
+Only cyrene + byzantium available
+But byzantium has stale data
+Cannot guarantee consistency
+end note
+
+cyrene -->> Nathan : "old value" or error
+note right of Nathan #FFE6CC
+**Nathan's Experience:**
+Gets stale value or error
+Inconsistent with Bob's read
+end note
+deactivate cyrene
+
+note bottom #FFE6E6
+**External Consistency Violation:** Nathan's later read returns
+an older value than Bob's earlier read, violating user expectations
+of consistency in a distributed system.
+end note
+@enduml 

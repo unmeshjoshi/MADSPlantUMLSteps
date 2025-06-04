@@ -1,0 +1,112 @@
+@startuml
+!include ../../../style.puml
+
+title CompareAndSwap Problems in Basic Quorum Systems
+
+actor Bob
+actor Nathan
+participant athens
+participant byzantium
+participant cyrene
+
+== Bob's CompareAndSwap Operation ==
+
+note over athens, cyrene #E6F3FF
+**Initial State:**
+athens: "title": "Microservices"
+byzantium: "title": "Microservices"
+cyrene: "title": "Microservices"
+end note
+
+Bob -> athens : compareAndSwap("title", "Microservices", "Event Driven Microservices")
+activate athens
+
+athens -> athens : get("title") → "Microservices"
+athens -> athens : compare("Microservices" == "Microservices") OK
+athens -> athens : set("title", "Event Driven Microservices")
+
+note over athens #E6F3FF
+**Local CAS Success:**
+Condition matched, value updated
+end note
+
+par Bob's Replication
+  athens -> byzantium : set("title", "Event Driven Microservices")
+  activate byzantium
+  byzantium -->> athens : ack OK
+  note over byzantium
+  "title": "Event Driven Microservices"
+  end note
+  deactivate byzantium
+else
+  athens ->x cyrene : set("title", "Event Driven Microservices")
+  note over cyrene #FFE6E6
+  **Replication Failed:**
+  cyrene retains old value
+  "title": "Microservices"
+  end note
+end
+
+athens -> athens : isQuorumReached() OK
+athens -->> Bob : Success OK
+deactivate athens
+
+== Nathan's Concurrent CompareAndSwap ==
+
+Nathan -> cyrene : compareAndSwap("title", "", "Distributed Systems")
+activate cyrene
+
+note over cyrene #FFFFCC
+**Dangerous Assumption:**
+Nathan assumes empty initial value
+but cyrene may have stale data
+end note
+
+cyrene -> cyrene : get("title") → "Microservices" (stale)
+cyrene -> cyrene : compare("" == "Microservices") FAIL
+
+note over cyrene #FFE6E6
+**Alternative Scenario:**
+If cyrene had empty/different state:
+compare("" == "") OK
+set("title", "Distributed Systems")
+end note
+
+alt If cyrene had different state
+  cyrene -> cyrene : set("title", "Distributed Systems")
+  
+  par Nathan's Replication Attempts
+    cyrene ->x athens : set("title", "Distributed Systems")
+    note over athens #FFE6E6
+    **Conflict:**
+    athens already has "Event Driven Microservices"
+    end note
+  else
+    cyrene ->x byzantium : set("title", "Distributed Systems")
+    note over byzantium #FFE6E6
+    **Conflict:**
+    byzantium already has "Event Driven Microservices"
+    end note
+  end
+  
+  cyrene -->> Nathan : Success OK (but isolated!)
+end
+
+deactivate cyrene
+
+note over cyrene  #FFE6CC
+**Potential Conflict State:**
+• athens: "Event Driven Microservices"
+• byzantium: "Event Driven Microservices"  
+• cyrene: "Distributed Systems" (if CAS succeeded)
+
+**Problem:** Two conflicting CAS operations
+both report success but create inconsistent state!
+end note
+
+note over cyrene #FFE6E6
+**CAS Safety Issue:** Basic quorum systems cannot guarantee
+that CompareAndSwap operations are atomic across replicas,
+leading to potential data corruption and inconsistency.
+end note
+@enduml 

@@ -1,0 +1,41 @@
+@startuml
+
+title Real Data Center Failures - Google's Monthly Experience
+
+rectangle "Data Center Infrastructure" {
+  rectangle "Server Racks" as Racks
+  rectangle "Power Distribution" as Power
+  rectangle "Network Equipment" as Network
+  rectangle "Cooling Systems" as Cooling
+}
+
+note as FailureStats #FFE6E6
+**Monthly Failure Statistics:**
+• ~0.5 overheating events (1-2 days recovery)
+• ~1 PDU failure (500-1000 machines, 6h recovery)
+• ~1 rack move (500-1000 machines, 6h downtime)
+• ~1 network rewiring (5% machines, 2-day span)
+• ~20 rack failures (40-80 machines, 1-6h recovery)
+• ~5 racks with 50% packet loss
+• ~8 network maintenances (30-min connectivity issues)
+• ~12 router reloads (DNS outages)
+• ~3 router failures (1h traffic pull)
+• ~1000 individual machine failures
+• ~thousands of hard drive failures
+
+**Other Issues:**
+- Slow disks, bad memory
+- Misconfigured machines
+- Flaky hardware behavior
+end note
+
+Racks --> FailureStats : Reality Check
+Power --> FailureStats
+Network --> FailureStats
+Cooling --> FailureStats
+
+note bottom
+**Key Insight:** Failure is not the exception - it's the norm!
+Scale amplifies failure probability dramatically.
+end note
+@enduml 
