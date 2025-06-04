@@ -1,0 +1,66 @@
+@startuml
+
+title Little's Law in Production Systems
+
+actor Client
+participant "Load Balancer" as LB
+participant "App Server Pool" as AppPool
+database "Database Pool" as DBPool
+
+note over Client, DBPool #E6F3FF
+**Little's Law: L = λW**
+L = Number in system, λ = Arrival rate, W = Response time
+end note
+
+Client -> LB : HTTP Request (λ = 1000 req/s)
+activate LB
+
+LB -> AppPool : Route to available server
+activate AppPool
+
+note over AppPool #FFFFCC
+**Application Layer:**
+L = Active HTTP connections
+W = Request processing time (50ms)
+L = 1000 req/s × 0.05s = 50 connections
+end note
+
+AppPool -> DBPool : Database query
+activate DBPool
+
+note over DBPool #FFE6E6
+**Database Connection Pool:**
+L = Active DB connections  
+W = Query execution time (5ms)
+L = 1000 queries/s × 0.005s = 5 connections
+end note
+
+note right of DBPool #F0F8FF
+**Saturation Analysis:**
+Pool size: 50 connections
+Current usage: 5 connections
+Utilization: 10% (healthy)
+
+**What if W increases to 100ms?**
+L = 1000 × 0.1 = 100 connections
+Pool exhausted → system failure
+end note
+
+DBPool --> AppPool : Query result
+deactivate DBPool
+
+AppPool --> LB : HTTP response
+deactivate AppPool
+
+LB --> Client : Response delivered
+deactivate LB
+
+note bottom #E6FFE6
+**Hockey Stick Saturation Curve:**
+• 0-500 users: Flat performance (W = 50ms)
+• 500+ users: Queue buildup begins
+• 1000+ users: W grows exponentially 
+• Result: L = λ × W explodes beyond capacity
+end note
+
+@enduml 

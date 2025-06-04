@@ -1,0 +1,40 @@
+@startuml
+
+title WAL Storage Sector Alignment Strategy
+
+note as UnalignedIssue #FFE6E6
+**Unaligned Write Problem:**
+• 4KB write at offset 256 bytes
+• Spans partial sectors (512-byte boundaries)
+• Forces expensive Read-Modify-Write cycles
+• Storage must read existing data first
+• 3x performance penalty
+end note
+
+note as AlignedSolution #E6FFE6
+**Aligned Write Solution:**
+• 4KB write at sector boundary (offset 0)
+• Complete sector overwrites only
+• No Read-Modify-Write needed
+• Direct hardware writes
+• 3x performance improvement
+end note
+
+note as PaddingStrategy #F0F8FF
+**Intelligent Padding Strategy:**
+• Add structured padding to reach boundaries
+• 4-byte marker + 4-byte length + zeros
+• Small overhead (<1%) for massive performance gain
+• Recovery tools can identify padding vs corruption
+• Essential for WAL optimization
+end note
+
+note bottom #FFFFCC
+**Storage Fundamentals:**
+• Disks write complete 512-byte sectors atomically
+• Unaligned writes require expensive merge operations
+• Sector alignment eliminates this overhead
+• Critical optimization for append-only WAL patterns
+end note
+
+@enduml 

@@ -152,6 +152,38 @@ sections:
           - "Source: VMware Tanzu case study"
         notes: "Use real-world example to show the scale at which traditional architectures break down."
 
+      - type: "diagram"
+        title: "Performance Bottleneck Analysis"
+        diagramRef: "performance_bottleneck_analysis"
+        bullets:
+          - "CPU: Context switching overhead (100K → 20K switches/sec)"
+          - "Memory: GC pauses (100ms-1s for large heaps)"
+          - "Network: Connection pool exhaustion and bandwidth limits"
+          - "Disk: I/O queue saturation and IOPS constraints"
+          - "Thread pools: Request queuing and blocking operations"
+        notes: "Analyze common bottlenecks that cause system saturation in distributed systems."
+
+      - type: "text"
+        title: "Concrete Performance Numbers"
+        bullets:
+          - "SSD: 2GB/s sequential read/write, 10K-100K IOPS random"
+          - "Network: 1Gbps = 125MB/s theoretical, ~80MB/s practical"
+          - "Memory: 100GB/s bandwidth, ~100ns latency"
+          - "CPU: ~3GHz, ~10M instructions/ms per core"
+          - "Context switch: 1-10μs overhead per switch"
+        notes: "Present concrete hardware performance numbers for system design decisions."
+
+      - type: "diagram"
+        title: "Little's Law with Production Examples"
+        diagramRef: "littles_law_production_examples"
+        bullets:
+          - "Database connections: L = active connections, W = query time"
+          - "HTTP processing: Queue length explosion near capacity"
+          - "Real saturation curve: flat until ~500 users, then degradation"
+          - "Hockey stick pattern: response time grows exponentially"
+          - "Connection pool: 100 instances × 50 connections = 5000 total"
+        notes: "Apply Little's Law to real production scenarios showing saturation effects."
+
   - title: "The Probability of Failure"
     slides:
       - type: "text"
@@ -399,6 +431,69 @@ sections:
           - "Fundamental pattern in data systems"
         notes: "Connect Write-Ahead Log to real systems participants may recognize."
 
+      - type: "text"
+        title: "WAL Technical Implementation Details"
+        bullets:
+          - "Entry format: <Index, Command, Timestamp>"
+          - "Sequential append-only with monotonic index"
+          - "fsync() after each write for durability guarantee"
+          - "In-memory index for fast lookup and recovery"
+          - "Off-heap buffer management with object pooling"
+        notes: "Detail the technical implementation aspects that enable WAL performance and reliability."
+
+      - type: "diagram"
+        title: "WAL Performance Optimizations"
+        diagramRef: "wal_performance_optimizations"
+        bullets:
+          - "Group writes: 8-10x throughput improvement (50MB/s → 400MB/s)"
+          - "Write amplification reduction: 90% improvement"
+          - "Batch fsync calls: Single force() for multiple writes"
+          - "Buffer coalescing: Large sequential writes instead of many small"
+          - "Key metrics: 400+ MB/s sustained, P99 < 10ms latency"
+        notes: "Show concrete performance improvements achieved through WAL optimizations."
+
+      - type: "diagram"
+        title: "WAL Storage Sector Alignment"
+        diagramRef: "wal_sector_alignment"
+        bullets:
+          - "Storage devices write complete 512-byte sectors atomically"
+          - "Unaligned writes force expensive Read-Modify-Write cycles"
+          - "Intelligent padding eliminates RMW penalty"
+          - "3x performance improvement despite small padding overhead"
+          - "Structured padding with markers enables robust recovery"
+        notes: "Explain the critical storage-level optimizations that dramatically improve WAL performance."
+
+      - type: "text"
+        title: "WAL Recovery Process"
+        bullets:
+          - "Read WAL sequentially from start on restart"
+          - "Replay commands in order to rebuild in-memory state"
+          - "Handle partial writes at end of log gracefully"
+          - "Skip already applied operations using checkpoints"
+          - "Recovery timeline: seconds for GB-sized logs"
+        notes: "Detail the recovery mechanisms that ensure data consistency after failures."
+
+      - type: "diagram"
+        title: "WAL Direct I/O vs Page Cache"
+        diagramRef: "wal_direct_io_comparison"
+        bullets:
+          - "Page Cache: 400MB/s, variable latency (cache misses cause spikes)"
+          - "Direct I/O: 480MB/s, consistent 1-5ms latency"
+          - "O_DIRECT bypasses kernel page cache entirely"
+          - "Requires 512-byte alignment for all parameters"
+          - "Best for large sequential writes (WAL append pattern)"
+        notes: "Compare I/O strategies and when to use Direct I/O for optimal WAL performance."
+
+      - type: "text"
+        title: "WAL Implementation Walkthrough"
+        bullets:
+          - "DurableKVStore.java: WAL-backed persistent storage"
+          - "Entry accumulation in memory buffers before flushing"
+          - "Adaptive batch sizing based on flush latency"
+          - "Thread pool separation: write, callback, and sync threads"
+          - "Configuration: 64KB write buffer, 2ms max batch wait"
+        notes: "Reference concrete implementation patterns from the workshop repository."
+
   - title: "Replication and Quorum Patterns"
     slides:
       - type: "diagram"
@@ -558,6 +653,28 @@ sections:
           - "Nodes make values available without knowing if others accepted them"
           - "Need stronger consistency guarantees"
         notes: "Summarize the limitations of basic quorum that motivate stronger consistency models."
+
+      - type: "diagram"
+        title: "Clock Skew and Timestamp Issues"
+        diagramRef: "clock_skew_timestamp_issues"
+        bullets:
+          - "Physical clocks drift at different rates across nodes"
+          - "Chronologically later writes can have earlier timestamps"
+          - "Example: Athens at t=200ms, Cyrene at t=100ms"
+          - "Result: 'Microservices' (t=100) overwrites 'Nicroservices' (t=200)"
+          - "Mitigation: NTP sync, logical clocks, bounded skew detection"
+        notes: "Show how clock skew creates causality violations that basic quorum cannot handle."
+
+      - type: "text"
+        title: "Quorum Production Monitoring"
+        bullets:
+          - "Essential metrics for production quorum systems:"
+          - "  • Quorum achievement rate (success/failure ratios)"
+          - "  • Read repair frequency and latency"
+          - "  • Clock skew detection between replicas"
+          - "  • Inconsistency detection and resolution rate"
+          - "  • Network partition frequency and duration"
+        notes: "Identify critical monitoring requirements for production quorum-based systems."
 
       - type: "text"
         title: "Recap"

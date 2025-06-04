@@ -1,0 +1,60 @@
+@startuml
+
+title Clock Skew and Timestamp Issues in Quorum Systems
+
+note as ClockProblem #FFE6E6
+**The Clock Drift Problem:**
+• Athens clock: t=200ms (fast)
+• Byzantium clock: t=150ms (normal)
+• Cyrene clock: t=100ms (slow)
+• Physical clocks drift at different rates
+• No global time reference in distributed systems
+end note
+
+note as CausalityViolation #FFE6CC
+**Causality Violation Scenario:**
+
+**Write 1 (earlier in real time):**
+• Alice → Athens: set("service", "Nicroservices")
+• Timestamp assigned: t=200ms (Athens clock)
+• Replication succeeds
+
+**Write 2 (later in real time):**
+• Bob → Cyrene: set("service", "Microservices")
+• Timestamp assigned: t=100ms (Cyrene clock)
+• **Result:** Later write gets earlier timestamp!
+end note
+
+note as ConflictResolution #FFFFCC
+**Last-Writer-Wins Conflict Resolution:**
+• Athens receives both values
+• "Nicroservices" t=200ms vs "Microservices" t=100ms
+• Higher timestamp wins (t=200ms)
+• **Problem:** Chronologically later write rejected
+• Causality order violated due to clock skew
+end note
+
+note as Solutions #E6FFE6
+**Mitigation Strategies:**
+
+**Clock Synchronization:**
+• NTP synchronization (ms-level accuracy)
+• GPS/PTP for microsecond accuracy
+• Bounded skew detection and rejection
+
+**Logical Clocks:**
+• Lamport timestamps (happened-before)
+• Vector clocks (concurrent detection)
+• Hybrid Logical Clocks (HLC)
+
+**Application-Level:**
+• Compare-and-swap with versions
+• Multi-version concurrency control
+end note
+
+note bottom #F0F8FF
+**Key Insight:** Physical time is not globally consistent
+Distributed systems need logical ordering mechanisms
+end note
+
+@enduml 

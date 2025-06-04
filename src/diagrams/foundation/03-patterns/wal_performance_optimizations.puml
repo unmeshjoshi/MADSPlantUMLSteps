@@ -1,0 +1,75 @@
+@startuml
+
+title WAL Performance Optimizations
+
+participant "Client Requests" as Clients
+participant "WAL Buffer Manager" as Buffer
+participant "Batch Processor" as Batch
+participant "Storage Layer" as Storage
+
+note over Clients, Storage #E6F3FF
+**WAL Optimization Strategy: Group Writes + Batching**
+end note
+
+== Unoptimized WAL (Baseline) ==
+
+loop Individual Writes
+  Clients -> Buffer : Write Entry 1
+  Buffer -> Storage : fsync() - 1ms
+  Clients -> Buffer : Write Entry 2  
+  Buffer -> Storage : fsync() - 1ms
+  Clients -> Buffer : Write Entry 3
+  Buffer -> Storage : fsync() - 1ms
+end
+
+note right #FFE6E6
+**Performance:**
+• 50 MB/s throughput
+• 100ms P99 latency
+• 50K system calls/sec
+• 60% CPU usage
+end note
+
+== Optimized WAL (Group Writes + Batching) ==
+
+Clients -> Buffer : Entry 1 (accumulate)
+Clients -> Buffer : Entry 2 (accumulate)
+Clients -> Buffer : Entry 3 (accumulate)
+
+note over Buffer #FFFFCC
+**Buffer Strategy:**
+• 64KB write buffer
+• 2ms max batch wait
+• Adaptive batch sizing
+• Off-heap memory
+end note
+
+Buffer -> Batch : Trigger batch (size/time)
+Batch -> Storage : Single large write (64KB)
+Storage -> Storage : Single fsync() call
+
+note right #E6FFE6
+**Optimized Performance:**
+• 400+ MB/s throughput (8x improvement)
+• <10ms P99 latency
+• 5K system calls/sec (90% reduction)
+• 25% CPU usage (58% reduction)
+end note
+
+== Sector Alignment Optimization ==
+
+note over Storage #F0F8FF
+**Storage-Level Optimizations:**
+• 512-byte sector alignment
+• Eliminates Read-Modify-Write cycles
+• Structured padding with markers
+• 3x performance improvement
+• Direct I/O for large sequential writes
+end note
+
+note bottom #E6FFE6
+**Combined Result: 8-10x overall throughput improvement**
+Write amplification reduced by 90% through optimization stack
+end note
+
+@enduml 

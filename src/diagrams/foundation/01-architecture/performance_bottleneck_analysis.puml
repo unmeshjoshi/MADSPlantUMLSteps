@@ -1,0 +1,55 @@
+@startuml
+
+title Performance Bottleneck Analysis in Distributed Systems
+
+rectangle "System Resources" as Resources {
+  
+  rectangle "CPU Bottlenecks" as CPU #FFE6E6 {
+    note as CPUDetails
+**Context Switching Overhead:**
+• Baseline: 100K switches/sec
+• Optimized: 20K switches/sec
+• 80% reduction saves CPU cycles
+• Thread pool tuning critical
+    end note
+  }
+  
+  rectangle "Memory Bottlenecks" as Memory #E6F3FF {
+    note as MemoryDetails
+**Garbage Collection Impact:**
+• Young GC: 10-50ms pauses
+• Full GC: 100ms-1s pauses
+• Large heaps amplify problem
+• Off-heap buffers help
+    end note
+  }
+  
+  rectangle "Network Bottlenecks" as Network #E6FFE6 {
+    note as NetworkDetails
+**Connection Pool Exhaustion:**
+• 100 instances × 50 connections = 5000
+• Network bandwidth: 125MB/s theoretical
+• Practical: ~80MB/s with overhead
+• Latency spikes under load
+    end note
+  }
+  
+  rectangle "Disk I/O Bottlenecks" as Disk #FFFFCC {
+    note as DiskDetails
+**I/O Queue Saturation:**
+• SSD: 10K-100K IOPS limit
+• Queue depth affects latency
+• Sequential vs random patterns
+• fsync() forces serialization
+    end note
+  }
+}
+
+note bottom #F0F8FF
+**Bottleneck Interaction Effects:**
+• CPU + Memory: GC pauses cause request timeouts
+• Network + Disk: Connection pools exhaust during slow I/O
+• All resources: System becomes unstable when multiple saturate
+end note
+
+@enduml 

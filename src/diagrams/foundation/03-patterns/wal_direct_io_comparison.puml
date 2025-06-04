@@ -1,0 +1,54 @@
+@startuml
+
+title WAL Direct I/O vs Page Cache Comparison
+
+note as PageCacheChar #FFFFCC
+**Page Cache Characteristics:**
+• Throughput: 400 MB/s
+• Memory usage: 16KB (8KB user + 8KB kernel)
+• CPU overhead: +25% (copies, page management)
+• Latency: Variable (100μs - 100ms spikes)
+• Cache hits: ~100μs, Cache misses: 1-10ms
+• Unpredictable write timing
+end note
+
+note as DirectIOChar #E6FFE6
+**Direct I/O Characteristics:**
+• Throughput: 480 MB/s (20% better)
+• Memory usage: 8KB (user only - 50% savings)
+• CPU overhead: +5% (alignment handling)
+• Latency: Consistent 1-5ms
+• No memory copying overhead
+• Predictable performance
+end note
+
+note as AlignmentReqs #FFE6E6
+**Direct I/O Requirements:**
+• Buffer address: 512-byte aligned
+• Buffer size: 512-byte aligned
+• File offset: 512-byte aligned
+• Application must handle complexity
+• EINVAL error if alignment violated
+end note
+
+note as UsageGuidance #F0F8FF
+**When to Use Each:**
+
+**Direct I/O Best For:**
+• Large sequential writes (>4KB)
+• Predictable access patterns
+• WAL append-only workloads
+• Avoiding page cache pollution
+
+**Page Cache Best For:**
+• Small random I/O
+• Frequently re-read data
+• Applications without alignment control
+end note
+
+note bottom #E6FFE6
+**Key Insight:** Direct I/O wins for WAL patterns
+Bypass kernel overhead for predictable performance
+end note
+
+@enduml 
