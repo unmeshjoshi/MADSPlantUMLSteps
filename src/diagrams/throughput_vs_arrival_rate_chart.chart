@@ -1,0 +1,34 @@
+# JFreeChart Configuration for Throughput vs Arrival Rate
+chartType: xy_line
+title: Throughput vs Arrival Rate
+xAxisLabel: Arrival Rate (λ) - requests/sec
+yAxisLabel: Throughput - requests/sec
+width: 800
+height: 600
+
+# System parameters
+serviceRate: 1000.0  # μ (requests/sec)
+
+# Data series configuration
+series:
+  - name: System Throughput
+    color: blue
+    strokeWidth: 2.0
+    # Data generation parameters
+    xMin: 0
+    xMax: 1200
+    xStep: 10
+    formula: throughput_curve  # Built-in formula type
+
+# Markers and annotations
+markers:
+  - type: vertical_line
+    value: "${serviceRate}"
+    color: red
+    strokeWidth: 2.0
+    label: Saturation Point (μ)
+
+# Chart styling
+backgroundColor: white
+gridLines: true
+legend: true 

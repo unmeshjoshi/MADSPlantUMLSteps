@@ -1,86 +1,55 @@
 @startuml queue_length_vs_utilization
+!theme materia
 
-!theme plain
-skinparam backgroundColor white
-skinparam defaultTextColor black
+title Queue Length (Lq) vs. System Utilization (ρ)
+caption Based on M/M/1 model: Lq = ρ² / (1 - ρ). This illustrates *average* queue length.
 
-title Queue Length vs System Utilization
+actor User
 
-note top
-  **Exponential Queue Growth: Lq = p² / (1 - p)**
+box "System Under Load" #LightYellow
+    participant Server as S
+    queue "Request Queue" as Q #LightBlue
+end box
+
+User -> Q : Requests arrive (Rate: λ)
+Q -> S : Requests processed (Rate: μ)
+S --> User : Responses
+
+note right of Q
+    <b>Average Queue Length (Lq) for M/M/1:</b>
+
+    <b>When Utilization (ρ = λ/μ) is low:</b>
+    *   ρ = 50%  => Lq ≈ 0.5
+        (Queue is typically short)
+
+    <b>As Utilization increases:</b>
+    *   ρ = 80%  => Lq ≈ 3.2
+    *   ρ = 90%  => Lq ≈ 8.1
+    *   ρ = 95%  => Lq ≈ 18
+
+    <b>As Utilization approaches 100% (Saturation):</b>
+    *   ρ = 98%  => Lq ≈ 48
+    *   ρ = 99%  => Lq ≈ 98+
+    *   ρ → 100% => Lq → ∞ (Theoretical)
+
+    <b>Real-world Implications at Saturation:</b>
+    - Queue limits are hit -> Requests dropped.
+    - Latency (W) skyrockets.
+    - System may become unstable or thrash.
+    - Service rate (μ) itself might degrade.
+    The system is "saturated" not by a specific
+    queue number, but by its inability to keep up.
+
+    <b>Context for High-Throughput Systems (e.g., Web/DB servers):</b>
+    For systems handling 1000s of requests/sec (high λ):
+    *   **Configured Buffers:** Actual system queue limits can be in the 1000s or 10,000s.
+        Saturation occurs when these hard limits are hit.
+    *   **Total In-flight Requests (L):** If average response time (W) significantly
+        increases (e.g., to 1-2 seconds) due to high utilization, the total number
+        of requests in the system (L = λW) can easily reach 1000s or 10,000s.
+        For example, if λ = 5000 req/s and W = 2s, L = 10,000 requests.
+    *   **Impact Scale:** "Saturation" in these contexts often means tens of thousands
+        of requests are being queued, delayed, timed out, or dropped over a short period,
+        reflecting severe performance degradation beyond simple M/M/1 Lq averages.
 end note
-
-' Create utilization zones as simple participants
-participant "50% Util\n(p = 0.5)" as zone1
-participant "70% Util\n(p = 0.7)" as zone2  
-participant "80% Util\n(p = 0.8)" as zone3
-participant "90% Util\n(p = 0.9)" as zone4
-participant "95% Util\n(p = 0.95)" as zone5
-
-note over zone1
-  **Safe Zone**
-  Lq = 0.25 / 0.5 = 0.5 items
-  
-  Minimal queuing
-  Predictable performance
-  System responsive
-end note
-
-note over zone2
-  **Caution Zone**  
-  Lq = 0.49 / 0.3 = 1.6 items
-  
-  Moderate queuing
-  Performance still good
-  Monitor closely
-end note
-
-note over zone3
-  **Warning Zone**
-  Lq = 0.64 / 0.2 = 3.2 items
-  
-  Significant queuing
-  Performance degrading
-  Take action soon
-end note
-
-note over zone4
-  **Danger Zone**
-  Lq = 0.81 / 0.1 = 8.1 items
-  
-  Heavy queuing
-  Poor performance
-  Immediate action needed
-end note
-
-note over zone5
-  **Critical Zone**
-  Lq = 0.9025 / 0.05 = 18 items
-  
-  Extreme queuing
-  System near collapse
-  Emergency response
-end note
-
-' Show progression with arrows
-zone1 ->> zone2 : Load increases
-zone2 ->> zone3 : Queue grows
-zone3 ->> zone4 : Exponential rise
-zone4 ->> zone5 : Critical situation
-
-' Mathematical explanation
-note bottom
-  **Why Queue Length Explodes:**
-  
-  Formula: Lq = p² / (1 - p)
-  
-  As p approaches 1:
-  Numerator (p²) approaches 1
-  Denominator (1 - p) approaches 0  
-  Result: Queue length approaches infinity
-  
-  Key Insight: Small utilization increases
-  near saturation cause dramatic queue growth
-end note
-
 @enduml 

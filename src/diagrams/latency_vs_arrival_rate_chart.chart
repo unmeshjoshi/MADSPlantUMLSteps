@@ -1,0 +1,42 @@
+# JFreeChart Configuration for Latency vs Arrival Rate  
+chartType: xy_line
+title: Latency vs Arrival Rate (Hockey Stick Curve)
+xAxisLabel: Arrival Rate (λ) - requests/sec
+yAxisLabel: Average Latency (W) - milliseconds
+yAxisType: logarithmic
+width: 800
+height: 600
+
+# System parameters
+serviceRate: 1000.0
+
+# Data series configuration
+series:
+  - name: System Latency
+    color: orange
+    strokeWidth: 2.0
+    xMin: 0
+    xMax: 990
+    xStep: 5
+    formula: mm1_latency
+  - name: Overload Region
+    color: red
+    strokeWidth: 2.0
+    strokeStyle: dashed
+    xMin: 1000
+    xMax: 1200
+    xStep: 50
+    formula: overload_latency
+
+# Markers and annotations
+markers:
+  - type: vertical_line
+    value: "${serviceRate}"
+    color: red
+    strokeWidth: 2.0
+    label: Saturation Point (μ)
+
+# Chart styling
+backgroundColor: white
+gridLines: true
+legend: true 

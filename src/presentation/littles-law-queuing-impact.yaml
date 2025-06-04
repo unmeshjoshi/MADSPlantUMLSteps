@@ -54,9 +54,12 @@ sections:
           - "At ρ = 0.5 (50% utilization): Lq = 0.25 / 0.5 = 0.5 items"
           - "At ρ = 0.8 (80% utilization): Lq = 0.64 / 0.2 = 3.2 items"
           - "At ρ = 0.9 (90% utilization): Lq = 0.81 / 0.1 = 8.1 items"
-          - "At ρ = 0.95 (95% utilization): Lq = 0.9025 / 0.05 = 18.05 items"
-          - "Small increases in utilization cause exponential queue growth"
-        notes: "Use concrete examples to show how queue length explodes as utilization approaches 100%. This mathematical relationship explains the performance cliff."
+          - "At ρ = 0.95 (95% utilization): Lq = 0.9025 / 0.05 ≈ 18 items"
+          - "At ρ = 0.98 (98% utilization): Lq = 0.9604 / 0.02 ≈ 48 items"
+          - "At ρ = 0.99 (99% utilization): Lq = 0.9801 / 0.01 ≈ 98 items!"
+          - "As utilization approaches 100%, theoretical Lq rapidly tends towards infinity"
+          - "In practice, this 'explosion' means system saturation, instability, dropped requests, or significantly degraded service rate – not just a very long, orderly queue."
+        notes: "Use concrete examples to show how queue length explodes as utilization approaches 100%. This mathematical relationship explains the performance cliff and why operating near 100% utilization is dangerous."
 
       - type: "text"
         title: "Typical Throughput vs Arrival Rate Graph"
@@ -90,7 +93,7 @@ sections:
 
       - type: "diagram"
         title: "Throughput vs Arrival Rate Performance Curve"
-        diagramRef: "throughput_vs_arrival_rate"
+        diagramRef: "throughput_vs_arrival_rate_chart"
         bullets:
           - "Shows the characteristic three phases of system behavior"
           - "Linear increase until saturation point at μ"
@@ -100,7 +103,7 @@ sections:
 
       - type: "diagram"
         title: "Latency vs Arrival Rate Performance Curve"
-        diagramRef: "latency_vs_arrival_rate"
+        diagramRef: "latency_vs_arrival_rate_chart"
         bullets:
           - "Demonstrates the famous 'hockey stick' or 'knee' curve"
           - "Flat latency region when system is underutilized"

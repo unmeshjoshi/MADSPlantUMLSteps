@@ -18,6 +18,15 @@ plugins {
     id 'groovy'
 }
 
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.jfree:jfreechart:1.5.3'
+    implementation 'org.jfree:jfreesvg:5.0.4'  // For SVG export
+}
+
 // Gradle task to generate diagrams for all .puml files in the source directory
 task svg {
     description = 'Generates SVG diagrams from PlantUML files'
@@ -57,10 +66,40 @@ task png {
     }
 }
 
+task generateCharts {
+    description = 'Generates mathematical performance charts using JFreeChart from configuration files'
+    group = 'Documentation'
+    doLast {
+        def chartGenerator = new com.pumlsteps.charts.ChartGenerator()
+        def diagramsDir = file('src/diagrams')
+        def outputDir = file('build/diagrams')
+        outputDir.mkdirs()
+        
+        // Process all .chart configuration files
+        diagramsDir.eachFile { configFile ->
+            if (configFile.name.endsWith('.chart')) {
+                def chartName = configFile.name.replace('.chart', '')
+                def chartSubDir = new File(outputDir, chartName)
+                chartSubDir.mkdirs()
+                def outputFile = new File(chartSubDir, chartName + '.svg')
+                try {
+                    chartGenerator.generateChart(configFile, outputFile)
+                    println "Generated ${chartName}/${chartName}.svg from ${configFile.name}"
+                } catch (Exception e) {
+                    println "Error generating ${chartName}.svg: ${e.message}"
+                }
+            }
+        }
+        
+        println "✓ Mathematical charts generated in: ${outputDir.absolutePath}"
+    }
+}
+
 task html {
     description = 'Generates HTML presentations with embedded SVG diagrams'
     group = 'Documentation'
-    dependsOn svg  // This ensures SVG diagrams are generated before creating the HTML
+    dependsOn svg
+    dependsOn generateCharts  // Add dependency on chart generation
 
     doLast {
         def presentationDir = file('src/presentation')
