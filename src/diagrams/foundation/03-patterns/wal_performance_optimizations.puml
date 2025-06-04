@@ -1,4 +1,5 @@
 @startuml
+!include ../../../style.puml
 
 title WAL Performance Optimizations
 
@@ -11,6 +12,7 @@ note over Clients, Storage #E6F3FF
 **WAL Optimization Strategy: Group Writes + Batching**
 end note
 
+' [step1 {"name":"Unoptimized WAL - Individual Writes"}]
 == Unoptimized WAL (Baseline) ==
 
 loop Individual Writes
@@ -29,7 +31,9 @@ note right #FFE6E6
 • 50K system calls/sec
 • 60% CPU usage
 end note
+' [/step1]
 
+' [step2 {"name":"Optimized WAL - Group Writes", "newPage":"true"}]
 == Optimized WAL (Group Writes + Batching) ==
 
 Clients -> Buffer : Entry 1 (accumulate)
@@ -43,7 +47,9 @@ note over Buffer #FFFFCC
 • Adaptive batch sizing
 • Off-heap memory
 end note
+' [/step2]
 
+' [step3 {"name":"Batch Processing"}]
 Buffer -> Batch : Trigger batch (size/time)
 Batch -> Storage : Single large write (64KB)
 Storage -> Storage : Single fsync() call
@@ -55,7 +61,9 @@ note right #E6FFE6
 • 5K system calls/sec (90% reduction)
 • 25% CPU usage (58% reduction)
 end note
+' [/step3]
 
+' [step4 {"name":"Sector Alignment Benefits", "newPage":"true"}]
 == Sector Alignment Optimization ==
 
 note over Storage #F0F8FF
@@ -66,10 +74,13 @@ note over Storage #F0F8FF
 • 3x performance improvement
 • Direct I/O for large sequential writes
 end note
+' [/step4]
 
+' [step5 {"name":"Combined Results"}]
 note bottom #E6FFE6
 **Combined Result: 8-10x overall throughput improvement**
 Write amplification reduced by 90% through optimization stack
 end note
+' [/step5]
 
 @enduml 

@@ -1,0 +1,117 @@
+@startuml
+!include ../../../style.puml
+
+title Asynchronous Read Repair Operation
+
+' [step1 {"name":"Initial Inconsistent State"}]
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+
+note over athens #E6FFE6
+"title": "Microservices"
+**Version:** 2
+**Timestamp:** t=200
+end note
+
+note over byzantium #E6FFE6  
+"title": "Microservices"
+**Version:** 2
+**Timestamp:** t=200
+end note
+
+note over cyrene #FFE6E6
+"title": "Architecture"  
+**Version:** 1
+**Timestamp:** t=100
+**STALE DATA**
+end note
+
+note over athens, cyrene #E6F3FF
+**Inconsistent State:** cyrene has outdated value
+**Repair Strategy:** Asynchronous - repair in background
+end note
+' [/step1]
+
+' [step2 {"name":"Client Read Request"}]
+Alice -> athens : get "title"
+activate athens
+
+note over athens #FFFFCC
+**Read Coordinator:**
+athens will check replicas
+and respond quickly
+end note
+' [/step2]
+
+' [step3 {"name":"Query Replicas for Quorum", "newPage":"true"}]
+par Query for Quorum
+  athens -> byzantium : get "title"
+  activate byzantium
+  byzantium -->> athens : "Microservices" (v=2, t=200)
+  deactivate byzantium
+else
+  athens -> cyrene : get "title"
+  activate cyrene
+  cyrene -->> athens : "Architecture" (v=1, t=100)
+  deactivate cyrene
+end
+
+note over athens #FFFFCC
+**Quick Decision:**
+Have quorum (2/3 responses)
+Latest value: "Microservices"
+Inconsistency noted for later
+end note
+' [/step3]
+
+' [step4 {"name":"Immediate Response to Client"}]
+athens -->> Alice : "Microservices"
+deactivate athens
+
+note over Alice #E6FFE6
+**Fast Response:**
+Client gets answer immediately
+No waiting for repair
+Lower latency
+end note
+' [/step4]
+
+' [step5 {"name":"Background Repair Process", "newPage":"true"}]
+activate athens
+note over athens #FFFFCC
+**Background Repair:**
+Repair cyrene asynchronously
+After client response
+end note
+
+athens -> cyrene : set "title", "Microservices" (v=2, t=200)
+activate cyrene
+note right of cyrene #E6FFE6
+**Async Repair:**
+Update happens in background
+No impact on client latency
+end note
+cyrene -->> athens : Repair acknowledged
+note over cyrene #E6FFE6
+"title": "Microservices"
+**Version:** 2  
+**Timestamp:** t=200
+**REPAIRED**
+end note
+deactivate cyrene
+deactivate athens
+' [/step5]
+
+' [step6 {"name":"Final State - Eventually Consistent"}]
+note bottom #E6FFE6
+**Asynchronous Repair Result:**
+• Client gets fast response
+• Repair happens in background
+• Eventually consistent system
+• Lower latency, eventual consistency
+end note
+' [/step6]
+
+@enduml 

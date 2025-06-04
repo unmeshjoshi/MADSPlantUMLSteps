@@ -1,18 +1,13 @@
 @startuml
+!include ../../../style.puml
 
 title Quorum Read Operation Example
 
+' [step1 {"name":"Initial State - After Previous Write"}]
 actor Alice
-participant athens  
-participant byzantium
+participant athens
+participant byzantium 
 participant cyrene
-
-note over athens, cyrene #E6F3FF
-**Initial State After Previous Write:**
-athens: "title": "Microservices"
-byzantium: "title": "Microservices"  
-cyrene: unknown/failed state
-end note
 
 note over athens
 "title": "Microservices"
@@ -22,21 +17,37 @@ note over byzantium
 "title": "Microservices"
 end note
 
+note over cyrene #FFE6E6
+**Unreachable or Stale**
+Network partition or
+failed to replicate
+end note
+
+note over athens, cyrene #E6F3FF
+**Cluster State:** 2 of 3 nodes have current value
+**Quorum Read:** Need majority response (2 nodes)
+end note
+' [/step1]
+
+' [step2 {"name":"Client Read Request"}]
 Alice -> athens : get "title"
 activate athens
 
 note over athens #FFFFCC
 **Read Coordinator:**
-athens coordinates read operation
-by querying majority of nodes
+athens coordinates the
+quorum read operation
 end note
+' [/step2]
 
+' [step3 {"name":"Parallel Read Attempts", "newPage":"true"}]
 par Parallel Read Queries
   athens -> byzantium : get "title"
   activate byzantium
   note right of byzantium #E6FFE6
-  **Successful Response:**
-  byzantium returns stored value
+  **Successful Read:**
+  byzantium returns current
+  value from its store
   end note
   byzantium -->> athens : "Microservices"
   deactivate byzantium
@@ -44,24 +55,31 @@ else
   athens ->x cyrene : get "title"
   note right of cyrene #FFE6E6
   **Read Failure:**
-  cyrene unreachable or
-  timeout occurred
+  Timeout or network
+  partition prevents response
   end note
 end
+' [/step3]
 
+' [step4 {"name":"Quorum Check and Response"}]
 note over athens #E6F3FF
 **Quorum Check:**
 athens (self) + byzantium = 2 responses
-2 >= 2 (majority) OK
-Can return value safely
+2 >= 2 (majority) ✓ SUCCESS
+Can proceed with read response
 end note
 
-athens -> athens : isQuorumReached() OK
+athens -> athens : isQuorumReached() ✓ OK
 athens -->> Alice : "Microservices"
 deactivate athens
+' [/step4]
 
+' [step5 {"name":"Read Success Despite Failure"}]
 note bottom #FFFFCC
 **Result:** Read succeeds with 2/3 nodes responding.
-System provides availability despite cyrene being unreachable.
+System provides consistent reads despite cyrene being unavailable.
+One node failure doesn't prevent read operations.
 end note
+' [/step5]
+
 @enduml 

@@ -1,7 +1,9 @@
 @startuml   
+!include ../../../style.puml
 
 title Write-Ahead Log Operation Example
 
+' [step1 {"name":"Initial System State"}]
 actor Client
 participant "KVStore Server" as KVStore
 database "Write Ahead Log\n/var/log/wal0000.log" as WAL
@@ -20,7 +22,9 @@ Key1: Value1
 Key2: Value2
 Key3: Value3
 end note
+' [/step1]
 
+' [step2 {"name":"Client Write Request"}]
 Client -> KVStore : Set(K4,V4)
 activate KVStore
 
@@ -28,7 +32,9 @@ note over KVStore #FFFFCC
 **Critical Ordering:**
 Durability BEFORE Visibility
 end note
+' [/step2]
 
+' [step3 {"name":"WAL Append - Durability Step", "newPage":"true"}]
 KVStore -> WAL : **1. Append** Set(K4,V4) with Index 4
 activate WAL
 note right of WAL #FFE6E6
@@ -40,7 +46,9 @@ note right of WAL #FFE6E6
 end note
 WAL --> KVStore : Append confirmed
 deactivate WAL
+' [/step3]
 
+' [step4 {"name":"Memory Update - Visibility Step"}]
 KVStore -> MemStore : **2. Update** Set(K4,V4)
 activate MemStore
 note right of MemStore #E6FFE6
@@ -51,7 +59,9 @@ note right of MemStore #E6FFE6
 end note
 MemStore --> KVStore : Update confirmed  
 deactivate MemStore
+' [/step4]
 
+' [step5 {"name":"Success Response"}]
 KVStore --> Client : Success
 deactivate KVStore
 
@@ -59,4 +69,6 @@ note bottom #E6F3FF
 **Recovery Guarantee:** If server crashes after WAL write but before memory update,
 the operation can be replayed from the log during startup recovery.
 end note
+' [/step5]
+
 @enduml 

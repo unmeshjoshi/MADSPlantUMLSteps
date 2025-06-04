@@ -1,60 +1,122 @@
 @startuml
+!include ../../../style.puml
 
-title Clock Skew and Timestamp Issues in Quorum Systems
+title Clock Skew and Timestamp Issues
 
-note as ClockProblem #FFE6E6
-**The Clock Drift Problem:**
-• Athens clock: t=200ms (fast)
-• Byzantium clock: t=150ms (normal)
-• Cyrene clock: t=100ms (slow)
-• Physical clocks drift at different rates
-• No global time reference in distributed systems
+' [step1 {"name":"Initial State - Clock Skew Exists"}]
+participant "Athens\n(Clock: t=200ms)" as athens
+participant "Cyrene\n(Clock: t=100ms)" as cyrene
+
+note over athens #E6F3FF
+**Physical Clock:** 200ms
+**Last Value:** "Architecture" 
+**Version:** 1
 end note
 
-note as CausalityViolation #FFE6CC
-**Causality Violation Scenario:**
-
-**Write 1 (earlier in real time):**
-• Alice → Athens: set("service", "Nicroservices")
-• Timestamp assigned: t=200ms (Athens clock)
-• Replication succeeds
-
-**Write 2 (later in real time):**
-• Bob → Cyrene: set("service", "Microservices")
-• Timestamp assigned: t=100ms (Cyrene clock)
-• **Result:** Later write gets earlier timestamp!
+note over cyrene #FFE6E6  
+**Physical Clock:** 100ms (SLOW)
+**Clock Skew:** -100ms behind Athens
+**Last Value:** "Architecture"
+**Version:** 1
 end note
 
-note as ConflictResolution #FFFFCC
-**Last-Writer-Wins Conflict Resolution:**
-• Athens receives both values
-• "Nicroservices" t=200ms vs "Microservices" t=100ms
-• Higher timestamp wins (t=200ms)
-• **Problem:** Chronologically later write rejected
-• Causality order violated due to clock skew
+note over athens, cyrene #FFFFCC
+**Problem:** Clocks are not synchronized
+Clock skew can cause causality violations
+end note
+' [/step1]
+
+' [step2 {"name":"First Write to Athens"}]
+actor Alice
+Alice -> athens : set "title", "Nicroservices"
+
+note over athens #E6FFE6
+**Write at Athens:**
+Value: "Nicroservices"
+Timestamp: t=200ms (Athens clock)
+**Version:** 2
+end note
+' [/step2]
+
+' [step3 {"name":"Later Write to Cyrene", "newPage":"true"}]
+actor Bob  
+Bob -> cyrene : set "title", "Microservices"
+
+note over cyrene #FFE6E6
+**Write at Cyrene:**
+Value: "Microservices"  
+Timestamp: t=100ms (Cyrene clock)
+**Version:** 2
+**CHRONOLOGICALLY LATER but EARLIER TIMESTAMP**
 end note
 
-note as Solutions #E6FFE6
-**Mitigation Strategies:**
+note over athens, cyrene #FFE6E6
+**Causality Violation:**
+Bob's write happens AFTER Alice's write
+But gets EARLIER timestamp due to clock skew
+end note
+' [/step3]
 
-**Clock Synchronization:**
-• NTP synchronization (ms-level accuracy)
-• GPS/PTP for microsecond accuracy
-• Bounded skew detection and rejection
+' [step4 {"name":"Read Repair Conflict Resolution"}]
+actor Charlie
+Charlie -> athens : get "title"
 
-**Logical Clocks:**
-• Lamport timestamps (happened-before)
-• Vector clocks (concurrent detection)
-• Hybrid Logical Clocks (HLC)
+athens -> cyrene : get "title"
+cyrene -->> athens : "Microservices" (t=100ms)
 
-**Application-Level:**
-• Compare-and-swap with versions
-• Multi-version concurrency control
+note over athens #FFFFCC
+**Timestamp Comparison:**
+Athens: "Nicroservices" (t=200ms)
+Cyrene: "Microservices" (t=100ms)
+200 > 100 → Athens value "wins"
+end note
+' [/step4]
+
+' [step5 {"name":"Wrong Resolution - Causality Violation", "newPage":"true"}]
+athens -> cyrene : set "title", "Nicroservices" (repair)
+
+note over cyrene #FFE6E6
+**Incorrect Result:**
+"Nicroservices" overwrites "Microservices"
+Even though "Microservices" was written LATER
+**CAUSALITY VIOLATION**
 end note
 
-note bottom #F0F8FF
-**Key Insight:** Physical time is not globally consistent
-Distributed systems need logical ordering mechanisms
+athens -->> Charlie : "Nicroservices"
+
+note bottom #FFE6E6
+**Clock Skew Problems:**
+• Later writes can have earlier timestamps
+• Timestamp-based conflict resolution fails
+• Lost updates and causality violations
+• Need logical clocks or bounded skew detection
 end note
+' [/step5]
+
+' [step6 {"name":"Mitigation Strategies"}]
+note across #E6F3FF
+**Mitigation Approaches:**
+
+**1. NTP Synchronization:**
+• Keep clocks synchronized within bounds
+• Monitor and alert on excessive skew
+• Typically keeps skew < 100ms
+
+**2. Logical Clocks (Vector Clocks):**
+• Use Lamport timestamps or vector clocks
+• Capture causal relationships directly
+• Not dependent on physical time
+
+**3. Bounded Skew Detection:**
+• Reject operations with timestamps too far from local time
+• Trade availability for consistency
+• Used in Google Spanner with TrueTime
+
+**4. Central Timestamp Authority:**
+• Single source of truth for timestamps
+• Adds latency but ensures ordering
+• Used in some distributed databases
+end note
+' [/step6]
 
 @enduml 

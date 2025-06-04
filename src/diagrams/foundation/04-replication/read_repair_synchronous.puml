@@ -1,0 +1,105 @@
+@startuml
+!include ../../../style.puml
+
+title Synchronous Read Repair Operation
+
+' [step1 {"name":"Initial Inconsistent State"}]
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+
+note over athens #E6FFE6
+"title": "Microservices"
+**Version:** 2
+**Timestamp:** t=200
+end note
+
+note over byzantium #E6FFE6  
+"title": "Microservices"
+**Version:** 2
+**Timestamp:** t=200
+end note
+
+note over cyrene #FFE6E6
+"title": "Architecture"  
+**Version:** 1
+**Timestamp:** t=100
+**STALE DATA**
+end note
+
+note over athens, cyrene #E6F3FF
+**Inconsistent State:** cyrene has outdated value
+**Repair Strategy:** Synchronous - fix before responding
+end note
+' [/step1]
+
+' [step2 {"name":"Client Read Request"}]
+Alice -> athens : get "title"
+activate athens
+
+note over athens #FFFFCC
+**Read Repair Coordinator:**
+athens will check all replicas
+and repair inconsistencies
+end note
+' [/step2]
+
+' [step3 {"name":"Query All Replicas", "newPage":"true"}]
+par Query All Replicas
+  athens -> byzantium : get "title"
+  activate byzantium
+  byzantium -->> athens : "Microservices" (v=2, t=200)
+  deactivate byzantium
+else
+  athens -> cyrene : get "title"
+  activate cyrene
+  cyrene -->> athens : "Architecture" (v=1, t=100)
+  deactivate cyrene
+end
+
+note over athens #FFFFCC
+**Inconsistency Detected:**
+byzantium: v=2, t=200 (latest)
+cyrene: v=1, t=100 (stale)
+end note
+' [/step3]
+
+' [step4 {"name":"Synchronous Repair Process"}]
+note over athens #FFE6E6
+**Repair Required:**
+Must fix cyrene before
+responding to client
+end note
+
+athens -> cyrene : set "title", "Microservices" (v=2, t=200)
+activate cyrene
+note right of cyrene #E6FFE6
+**Repair Applied:**
+Update to latest version
+before client response
+end note
+cyrene -->> athens : Repair acknowledged
+note over cyrene #E6FFE6
+"title": "Microservices"
+**Version:** 2  
+**Timestamp:** t=200
+**REPAIRED**
+end note
+deactivate cyrene
+' [/step4]
+
+' [step5 {"name":"Consistent Response", "newPage":"true"}]
+athens -->> Alice : "Microservices"
+deactivate athens
+
+note bottom #E6FFE6
+**Synchronous Repair Result:**
+• All replicas now consistent
+• Client gets accurate data
+• Higher latency due to repair step
+• Strong consistency guarantee
+end note
+' [/step5]
+
+@enduml 

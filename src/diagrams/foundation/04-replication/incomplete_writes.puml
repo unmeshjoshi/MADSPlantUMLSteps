@@ -1,0 +1,132 @@
+@startuml
+!include ../../../style.puml
+
+title Incomplete Writes Problem
+
+' [step1 {"name":"Initial Consistent State"}]
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+
+note over athens, cyrene #E6F3FF
+**Initial State:** All replicas consistent
+**Cluster Size:** 3 nodes  
+**Quorum Required:** 2 nodes
+end note
+
+note over athens #E6FFE6
+"title": "Architecture"
+**Version:** 1
+end note
+
+note over byzantium #E6FFE6
+"title": "Architecture"
+**Version:** 1  
+end note
+
+note over cyrene #E6FFE6
+"title": "Architecture"
+**Version:** 1
+end note
+' [/step1]
+
+' [step2 {"name":"Write Request from Alice"}]
+Alice -> athens : set "title", "Microservices"
+activate athens
+
+note over athens #FFFFCC
+**Write Coordinator:**
+athens attempts to replicate
+to achieve quorum
+end note
+' [/step2]
+
+' [step3 {"name":"Partial Replication Failure", "newPage":"true"}]
+par Replication Attempts
+  athens -> athens : set "title", "Microservices"
+  note over athens #E6FFE6
+  "title": "Microservices"
+  **Version:** 2
+  **LOCAL SUCCESS**
+  end note
+else
+  athens ->x byzantium : set "title", "Microservices"
+  note right of byzantium #FFE6E6
+  **Network Failure:**
+  Replication to byzantium fails
+  Message lost or timeout
+  end note
+else
+  athens -> cyrene : set "title", "Microservices"
+  activate cyrene
+  note right of cyrene #E6FFE6
+  **Successful Replication:**
+  cyrene accepts and stores
+  the new value
+  end note
+  cyrene -->> athens : ack
+  note over cyrene #E6FFE6
+  "title": "Microservices"
+  **Version:** 2
+  end note
+  deactivate cyrene
+end
+' [/step3]
+
+' [step4 {"name":"Quorum Achieved - Write Success"}]
+note over athens #E6F3FF
+**Quorum Check:**
+athens (self) + cyrene = 2 nodes
+2 >= 2 (majority) ✓ SUCCESS
+end note
+
+athens -->> Alice : Success
+deactivate athens
+' [/step4]
+
+' [step5 {"name":"Inconsistent State Created", "newPage":"true"}]
+note over athens #E6FFE6
+"title": "Microservices"
+**Version:** 2
+**HAS LATEST**
+end note
+
+note over byzantium #FFE6E6
+"title": "Architecture"
+**Version:** 1
+**STALE - MISSED UPDATE**
+end note
+
+note over cyrene #E6FFE6
+"title": "Microservices" 
+**Version:** 2
+**HAS LATEST**
+end note
+
+note over athens, cyrene #FFFFCC
+**Problem Created:** byzantium is now inconsistent
+This creates potential read inconsistency issues
+end note
+' [/step5]
+
+' [step6 {"name":"Read Inconsistency Example"}]
+actor Bob
+actor Nathan
+
+Bob -> athens : get "title"
+athens -->> Bob : "Microservices" (latest)
+
+Nathan -> byzantium : get "title"  
+byzantium -->> Nathan : "Architecture" (stale)
+
+note bottom #FFE6E6
+**Inconsistency Problem:**
+• Bob and Nathan get different values
+• Later read (Nathan) gets older value
+• Violates external consistency expectations
+• Read repair needed to fix byzantium
+end note
+' [/step6]
+
+@enduml 

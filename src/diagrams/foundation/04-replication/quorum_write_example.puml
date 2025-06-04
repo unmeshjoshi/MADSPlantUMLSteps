@@ -1,7 +1,9 @@
 @startuml
+!include ../../../style.puml
 
 title Quorum Write Operation Example
 
+' [step1 {"name":"Initial Cluster State"}]
 actor Alice
 participant athens
 participant byzantium
@@ -12,7 +14,9 @@ note over athens, cyrene #E6F3FF
 **Cluster Size:** 3 nodes
 **Quorum Required:** 2 nodes (majority)
 end note
+' [/step1]
 
+' [step2 {"name":"Client Write Request"}]
 Alice -> athens : set "title", "Microservices"
 activate athens
 
@@ -21,7 +25,9 @@ note over athens #FFFFCC
 athens acts as coordinator
 for this write operation
 end note
+' [/step2]
 
+' [step3 {"name":"Parallel Replication Attempts", "newPage":"true"}]
 par Parallel Replication
   athens -> byzantium : set "title", "Microservices"
   activate byzantium
@@ -43,14 +49,19 @@ else
   server unreachable
   end note
 end
+' [/step3]
 
+' [step4 {"name":"Quorum Evaluation"}]
 note over athens #E6F3FF
 **Quorum Check:**
 athens (self) + byzantium = 2 nodes
-2 >= 2 (majority) OK
+2 >= 2 (majority) ✓ SUCCESS
 end note
 
-athens -> athens : isQuorumReached() OK
+athens -> athens : isQuorumReached() ✓ OK
+' [/step4]
+
+' [step5 {"name":"Success Response"}]
 athens -->> Alice : Success
 
 note over athens
@@ -61,4 +72,6 @@ note bottom #FFFFCC
 **Result:** Write succeeds with 2/3 nodes confirming.
 System can tolerate 1 node failure (cyrene) and still operate.
 end note
+' [/step5]
+
 @enduml 

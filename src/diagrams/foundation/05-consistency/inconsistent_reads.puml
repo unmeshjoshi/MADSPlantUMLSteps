@@ -1,27 +1,38 @@
 @startuml
+!include ../../../style.puml
 
 title Inconsistent Reads - External Consistency Violation
 
+' [step1 {"name":"Initial State After Incomplete Write"}]
 actor Bob
 actor Nathan
 participant athens
 participant byzantium
 participant cyrene
 
-== Initial Setup After Incomplete Write ==
-
 note over athens, cyrene #FFE6E6
 **System State After Previous Incomplete Write:**
-• athens: "title": "Microservices"
+• athens: "title": "Microservices" (has latest)
 • byzantium: (missed the write, has old/no data)
-• cyrene: "title": "Microservices", time=2
+• cyrene: "title": "Microservices", time=2 (has latest)
+• Result: 2 of 3 nodes have current data
 end note
+' [/step1]
 
+' [step2 {"name":"Bob's Read Request"}]
 == Bob's Read (Gets Latest Value) ==
 
 Bob -> athens : get "title"
 activate athens
 
+note over athens #FFFFCC
+**Bob's Read Coordinator:**
+athens attempts to form
+quorum for consistent read
+end note
+' [/step2]
+
+' [step3 {"name":"Bob's Quorum Read Attempt", "newPage":"true"}]
 par Bob's Quorum Read
   athens -> byzantium : get "title"
   activate byzantium
@@ -34,20 +45,31 @@ else
   deactivate cyrene
 end
 
-athens -> athens : isQuorumReached() OK
+athens -> athens : isQuorumReached() ✓ OK
 athens -->> Bob : "Microservices"
 note right of Bob #E6F3FF
 **Bob's Experience:**
 Gets the latest value
 "Microservices"
+**SUCCESS**
 end note
 deactivate athens
+' [/step3]
 
+' [step4 {"name":"Nathan's Read Request - Later in Time", "newPage":"true"}]
 == Nathan's Read (Gets Stale Value) ==
 
 Nathan -> cyrene : get "title"
 activate cyrene
 
+note over cyrene #FFFFCC
+**Nathan's Read Coordinator:**
+cyrene attempts to form
+quorum for read operation
+end note
+' [/step4]
+
+' [step5 {"name":"Nathan's Failed Quorum Read"}]
 par Nathan's Quorum Read
   cyrene ->x athens : get "title"
   note right of athens #FFE6E6
@@ -66,8 +88,10 @@ else
   end note
   deactivate byzantium
 end
+' [/step5]
 
-cyrene -> cyrene : isQuorumReached() FAIL
+' [step6 {"name":"Consistency Violation Occurs"}]
+cyrene -> cyrene : isQuorumReached() ✗ FAIL
 note over cyrene #FFE6CC
 **Insufficient Quorum:**
 Only cyrene + byzantium available
@@ -80,12 +104,23 @@ note right of Nathan #FFE6CC
 **Nathan's Experience:**
 Gets stale value or error
 Inconsistent with Bob's read
+**CONSISTENCY VIOLATION**
 end note
 deactivate cyrene
+' [/step6]
 
+' [step7 {"name":"External Consistency Problem", "newPage":"true"}]
 note bottom #FFE6E6
-**External Consistency Violation:** Nathan's later read returns
-an older value than Bob's earlier read, violating user expectations
-of consistency in a distributed system.
+**External Consistency Violation:** 
+
+**Timeline:**
+1. Bob reads at time T1 → gets "Microservices"
+2. Nathan reads at time T2 (T2 > T1) → gets older value
+
+**Problem:** Later read returns older value than earlier read
+**Impact:** Violates user expectations of consistency
+**Solution Needed:** Stronger consistency guarantees (linearizability)
 end note
+' [/step7]
+
 @enduml 

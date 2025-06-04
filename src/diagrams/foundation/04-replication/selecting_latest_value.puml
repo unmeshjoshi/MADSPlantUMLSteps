@@ -1,0 +1,136 @@
+@startuml
+!include ../../../style.puml
+
+title Selecting Latest Value with Timestamps
+
+' [step1 {"name":"Write Operation - Creates Version"}]
+actor Alice
+participant athens
+participant byzantium 
+participant cyrene
+
+note over athens, cyrene #E6F3FF
+**Scenario:** Write operation partially succeeds
+Some replicas miss the update
+end note
+
+Alice -> athens : set "title", "Microservices"
+activate athens
+' [/step1]
+
+' [step2 {"name":"Partial Replication Success"}]
+par Replication Attempt
+  athens -> byzantium : set "title", "Microservices" (v=2, t=200)
+  activate byzantium
+  note right of byzantium #E6FFE6
+  **Successful Write:**
+  New version stored with timestamp
+  end note
+  byzantium -->> athens : ack
+  note over byzantium #E6FFE6
+  "title": "Microservices"
+  **Version:** 2
+  **Timestamp:** t=200
+  end note
+  deactivate byzantium
+else
+  athens ->x cyrene : set "title", "Microservices"
+  note right of cyrene #FFE6E6
+  **Network Failure:**
+  Update never reaches cyrene
+  Still has old value
+  end note
+end
+
+athens -->> Alice : Success (quorum achieved)
+deactivate athens
+' [/step2]
+
+' [step3 {"name":"Current State - Version Skew", "newPage":"true"}]
+note over athens #E6FFE6
+"title": "Microservices"
+**Version:** 2
+**Timestamp:** t=200
+**LATEST**
+end note
+
+note over byzantium #E6FFE6
+"title": "Microservices"  
+**Version:** 2
+**Timestamp:** t=200
+**LATEST**
+end note
+
+note over cyrene #FFE6E6
+"title": "Architecture"
+**Version:** 1  
+**Timestamp:** t=100
+**STALE**
+end note
+' [/step3]
+
+' [step4 {"name":"Read Request Triggers Repair"}]
+actor Bob
+Bob -> athens : get "title"
+activate athens
+
+note over athens #FFFFCC
+**Read Repair Process:**
+Query all replicas and 
+compare timestamps to find latest
+end note
+' [/step4]
+
+' [step5 {"name":"Query All Replicas", "newPage":"true"}]
+par Query All Replicas
+  athens -> byzantium : get "title"
+  activate byzantium
+  byzantium -->> athens : "Microservices" (v=2, t=200)
+  deactivate byzantium
+else
+  athens -> cyrene : get "title"  
+  activate cyrene
+  cyrene -->> athens : "Architecture" (v=1, t=100)
+  deactivate cyrene
+end
+
+note over athens #FFFFCC
+**Timestamp Comparison:**
+byzantium: t=200 (latest)
+cyrene: t=100 (stale)
+Select value with highest timestamp
+end note
+' [/step5]
+
+' [step6 {"name":"Repair and Respond"}]
+athens -> cyrene : set "title", "Microservices" (v=2, t=200)
+activate cyrene
+note right of cyrene #E6FFE6
+**Repair Operation:**
+Update cyrene to latest version
+using timestamp to identify newer value
+end note
+cyrene -->> athens : Repair complete
+note over cyrene #E6FFE6
+"title": "Microservices"
+**Version:** 2
+**Timestamp:** t=200  
+**REPAIRED**
+end note
+deactivate cyrene
+
+athens -->> Bob : "Microservices"
+deactivate athens
+' [/step6]
+
+' [step7 {"name":"Consistent State Achieved"}]
+note bottom #E6FFE6
+**Timestamp-based Resolution:**
+• Timestamps identify latest version
+• Read repair brings stale replicas up-to-date  
+• All replicas now have consistent state
+• Handles partial write scenarios gracefully
+end note
+' [/step7]
+
+@enduml 

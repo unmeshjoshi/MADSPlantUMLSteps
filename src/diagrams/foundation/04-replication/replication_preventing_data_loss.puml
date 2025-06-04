@@ -1,47 +1,127 @@
 @startuml
+!include ../../../style.puml
 
-title Replication - How Not to Lose Writes in Case of Failures
+title Replication - Preventing Data Loss
 
-actor "Alice" as Alice
+' [step1 {"name":"Single Server Scenario"}]
+actor Alice
+participant "Server1" as server1
 
-rectangle "Data Servers" {
-  rectangle "Server1" as S1 #FF6B6B
-  rectangle "Server2" as S2
-  rectangle "Server3" as S3  
-  rectangle "Server4" as S4
-  rectangle "Server5" as S5
-  rectangle "Server6" as S6
-  rectangle "Server7" as S7
-}
-
-Alice -> S1 : Set(Title, "Microservices")
-
-note top of S1 #FF6B6B
-**SERVER FAILURE**
-Data could be lost!
+note over server1 #E6F3FF
+**Single Point of Failure:**
+All data stored on one server
+No backup or redundancy
 end note
 
-note right of S2 #E6F3FF
-**The Replication Question:**
-How many servers should store
-copies of the data to ensure
-it survives failures?
+Alice -> server1 : set "title", "Microservices"
+activate server1
+server1 -> server1 : Store locally
+note over server1 #E6FFE6
+"title": "Microservices"
+**STORED**
+end note
+server1 -->> Alice : Success
+deactivate server1
+' [/step1]
 
-**Considerations:**
-• More replicas = better fault tolerance
-• More replicas = higher overhead  
-• More replicas = coordination complexity
+' [step2 {"name":"Server Failure - Data Loss", "newPage":"true"}]
+note over server1 #FFE6E6
+**SERVER CRASH**
+Hardware failure, power loss,
+software crash, or maintenance
 end note
 
-S1 -[hidden]d- S2
-S2 -[hidden]l- S3
-S3 -[hidden]d- S4
-S4 -[hidden]l- S5
-S5 -[hidden]d- S6
-S6 -[hidden]l- S7
+server1 ->x server1 : Data lost!
 
+actor Bob
+Bob ->x server1 : get "title"
+note right of server1 #FFE6E6
+**Data Loss:**
+All stored data is lost
+Cannot serve any requests
+Complete system failure
+end note
+' [/step2]
+
+' [step3 {"name":"Solution - Multiple Servers"}]
+participant "Server2" as server2
+participant "Server3" as server3
+
+note over server1, server3 #E6F3FF
+**Replication Strategy:**
+Store data on multiple servers
+Provides fault tolerance
+Data survives individual failures
+end note
+
+Alice -> server1 : set "title", "Microservices"
+activate server1
+' [/step3]
+
+' [step4 {"name":"Replicate to Multiple Servers", "newPage":"true"}]
+par Replication
+  server1 -> server1 : Store locally
+  note over server1 #E6FFE6
+  "title": "Microservices"
+  **REPLICA 1**
+  end note
+else
+  server1 -> server2 : Replicate data
+  activate server2
+  server2 -> server2 : Store replica
+  note over server2 #E6FFE6
+  "title": "Microservices"
+  **REPLICA 2**
+  end note
+  server2 -->> server1 : Ack
+  deactivate server2
+else
+  server1 -> server3 : Replicate data
+  activate server3
+  server3 -> server3 : Store replica
+  note over server3 #E6FFE6
+  "title": "Microservices"
+  **REPLICA 3**
+  end note
+  server3 -->> server1 : Ack
+  deactivate server3
+end
+
+server1 -->> Alice : Success
+deactivate server1
+' [/step4]
+
+' [step5 {"name":"Fault Tolerance Demonstration", "newPage":"true"}]
+note over server1 #FFE6E6
+**SERVER1 FAILS**
+Primary server crashes
+but data still available
+on other replicas
+end note
+
+server1 ->x server1 : Crashed!
+
+Bob -> server2 : get "title"
+activate server2
+note over server2 #E6FFE6
+**Data Available:**
+server2 has replica
+Can serve read requests
+No data loss occurred
+end note
+server2 -->> Bob : "Microservices"
+deactivate server2
+' [/step5]
+
+' [step6 {"name":"Key Questions - Trade-offs"}]
 note bottom #FFFFCC
-**Critical Problem:** Single server creates single point of failure.
-Need multiple copies, but how many and how to keep them consistent?
+**Replication Raises Questions:**
+• How many replicas are needed?
+• How do we ensure all replicas have the same data?
+• What happens when replicas disagree?
+• How do we handle network failures between replicas?
+• Performance vs Fault Tolerance trade-offs?
 end note
+' [/step6]
+
 @enduml 
