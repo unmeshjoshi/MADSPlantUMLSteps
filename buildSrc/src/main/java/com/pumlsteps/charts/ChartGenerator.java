@@ -1,6 +1,7 @@
 package com.pumlsteps.charts;
 
 import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.LogarithmicAxis;
 import org.jfree.chart.plot.PlotOrientation;
@@ -23,6 +24,10 @@ import java.util.Map;
 public class ChartGenerator {
     
     public void generateChart(File configFile, File outputFile) throws IOException {
+        generateChart(configFile, outputFile, "SVG");
+    }
+    
+    public void generateChart(File configFile, File outputFile, String format) throws IOException {
         Yaml yaml = new Yaml();
         Map<String, Object> config;
         
@@ -57,10 +62,15 @@ public class ChartGenerator {
         // Apply styling and customizations
         customizeChart(chart, config);
         
-        // Export as SVG
+        // Export in specified format
         Integer width = (Integer) config.getOrDefault("width", 800);
         Integer height = (Integer) config.getOrDefault("height", 600);
-        exportChartAsSVG(chart, outputFile, width, height);
+        
+        if ("PNG".equalsIgnoreCase(format)) {
+            exportChartAsPNG(chart, outputFile, width, height);
+        } else {
+            exportChartAsSVG(chart, outputFile, width, height);
+        }
     }
     
     private void generateDataSeries(XYSeries series, Map<String, Object> seriesConfig, Map<String, Object> config) {
@@ -186,5 +196,9 @@ public class ChartGenerator {
         String svgElement = svgGenerator.getSVGElement();
         
         java.nio.file.Files.write(outputFile.toPath(), svgElement.getBytes());
+    }
+    
+    private void exportChartAsPNG(JFreeChart chart, File outputFile, int width, int height) throws IOException {
+        ChartUtils.saveChartAsPNG(outputFile, chart, width, height);
     }
 } 

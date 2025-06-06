@@ -149,10 +149,19 @@ public class YamlPresentationProcessor {
                 
                 if (matchingDirs != null && matchingDirs.length > 0) {
                     for (File matchingDir : matchingDirs) {
+                        // First try to find step-based PNG files
                         File[] foundFiles = matchingDir.listFiles((dir, name) -> name.matches("step\\d+\\.png"));
                         if (foundFiles != null && foundFiles.length > 0) {
                             pngFiles = foundFiles;
-                            System.out.println("Found " + pngFiles.length + " PNG files in: " + matchingDir.getAbsolutePath());
+                            System.out.println("Found " + pngFiles.length + " step-based PNG files in: " + matchingDir.getAbsolutePath());
+                            break;
+                        }
+                        
+                        // If no step-based files, look for single chart files (like chart_name.png)
+                        File[] chartFiles = matchingDir.listFiles((dir, name) -> name.endsWith(".png"));
+                        if (chartFiles != null && chartFiles.length > 0) {
+                            pngFiles = chartFiles;
+                            System.out.println("Found " + pngFiles.length + " chart PNG files in: " + matchingDir.getAbsolutePath());
                             break;
                         }
                     }
@@ -162,33 +171,56 @@ public class YamlPresentationProcessor {
             if (pngFiles != null && pngFiles.length > 0) {
                 System.out.println("Using " + pngFiles.length + " PNG files");
 
-                // Sort the PNG files by step number
-                Arrays.sort(pngFiles, (f1, f2) -> {
-                    String name1 = f1.getName();
-                    String name2 = f2.getName();
-                    int stepIndex = "step".length();
-                    int dotIndex1 = name1.lastIndexOf('.');
-                    int dotIndex2 = name2.lastIndexOf('.');
-                    return Integer.parseInt(name1.substring(stepIndex, dotIndex1)) - 
-                           Integer.parseInt(name2.substring(stepIndex, dotIndex2));
-                });
+                // Check if these are step-based files or single chart files
+                boolean isStepBased = pngFiles[0].getName().matches("step\\d+\\.png");
+                
+                if (isStepBased) {
+                    // Sort the PNG files by step number
+                    Arrays.sort(pngFiles, (f1, f2) -> {
+                        String name1 = f1.getName();
+                        String name2 = f2.getName();
+                        int stepIndex = "step".length();
+                        int dotIndex1 = name1.lastIndexOf('.');
+                        int dotIndex2 = name2.lastIndexOf('.');
+                        return Integer.parseInt(name1.substring(stepIndex, dotIndex1)) - 
+                               Integer.parseInt(name2.substring(stepIndex, dotIndex2));
+                    });
 
-                // Add slides directly using the PNG files
-                for (File pngFile : pngFiles) {
-                    String stepNumber = pngFile.getName().substring(4, pngFile.getName().lastIndexOf('.'));
-                    String slideTitle = slide.getTitle() + " - Step " + stepNumber;
+                    // Add slides directly using the PNG files
+                    for (File pngFile : pngFiles) {
+                        String stepNumber = pngFile.getName().substring(4, pngFile.getName().lastIndexOf('.'));
+                        String slideTitle = slide.getTitle() + " - Step " + stepNumber;
+
+                        try {
+                            // Verify the PNG is valid before adding to slide
+                            BufferedImage testImage = ImageIO.read(pngFile);
+                            if (testImage != null) {
+                                generator.addImageSlide(slideTitle, pngFile);
+                                System.out.println("Successfully added PNG image to slide: " + slideTitle);
+                            } else {
+                                System.err.println("WARNING: Invalid PNG file, creating placeholder: " + pngFile.getAbsolutePath());
+                            }
+                        } catch (Exception e) {
+                            System.err.println("ERROR adding PNG to slide: " + e.getMessage());
+                            throw new RuntimeException(e);
+                        }
+                    }
+                } else {
+                    // Handle single chart files - just add one slide with the chart
+                    File chartFile = pngFiles[0]; // Use the first (and likely only) file
+                    String slideTitle = slide.getTitle();
 
                     try {
                         // Verify the PNG is valid before adding to slide
-                        BufferedImage testImage = ImageIO.read(pngFile);
+                        BufferedImage testImage = ImageIO.read(chartFile);
                         if (testImage != null) {
-                            generator.addImageSlide(slideTitle, pngFile);
-                            System.out.println("Successfully added PNG image to slide: " + slideTitle);
+                            generator.addImageSlide(slideTitle, chartFile);
+                            System.out.println("Successfully added chart PNG to slide: " + slideTitle);
                         } else {
-                            System.err.println("WARNING: Invalid PNG file, creating placeholder: " + pngFile.getAbsolutePath());
+                            System.err.println("WARNING: Invalid chart PNG file, creating placeholder: " + chartFile.getAbsolutePath());
                         }
                     } catch (Exception e) {
-                        System.err.println("ERROR adding PNG to slide: " + e.getMessage());
+                        System.err.println("ERROR adding chart PNG to slide: " + e.getMessage());
                         throw new RuntimeException(e);
                     }
                 }

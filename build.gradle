@@ -50,6 +50,7 @@ task svg {
 task png {
     description = 'Generates PNG diagrams from PlantUML files'
     group = 'Documentation'
+    dependsOn 'generateChartsPng'  // Ensure PNG charts are generated first
     doLast {
         def plantUmlJarPath = './plantuml-1.2024.8.jar'
         def sourceDir = file('src/diagrams')
@@ -83,7 +84,7 @@ task generateCharts {
                 chartSubDir.mkdirs()
                 def outputFile = new File(chartSubDir, chartName + '.svg')
                 try {
-                    chartGenerator.generateChart(configFile, outputFile)
+                    chartGenerator.generateChart(configFile, outputFile, "SVG")
                     println "Generated ${chartName}/${chartName}.svg from ${configFile.name}"
                 } catch (Exception e) {
                     println "Error generating ${chartName}.svg: ${e.message}"
@@ -92,6 +93,35 @@ task generateCharts {
         }
         
         println "✓ Mathematical charts generated in: ${outputDir.absolutePath}"
+    }
+}
+
+task generateChartsPng {
+    description = 'Generates mathematical performance charts as PNG files using JFreeChart from configuration files'
+    group = 'Documentation'
+    doLast {
+        def chartGenerator = new com.pumlsteps.charts.ChartGenerator()
+        def diagramsDir = file('src/diagrams')
+        def outputDir = file('build/diagrams-png')
+        outputDir.mkdirs()
+        
+        // Process all .chart configuration files
+        diagramsDir.eachFile { configFile ->
+            if (configFile.name.endsWith('.chart')) {
+                def chartName = configFile.name.replace('.chart', '')
+                def chartSubDir = new File(outputDir, chartName)
+                chartSubDir.mkdirs()
+                def outputFile = new File(chartSubDir, chartName + '.png')
+                try {
+                    chartGenerator.generateChart(configFile, outputFile, "PNG")
+                    println "Generated ${chartName}/${chartName}.png from ${configFile.name}"
+                } catch (Exception e) {
+                    println "Error generating ${chartName}.png: ${e.message}"
+                }
+            }
+        }
+        
+        println "✓ Mathematical PNG charts generated in: ${outputDir.absolutePath}"
     }
 }
 
