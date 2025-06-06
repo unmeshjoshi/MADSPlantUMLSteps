@@ -120,7 +120,7 @@ public class YamlPresentationProcessor {
     }
 
     private void createTextSlide(SlideConfig slide, PptGenerator generator) {
-        generator.addTextSlide(slide.getTitle(), slide.getBullets());
+        generator.addTextSlide(slide.getTitle(), slide.getBullets(), slide.getNotes());
     }
 
     private void createDiagramSlide(SlideConfig slide, PptGenerator generator) {
@@ -195,7 +195,7 @@ public class YamlPresentationProcessor {
                             // Verify the PNG is valid before adding to slide
                             BufferedImage testImage = ImageIO.read(pngFile);
                             if (testImage != null) {
-                                generator.addImageSlide(slideTitle, pngFile);
+                                generator.addImageSlide(slideTitle, pngFile, slide.getBullets(), slide.getNotes());
                                 System.out.println("Successfully added PNG image to slide: " + slideTitle);
                             } else {
                                 System.err.println("WARNING: Invalid PNG file, creating placeholder: " + pngFile.getAbsolutePath());
@@ -214,7 +214,7 @@ public class YamlPresentationProcessor {
                         // Verify the PNG is valid before adding to slide
                         BufferedImage testImage = ImageIO.read(chartFile);
                         if (testImage != null) {
-                            generator.addImageSlide(slideTitle, chartFile);
+                            generator.addImageSlide(slideTitle, chartFile, slide.getBullets(), slide.getNotes());
                             System.out.println("Successfully added chart PNG to slide: " + slideTitle);
                         } else {
                             System.err.println("WARNING: Invalid chart PNG file, creating placeholder: " + chartFile.getAbsolutePath());
