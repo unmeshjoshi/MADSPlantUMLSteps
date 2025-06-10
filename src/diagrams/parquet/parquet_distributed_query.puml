@@ -1,0 +1,112 @@
+@startuml
+!include ../../style.puml
+
+title Distributed Query Execution Flow with Parquet
+
+' [step1 {"name":"Query Planning"}]
+actor "Data Analyst" as User
+participant "Spark Driver" as Driver
+participant "DAG Scheduler" as DAG
+participant "Task Scheduler" as TS
+participant "Catalog Service" as Catalog
+
+User -> Driver: SQL Query\n"SELECT * FROM users WHERE age > 30"
+activate Driver
+
+Driver -> Catalog: Get table metadata
+activate Catalog
+Catalog --> Driver: Table location & schema
+deactivate Catalog
+
+Driver -> DAG: Create execution plan
+activate DAG
+DAG -> DAG: Parse query & optimize
+DAG -> DAG: Create stages based on dependencies
+DAG --> Driver: Execution plan with stages
+deactivate DAG
+' [/step1]
+
+' [step2 {"name":"File Analysis"}]
+group #LightBlue "File Analysis Phase"
+Driver -> Driver: Read Parquet footer
+Driver -> Driver: Analyze row group statistics
+Driver -> Driver: Apply predicate pushdown
+note right: Skip row groups where max_age ≤ 30
+end
+' [/step2]
+
+' [step3 {"name":"Task Creation", "newPage":"true"}]
+Driver -> TS: Submit tasks for execution
+activate TS
+
+TS -> TS: Create one task per row group
+TS -> TS: Determine preferred locations
+TS -> TS: Schedule tasks on available executors
+
+group #LightGreen "Task Distribution"
+  TS -> "Executor 1": Task 1 (Row Group 1)
+  TS -> "Executor 2": Task 2 (Row Group 2) 
+  TS -> "Executor 3": Task 3 (Row Group 3)
+  TS -> "Executor 1": Task 4 (Row Group 4)
+  note right: Tasks distributed based on\ndata locality and executor availability
+end
+' [/step3]
+
+' [step4 {"name":"Parallel Execution"}]
+group #LightYellow "Parallel Execution Phase"
+  participant "Executor 1" as E1
+  participant "Executor 2" as E2
+  participant "Executor 3" as E3
+  participant "Storage" as Storage
+
+  activate E1
+  activate E2
+  activate E3
+
+  E1 -> Storage: Read Row Group 1
+  E2 -> Storage: Read Row Group 2
+  E3 -> Storage: Read Row Group 3
+
+  activate Storage
+  Storage --> E1: RG1 data
+  Storage --> E2: RG2 data
+  Storage --> E3: RG3 data
+  deactivate Storage
+
+  E1 -> E1: Apply filters (age > 30)
+  E2 -> E2: Apply filters (age > 30)
+  E3 -> E3: Apply filters (age > 30)
+
+  E1 -> E1: Project required columns
+  E2 -> E2: Project required columns
+  E3 -> E3: Project required columns
+end
+' [/step4]
+
+' [step5 {"name":"Result Collection"}]
+group #LightPink "Result Collection Phase"
+  E1 --> Driver: Filtered results from RG1
+  E2 --> Driver: Filtered results from RG2
+  E3 --> Driver: Filtered results from RG3
+  
+  deactivate E1
+  deactivate E2
+  deactivate E3
+
+  Driver -> Driver: Combine results from all tasks
+  Driver -> Driver: Apply final transformations
+  Driver --> User: Query results
+  deactivate Driver
+  deactivate TS
+end
+' [/step5]
+
+note bottom
+  **Optimization Benefits:**
+  • Predicate pushdown eliminates unnecessary I/O
+  • Parallel processing of independent row groups
+  • Data locality reduces network traffic
+  • Column pruning minimizes data transfer
+end note
+
+@enduml 

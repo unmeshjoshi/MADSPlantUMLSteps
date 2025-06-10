@@ -385,12 +385,86 @@ body {
     height: auto;
 }
 
+/* Enhanced diagram scaling for better visibility */
+.diagram-container img,
+.diagram-container svg {
+    /* Make diagrams larger by default */
+    width: 95%;
+    max-width: 95%;
+    min-height: 500px;
+    /* Ensure crisp rendering */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    /* Better scaling */
+    transform-origin: center;
+}
+
+/* Special handling for small diagrams like row_vs_column_storage and parquet_file_structure */
+.diagram-container img[src*="row_vs_column"],
+.diagram-container svg[src*="row_vs_column"],
+.diagram-container img[src*="parquet_file_structure"],
+.diagram-container svg[src*="parquet_file_structure"] {
+    width: 100%;
+    max-width: 100%;
+    min-height: 600px;
+    /* Scale up small diagrams */
+    transform: scale(1.2);
+    transform-origin: center;
+}
+
+/* Responsive scaling for different screen sizes */
+@media screen and (min-width: 1200px) {
+    .diagram-container img,
+    .diagram-container svg {
+        width: 90%;
+        max-width: 90%;
+        min-height: 600px;
+    }
+    
+    .diagram-container img[src*="row_vs_column"],
+    .diagram-container svg[src*="row_vs_column"],
+    .diagram-container img[src*="parquet_file_structure"],
+    .diagram-container svg[src*="parquet_file_structure"] {
+        transform: scale(1.4);
+        min-height: 700px;
+    }
+}
+
+@media screen and (min-width: 1600px) {
+    .diagram-container img,
+    .diagram-container svg {
+        width: 85%;
+        max-width: 85%;
+        min-height: 700px;
+    }
+    
+    .diagram-container img[src*="row_vs_column"],
+    .diagram-container svg[src*="row_vs_column"],
+    .diagram-container img[src*="parquet_file_structure"],
+    .diagram-container svg[src*="parquet_file_structure"] {
+        transform: scale(1.6);
+        min-height: 800px;
+    }
+}
+
 /* Responsive diagram sizing */
 @media screen and (max-width: 768px) {
     .diagram-container img,
     .diagram-container svg {
-        min-width: 100%;
-        min-height: 300px;
+        width: 100%;
+        max-width: 100%;
+        min-height: 350px;
+        /* Reset transform for mobile */
+        transform: none;
+    }
+    
+    .diagram-container img[src*="row_vs_column"],
+    .diagram-container svg[src*="row_vs_column"],
+    .diagram-container img[src*="parquet_file_structure"],
+    .diagram-container svg[src*="parquet_file_structure"] {
+        /* Smaller scale for mobile but still enhanced */
+        transform: scale(1.1);
+        min-height: 400px;
     }
     
     .diagram-container.zoomed {
@@ -401,6 +475,7 @@ body {
     .diagram-container.zoomed svg {
         width: 200%;
         min-width: 200%;
+        transform: none;
     }
     
     .diagram-container.zoomed .diagram-zoom-hint:after {

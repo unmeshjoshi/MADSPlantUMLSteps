@@ -1,0 +1,81 @@
+@startuml
+!include ../../style.puml
+
+title Sparklite Framework Integration with Parquet
+
+' [step1 {"name":"Sparklite Components"}]
+rectangle "Sparklite Framework" {
+  rectangle "MiniSparkContext" as MSC #LightBlue
+  rectangle "DAGScheduler" as DAG #LightGreen
+  rectangle "TaskScheduler" as TS #LightYellow
+  rectangle "RDD Abstraction" as RDD #Orange
+}
+
+rectangle "Parquet File System" {
+  rectangle "Parquet File 1" as PF1 #LightPink
+  rectangle "Parquet File 2" as PF2 #LightPink
+  rectangle "Row Groups" as RG #LightCoral
+}
+' [/step1]
+
+' [step2 {"name":"Partition Mapping"}]
+rectangle "RDD Partitions" as Partitions {
+  rectangle "Partition 0\n(RG1 from PF1)" as P0 #Yellow
+  rectangle "Partition 1\n(RG2 from PF1)" as P1 #Yellow
+  rectangle "Partition 2\n(RG1 from PF2)" as P2 #Yellow
+  rectangle "Partition 3\n(RG2 from PF2)" as P3 #Yellow
+}
+
+note bottom of Partitions
+  **Partition Properties:**
+  • Each partition = one row group
+  • Preferred location = data node
+  • Independent processing
+  • Fault tolerance via re-computation
+end note
+' [/step2]
+
+' [step3 {"name":"Component Relationships", "newPage":"true"}]
+MSC --> RDD : "Creates RDDs"
+DAG --> TS : "Submits tasks"
+TS --> P0 : "Schedules task"
+TS --> P1 : "Schedules task"
+P0 --> RG : "Reads data"
+P1 --> RG : "Reads data"
+' [/step3]
+
+' [step4 {"name":"Data Flow"}]
+PF1 --> P0 : "Row Group 1"
+PF1 --> P1 : "Row Group 2"
+PF2 --> P2 : "Row Group 1"
+PF2 --> P3 : "Row Group 2"
+' [/step4]
+
+' [step5 {"name":"Key Concepts"}]
+note top of MSC
+  **Sparklite Key Concepts:**
+  
+  **RDD:** Resilient Distributed Dataset
+  • Immutable collection of partitions
+  • Each partition = Parquet row group
+  • Lazy evaluation until action
+  
+  **Partition:** Unit of parallel processing
+  • Maps 1:1 with Parquet row groups
+  • Contains preferred location info
+  • Independent failure/recovery
+end note
+' [/step5]
+
+' [step6 {"name":"Benefits"}]
+note bottom of RG
+  **Framework Benefits:**
+  • Natural Parallelism: Row groups map to RDD partitions
+  • Data Locality: Tasks scheduled on nodes with data
+  • Fault Tolerance: Failed tasks can be re-executed
+  • Lazy Evaluation: Only read necessary row groups
+  • Predicate Pushdown: Filters applied at row group level
+end note
+' [/step6]
+
+@enduml 

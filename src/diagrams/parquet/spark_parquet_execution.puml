@@ -1,0 +1,120 @@
+@startuml
+!include ../../style.puml
+
+title Spark Job Execution with Parquet Files
+
+' [step1 {"name":"Job Submission"}]
+actor "Data Engineer" as User
+participant "Spark Driver" as Driver
+participant "Cluster Manager" as CM
+participant "Parquet File" as PF
+
+User -> Driver: spark.read.parquet("/data/users.parquet")\n.filter("age > 30").select("name", "age")
+activate Driver
+
+Driver -> CM: Request executor resources
+activate CM
+CM --> Driver: Executors allocated
+deactivate CM
+' [/step1]
+
+' [step2 {"name":"Metadata Analysis"}]
+Driver -> PF: Read footer metadata
+activate PF
+PF --> Driver: Row group locations & statistics
+deactivate PF
+
+Driver -> Driver: Analyze row group statistics
+note right of Driver
+  **Statistics Analysis:**
+  • RG1: min_age=25, max_age=45 ✓
+  • RG2: min_age=18, max_age=28 ✗
+  • RG3: min_age=35, max_age=65 ✓
+  • RG4: min_age=20, max_age=29 ✗
+end note
+
+Driver -> Driver: Apply predicate pushdown
+note right of Driver: Skip RG2 and RG4 (max_age < 30)
+' [/step2]
+
+' [step3 {"name":"Task Planning", "newPage":"true"}]
+Driver -> Driver: Create physical plan
+Driver -> Driver: Generate tasks for eligible row groups
+Driver -> Driver: Determine preferred locations
+
+note right of Driver
+  **Preferred Locations:**
+  • Task 1 → Node A (RG1 location)
+  • Task 2 → Node C (RG3 location)
+end note
+' [/step3]
+
+' [step4 {"name":"Task Distribution"}]
+participant "Task Scheduler" as TS
+participant "Executor 1 (Node A)" as E1
+participant "Executor 2 (Node C)" as E2
+
+Driver -> TS: Submit tasks with preferences
+activate TS
+
+TS -> E1: Task 1 - Process RG1
+activate E1
+TS -> E2: Task 2 - Process RG3  
+activate E2
+
+TS --> Driver: Tasks submitted
+deactivate TS
+' [/step4]
+
+' [step5 {"name":"Parallel Execution"}]
+E1 -> PF: Read Row Group 1
+E2 -> PF: Read Row Group 3
+
+activate PF
+PF --> E1: RG1 column chunks
+PF --> E2: RG3 column chunks
+deactivate PF
+
+E1 -> E1: Vectorized processing
+E2 -> E2: Vectorized processing
+
+note right of E1
+  **Processing Steps:**
+  1. Read required columns (name, age)
+  2. Apply filter (age > 30)
+  3. Project selected columns
+  4. Prepare results for collection
+end note
+
+E1 -> E1: Filter: age > 30
+E2 -> E2: Filter: age > 30
+
+E1 -> E1: Select: name, age
+E2 -> E2: Select: name, age
+' [/step5]
+
+' [step6 {"name":"Result Collection"}]
+E1 --> Driver: Filtered results from RG1
+E2 --> Driver: Filtered results from RG3
+
+deactivate E1
+deactivate E2
+
+Driver -> Driver: Collect and combine results
+Driver -> Driver: Apply any final transformations
+Driver --> User: Final DataFrame
+deactivate Driver
+' [/step6]
+
+' [step7 {"name":"Performance Summary"}]
+note bottom of User
+  **Performance Optimizations Applied:**
+  • Row group pruning: 50% I/O reduction (2 of 4 RGs skipped)
+  • Column pruning: Only name,age columns read
+  • Predicate pushdown: Filter applied at storage level
+  • Data locality: Tasks executed on data-local nodes
+  • Vectorized execution: Batch processing for efficiency
+end note
+' [/step7]
+
+@enduml 

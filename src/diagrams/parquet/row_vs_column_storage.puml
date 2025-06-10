@@ -1,114 +1,117 @@
 @startuml
 !include ../../style.puml
 
+' Scale the diagram for better visibility
+scale 1.5
+
+' Improve spacing and font sizes
+skinparam defaultFontSize 14
+skinparam rectangleFontSize 12
+skinparam rectanglePadding 20
+skinparam rectangleMargin 10
+
 title Row-based vs Column-based Storage
 
 ' [step1 {"name":"Row-based Storage"}]
-rectangle "Row-based Storage" as RowStorage {
-  rectangle "Row 1" as Row1 {
-    rectangle "ID: 1" as ID1
-    rectangle "Name: Alice" as Name1
-    rectangle "Age: 25" as Age1
-    rectangle "City: New York" as City1
+note as N1
+  **Row-based storage:**
+  • Stores all fields of a record together
+  • Optimized for record retrieval
+  • Less efficient for analytical queries
+  • Common in OLTP databases
+end note
+
+rectangle "Row-based Storage\n(Traditional OLTP)" as RowStorage #LightBlue {
+  rectangle "Record 1" as Row1 #LightYellow {
+    rectangle "ID: 1\nName: Alice\nAge: 25\nCity: New York" as Rec1
   }
   
-  rectangle "Row 2" as Row2 {
-    rectangle "ID: 2" as ID2
-    rectangle "Name: Bob" as Name2
-    rectangle "Age: 30" as Age2
-    rectangle "City: San Francisco" as City2
+  rectangle "Record 2" as Row2 #LightYellow {
+    rectangle "ID: 2\nName: Bob\nAge: 30\nCity: San Francisco" as Rec2
   }
   
-  rectangle "Row 3" as Row3 {
-    rectangle "ID: 3" as ID3
-    rectangle "Name: Charlie" as Name3
-    rectangle "Age: 35" as Age3
-    rectangle "City: Chicago" as City3
+  rectangle "Record 3" as Row3 #LightYellow {
+    rectangle "ID: 3\nName: Charlie\nAge: 35\nCity: Chicago" as Rec3
   }
 }
 
-note bottom of RowStorage
-  Row-based storage:
-  - Stores all fields of a record together
-  - Optimized for record retrieval
-  - Less efficient for analytical queries
-  - Common in OLTP databases
-end note
+N1 --> RowStorage
 ' [/step1]
 
 ' [step2 {"name":"Column-based Storage", "newPage":"true"}]
-rectangle "Column-based Storage (Parquet)" as ColStorage {
-  rectangle "ID Column" as IDCol {
-    rectangle "1" as ColID1
-    rectangle "2" as ColID2
-    rectangle "3" as ColID3
+note as N2
+  **Column-based storage:**
+  • Stores all values of a column together
+  • Better compression (similar values together)
+  • Efficient for analytical queries
+  • Only reads needed columns
+end note
+
+rectangle "Column-based Storage\n(Parquet Format)" as ColStorage #LightGreen {
+  rectangle "ID Column\n(Integer)" as IDCol #Orange {
+    rectangle "1\n2\n3" as IDValues
   }
   
-  rectangle "Name Column" as NameCol {
-    rectangle "Alice" as ColName1
-    rectangle "Bob" as ColName2
-    rectangle "Charlie" as ColName3
+  rectangle "Name Column\n(String)" as NameCol #Orange {
+    rectangle "Alice\nBob\nCharlie" as NameValues
   }
   
-  rectangle "Age Column" as AgeCol {
-    rectangle "25" as ColAge1
-    rectangle "30" as ColAge2
-    rectangle "35" as ColAge3
+  rectangle "Age Column\n(Integer)" as AgeCol #Orange {
+    rectangle "25\n30\n35" as AgeValues
   }
   
-  rectangle "City Column" as CityCol {
-    rectangle "New York" as ColCity1
-    rectangle "San Francisco" as ColCity2
-    rectangle "Chicago" as ColCity3
+  rectangle "City Column\n(String)" as CityCol #Orange {
+    rectangle "New York\nSan Francisco\nChicago" as CityValues
   }
 }
 
-note bottom of ColStorage
-  Column-based storage:
-  - Stores all values of a column together
-  - Better compression (similar values together)
-  - Efficient for analytical queries
-  - Only reads needed columns
-end note
+N2 --> ColStorage
 ' [/step2]
 
 ' [step3 {"name":"Query Comparison"}]
-rectangle "Query: SELECT AVG(Age) FROM Users" as Query
-
-note right of Query
+note as N3
+  **Performance Comparison:**
+  
   Row-based storage:
-  - Must read all rows completely
-  - Processes unnecessary data (ID, Name, City)
+  • Must read ALL columns for every row
+  • Processes unnecessary data (ID, Name, City)
+  • Higher I/O overhead
   
   Column-based storage:
-  - Only reads Age column
-  - Skips other columns completely
-  - Much less I/O and processing
+  • Only reads the Age column
+  • Skips other columns completely
+  • 75% less I/O for this query
 end note
+
+rectangle "Query Example:\nSELECT AVG(Age) FROM Users" as Query #LightCyan
+
+N3 --> Query
+RowStorage --> Query : "Reads ALL data\n(unnecessary I/O)"
+ColStorage --> Query : "Reads ONLY Age column\n(efficient I/O)"
 ' [/step3]
 
-' [step4 {"name":"Compression Benefits"}]
-rectangle "Compression Benefits" as Compression {
-  rectangle "Row Storage Compression" as RowComp {
-    rectangle "Mixed data types" as Mixed
-    rectangle "Lower compression ratio" as LowComp
+' [step4 {"name":"Compression Benefits", "newPage":"true"}]
+note as N4
+  **Parquet Compression Advantages:**
+  • Similar values stored consecutively
+  • Type-specific compression algorithms
+  • Dictionary encoding for repeated strings
+  • Run-length encoding for sequences
+  • Delta encoding for sorted numeric data
+  • Bit-packing for small integers
+end note
+
+rectangle "Compression Comparison" as Compression #LightPink {
+  rectangle "Row Storage\nCompression" as RowComp #PaleGreen {
+    rectangle "Mixed Data Types\n[1, 'Alice', 25, 'NY']\n[2, 'Bob', 30, 'SF']\n\nLower Compression\n~30-50% reduction" as RowDetails
   }
   
-  rectangle "Column Storage Compression" as ColComp {
-    rectangle "Similar data types together" as Similar
-    rectangle "Higher compression ratio" as HighComp
-    rectangle "Type-specific encodings" as TypeEnc
+  rectangle "Column Storage\nCompression" as ColComp #LightSalmon {
+    rectangle "Same Data Types\nID: [1,2,3] → Delta: [1,+1,+1]\nAge: [25,30,35] → Delta: [25,+5,+5]\n\nHigher Compression\n~70-90% reduction" as ColDetails
   }
 }
 
-note bottom of Compression
-  Column-based compression advantages:
-  - Similar values stored together
-  - Type-specific compression algorithms
-  - Dictionary encoding for repeated values
-  - Run-length encoding for sequences
-  - Delta encoding for sorted numeric data
-end note
+N4 --> Compression
 ' [/step4]
 
 @enduml

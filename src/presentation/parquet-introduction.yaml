@@ -107,6 +107,112 @@ sections:
           - "Footer contains complete metadata about row groups and columns"
         notes: "Explain how Parquet files are read and metadata is accessed."
 
+  - title: "Distributed Processing with Parquet"
+    slides:
+      - type: "text"
+        title: "Why Parquet is Ideal for Distributed Processing"
+        bullets:
+          - "Row Groups provide natural parallelization boundaries"
+          - "Self-describing metadata enables independent processing"
+          - "Columnar format reduces I/O for analytical queries"
+          - "Statistics enable aggressive predicate pushdown"
+        notes: "Explain why Parquet's design makes it perfect for distributed frameworks."
+
+      - type: "diagram"
+        title: "Parquet File to RDD Partitions Mapping"
+        diagramRef: "parquet_to_rdd_mapping"
+        bullets:
+          - "Each Row Group becomes one or more RDD partitions"
+          - "Framework reads footer to determine partition strategy"
+          - "Preferred locations based on data locality"
+          - "Independent processing of each partition"
+        notes: "Show how distributed frameworks map Parquet row groups to processing partitions."
+
+      - type: "text"
+        title: "Spark's Parquet Integration"
+        bullets:
+          - "ParquetInputFormat: One split per row group"
+          - "Data locality optimization using preferred locations"
+          - "Catalyst optimizer pushes predicates to Parquet reader"
+          - "Vectorized execution for columnar data processing"
+        notes: "Explain how Apache Spark specifically integrates with Parquet files."
+
+      - type: "diagram"
+        title: "Distributed Query Execution Flow"
+        diagramRef: "parquet_distributed_query"
+        bullets:
+          - "1. DAG Scheduler analyzes query and creates stages"
+          - "2. Task Scheduler assigns row group tasks to workers"
+          - "3. Workers read assigned row groups in parallel"
+          - "4. Results are collected and combined"
+        notes: "Demonstrate the complete flow of a distributed query on Parquet files."
+
+      - type: "text"
+        title: "Task Distribution Strategy"
+        bullets:
+          - "One task per row group for optimal parallelism"
+          - "Large row groups (128MB+) for efficient processing"
+          - "Tasks scheduled on nodes with local data"
+          - "Fault tolerance through task re-execution"
+        notes: "Explain how frameworks distribute tasks across the cluster."
+
+      - type: "diagram"
+        title: "Data Locality and Network Traffic"
+        diagramRef: "parquet_data_locality"
+        bullets:
+          - "Scheduler prefers nodes with local row group data"
+          - "Minimize network I/O by processing data locally"
+          - "Fallback to remote reads when local processing unavailable"
+          - "HDFS block replication provides multiple locality options"
+        notes: "Show how data locality optimization reduces network overhead."
+
+      - type: "text"
+        title: "Memory Management and Vectorization"
+        bullets:
+          - "Column chunks loaded on-demand into memory"
+          - "Vectorized processing operates on batches of values"
+          - "Dictionary encoding reduces memory footprint"
+          - "Page-level lazy loading for memory efficiency"
+        notes: "Explain how frameworks optimize memory usage when processing Parquet."
+
+      - type: "text"
+        title: "Predicate Pushdown Optimization"
+        bullets:
+          - "Row group statistics enable early filtering"
+          - "Page-level statistics for fine-grained skipping"
+          - "Bloom filters for exact value lookups"
+          - "Dictionary encoding accelerates string filtering"
+        notes: "Detail how query optimizations work with Parquet's metadata."
+
+      - type: "diagram"
+        title: "Spark Job Execution with Parquet"
+        diagramRef: "spark_parquet_execution"
+        bullets:
+          - "Driver reads footer and plans partition strategy"
+          - "Executors receive tasks with row group assignments"
+          - "Parallel processing of independent row groups"
+          - "Results shuffled/collected based on query type"
+        notes: "Show a complete Spark job execution using Parquet files."
+
+      - type: "diagram"
+        title: "Framework Architecture: Sparklite Integration"
+        diagramRef: "sparklite_parquet_integration"
+        bullets:
+          - "RDD abstraction maps row groups to partitions"
+          - "Task execution model for distributed processing"
+          - "Fault tolerance through task re-execution"
+          - "Natural alignment with Parquet's structure"
+        notes: "Demonstrate how miniature frameworks like Sparklite integrate with Parquet for distributed processing."
+
+      - type: "text"
+        title: "Performance Considerations"
+        bullets:
+          - "Row group size vs parallelism trade-off"
+          - "Column pruning reduces I/O overhead"
+          - "Compression codec selection affects CPU/I/O balance"
+          - "Statistics collection overhead vs query performance"
+        notes: "Discuss key performance factors when using Parquet in distributed systems."
+
   - title: "Storage Backend Integration"
     slides:
       - type: "text"

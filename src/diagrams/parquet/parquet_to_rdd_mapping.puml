@@ -1,0 +1,58 @@
+@startuml
+!include ../../style.puml
+
+title Parquet File to RDD Partitions Mapping
+
+' [step1 {"name":"Parquet File Structure"}]
+rectangle "Parquet File (1GB)" as PF {
+  rectangle "Row Group 1\n(128MB)" as RG1 #LightBlue
+  rectangle "Row Group 2\n(128MB)" as RG2 #LightBlue  
+  rectangle "Row Group 3\n(128MB)" as RG3 #LightBlue
+  rectangle "Row Group 4\n(128MB)" as RG4 #LightBlue
+  rectangle "Footer\n(Metadata)" as Footer #Orange
+}
+' [/step1]
+
+' [step2 {"name":"RDD Partitions"}]
+rectangle "RDD Partitions" as RDD {
+  rectangle "Partition 0" as P0 #LightGreen
+  rectangle "Partition 1" as P1 #LightGreen
+  rectangle "Partition 2" as P2 #LightGreen
+  rectangle "Partition 3" as P3 #LightGreen
+}
+' [/step2]
+
+' [step3 {"name":"Mapping Relationships"}]
+RG1 --> P0 : "1:1 Mapping"
+RG2 --> P1 : "1:1 Mapping"
+RG3 --> P2 : "1:1 Mapping"
+RG4 --> P3 : "1:1 Mapping"
+' [/step3]
+
+' [step4 {"name":"Executor Assignment", "newPage":"true"}]
+rectangle "Cluster Nodes" as Cluster {
+  rectangle "Node 1" as N1 {
+    rectangle "Executor 1" as E1 #Yellow
+  }
+  rectangle "Node 2" as N2 {
+    rectangle "Executor 2" as E2 #Yellow
+  }
+}
+
+P0 --> E1
+P1 --> E1
+P2 --> E2
+P3 --> E2
+' [/step4]
+
+' [step5 {"name":"Benefits"}]
+note bottom of Cluster
+  **Key Benefits:**
+  • One-to-one mapping enables optimal parallelism
+  • Each partition processes independently 
+  • Data locality optimization possible
+  • Fault tolerance through partition re-execution
+end note
+' [/step5]
+
+@enduml 
