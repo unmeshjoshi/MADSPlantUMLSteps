@@ -280,9 +280,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow-y: auto;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    overflow: auto;
+    cursor: default;
 }
 
 .diagram-container img {
@@ -307,13 +306,13 @@ body {
     transition: opacity 0.3s ease;
     z-index: 10;
     pointer-events: none;
-    max-width: 200px;
+    max-width: 250px;
     text-align: center;
 }
 
-.diagram-container:hover .diagram-zoom-hint {
+/* .diagram-container:hover .diagram-zoom-hint {
     opacity: 1;
-}
+} */
 
 .diagram-zoom-hint i {
     margin-right: 6px;
@@ -369,7 +368,7 @@ body {
 }
 
 .diagram-container.zoomed .diagram-zoom-hint:after {
-    content: "\A📱 Scroll to pan around\A🖱️ Click anywhere to close";
+    content: "\A🖱️ Click & drag to pan around\A📱 Touch & drag on mobile\A🖱️ Click anywhere to close\AESC to exit zoom";
     white-space: pre;
     display: block;
     margin-top: 4px;
@@ -479,7 +478,144 @@ body {
     }
     
     .diagram-container.zoomed .diagram-zoom-hint:after {
-        content: "\A👆 Swipe to pan around\A🖱️ Tap anywhere to close";
+        content: "\A👆 Touch & drag to pan\A🖱️ Tap anywhere to close\AESC to exit zoom";
+    }
+}
+
+/* Advanced Zoom Controls - GraphvizOnline Style */
+.zoom-controls {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    border: 1px solid var(--border);
+}
+
+.zoom-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.zoom-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: scale(1.05);
+}
+
+.zoom-btn:active {
+    transform: scale(0.95);
+}
+
+.zoom-reset {
+    font-size: 16px !important;
+}
+
+.zoom-level {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 4px 8px;
+    background: var(--surface-alt);
+    border-radius: 4px;
+    min-width: 50px;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Enhanced diagram container for advanced pan/zoom */
+.diagram-container.zoomed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 2000;
+    cursor: grab;
+    overflow: hidden;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.diagram-container.zoomed img,
+.diagram-container.zoomed svg {
+    max-width: none;
+    max-height: none;
+    min-height: none;
+    width: auto;
+    height: auto;
+    cursor: grab;
+    display: block;
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: center center;
+    /* Transform will be applied by JavaScript */
+}
+
+.diagram-container.zoomed .diagram-zoom-hint {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.8);
+    top: 20px;
+    right: 20px;
+    max-width: 280px;
+}
+
+.diagram-container.zoomed .diagram-zoom-hint:after {
+    content: "\A🖱️ Mouse wheel to zoom\A🖱️ Click & drag to pan\A📱 Touch & drag on mobile\A🖱️ Click background to close\AESC to exit";
+    white-space: pre;
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    opacity: 0.9;
+}
+
+/* Mobile responsive zoom controls */
+@media screen and (max-width: 768px) {
+    .zoom-controls {
+        top: 10px;
+        left: 10px;
+        padding: 6px;
+        gap: 6px;
+    }
+    
+    .zoom-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+    
+    .zoom-reset {
+        font-size: 14px !important;
+    }
+    
+    .zoom-level {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+    
+    .diagram-container.zoomed .diagram-zoom-hint:after {
+        content: "\A👆 Pinch to zoom\A👆 Touch & drag to pan\A🖱️ Tap background to close";
     }
 }
 

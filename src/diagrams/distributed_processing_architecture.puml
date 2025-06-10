@@ -1,8 +1,6 @@
 @startuml
 !include ../style.puml
 
-title Distributed Processing Framework Architecture
-
 ' [step1 {"name":"Core Components"}]
 rectangle "Distributed Processing Framework" as Framework #LightBlue {
   
@@ -31,18 +29,15 @@ rectangle "Distributed Processing Framework" as Framework #LightBlue {
     }
   }
 }
-' [/step1]
 
-' [step2 {"name":"Component Relationships"}]
 SC --> DAG : "Creates execution plan"
 DAG --> TS : "Submits stages"
 TS --> CM : "Requests resources"
 CM --> Workers : "Allocates executors"
 Driver --> Workers : "Sends tasks"
 Workers --> Driver : "Returns results"
-' [/step2]
 
-' [step3 {"name":"Key Responsibilities"}]
+' [step2 {"name":"Key Responsibilities"}]
 note top of Driver
 **Driver Responsibilities:**
 • Creates SparkContext
@@ -66,9 +61,9 @@ note right of Workers
 • Report task status and results
 • Handle task failures
 end note
-' [/step3]
+' [/step2]
 
-' [step4 {"name":"Data Flow", "newPage":"true"}]
+' [step3 {"name":"Data Flow", "newPage":"true"}]
 actor "User Application" as User
 User -> SC : "Create RDDs & Submit Actions"
 SC -> DAG : "Analyze dependencies"
@@ -79,6 +74,6 @@ E1 --> TS : "Task results"
 E2 --> TS : "Task results"
 TS --> SC : "Aggregated results"
 SC --> User : "Final results"
-' [/step4]
+' [/step3]
 
 @enduml 

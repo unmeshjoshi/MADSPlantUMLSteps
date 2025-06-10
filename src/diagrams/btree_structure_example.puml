@@ -1,0 +1,157 @@
+@startuml
+
+!include ../style.puml
+
+title B+Tree Search: Find Customer ID 65,000
+
+' [step1 {"name":"Database Query Initiation"}]
+participant "Application" as App
+participant "Database Engine" as DB
+
+App -> DB: SELECT * FROM customers WHERE id = 65000
+activate DB
+
+note right of DB
+**Problem Without Index:**
+• 1M customers = 100MB file
+• Linear scan = 25,000 page reads average
+• Unacceptable performance for point queries
+end note
+' [/step1]
+
+' [step2 {"name":"B+Tree Index Structure Overview", "newPage":"true"}]
+participant "Root Node\n(Level 0)" as Root
+participant "Internal Node A\n(Level 1)" as Internal
+participant "Leaf Node 3\n(Level 2)" as Leaf
+
+note over Root
+**Always in Memory**
+Page Contents: [100K, 500K, 800K]
+Pointers to: [NodeA, NodeB, NodeC, NodeD]
+end note
+
+note over Internal
+**Cached on Demand**  
+Node A Range: 1-100K
+Page Contents: [25K, 50K, 75K]
+Pointers to: [Leaf1, Leaf2, Leaf3, Leaf4]
+end note
+
+note over Leaf
+**Data Storage**
+Leaf 3 Range: 50K-75K  
+Contains: Actual customer records
+Next: Pointer to Leaf 4
+end note
+' [/step2]
+
+' [step3 {"name":"Step 1: Root Node Search"}]
+DB -> Root: Search for Customer 65,000
+activate Root
+
+note right of Root
+**Root Node Analysis:**
+• Compare 65,000 with [100K, 500K, 800K]
+• 65K < 100K → Follow pointer to Node A
+• **Page Reads: 0** (always in memory)
+end note
+
+Root --> DB: Navigate to Internal Node A
+deactivate Root
+' [/step3]
+
+' [step4 {"name":"Step 2: Internal Node Navigation"}]
+DB -> Internal: Search in Node A for 65,000
+activate Internal
+
+note right of Internal
+**Internal Node A Analysis:**
+• Compare 65,000 with [25K, 50K, 75K]
+• 50K < 65K < 75K → Follow pointer to Leaf 3
+• **Page Reads: 1** (read from disk)
+end note
+
+Internal --> DB: Navigate to Leaf Node 3
+deactivate Internal
+' [/step4]
+
+' [step5 {"name":"Step 3: Leaf Node Data Access", "newPage":"true"}]
+DB -> Leaf: Search in Leaf 3 for 65,000
+activate Leaf
+
+note right of Leaf
+**Leaf Node 3 Analysis:**
+• Range: 50,000 - 75,000 customers
+• Sequential scan within leaf
+• Find Customer 65,000 record
+• **Page Reads: 1** (read from disk)
+end note
+
+Leaf --> DB: Customer 65,000 data found
+deactivate Leaf
+' [/step5]
+
+' [step6 {"name":"Query Result and Performance Summary"}]
+DB --> App: Return customer record
+
+note over App, DB
+**Total Performance:**
+• **Page Reads: 2** (Internal + Leaf)
+• **Time: ~0.3 milliseconds**
+• **Improvement: 12,500x faster than linear scan**
+end note
+
+deactivate DB
+' [/step6]
+
+' [step7 {"name":"Performance Comparison Analysis", "newPage":"true"}]
+note over App, Leaf
+**Linear Scan vs B+Tree Comparison:**
+
+**Linear Scan (Without Index):**
+• Average: 500,000 records scanned
+• Page reads: 25,000
+• Time: ~2.5 seconds
+• Complexity: O(n)
+
+**B+Tree Search (With Index):**
+• Tree height: 3 levels
+• Page reads: 2 (root cached)
+• Time: ~0.3 milliseconds  
+• Complexity: O(log n)
+
+**Why B+Tree is Superior:**
+• Logarithmic vs linear complexity
+• Root node always cached
+• Predictable performance
+• Scales to billions of records
+end note
+' [/step7]
+
+' [step8 {"name":"B+Tree Key Benefits for Databases", "newPage":"true"}]
+note over App, Leaf
+**B+Tree Advantages for Database Systems:**
+
+**1. Efficient Point Queries:**
+• Direct path to data: Root → Internal → Leaf
+• Minimal disk I/O operations
+• Consistent performance regardless of data size
+
+**2. Range Query Support:**
+• Leaf nodes linked sequentially
+• Efficient for "WHERE age BETWEEN 25 AND 35" queries
+• No need to restart search for range scans
+
+**3. Write Performance:**
+• Balanced tree maintained automatically
+• Updates only affect path to changed data
+• Minimal reorganization needed
+
+**4. Memory Efficiency:**
+• Only access needed pages
+• Root stays in memory for zero disk reads
+• Internal nodes cached based on access patterns
+end note
+' [/step8]
+
+@enduml

@@ -1,0 +1,487 @@
+title: "Data Architecture Fundamentals: From Storage to Distributed Processing"
+description: "Comprehensive 1.5-day workshop covering storage fundamentals, B+Trees, distributed processing with Spark, and advanced Parquet usage. Journey from single-machine limitations to petabyte-scale processing."
+icon: "fas fa-network-wired"
+category: "Data Architecture Workshop"
+sections:
+  - title: "Storage Fundamentals and File Access Patterns"
+    slides:
+      - type: "text"
+        title: "Workshop Overview: Data at Scale"
+        bullets:
+          - "Day 1: Storage fundamentals → Distributed processing basics"
+          - "Day 2: Delta-Lake → Transactional Distributed Storage over Object Stores"
+          - "Journey from KB files to PB-scale distributed processing"
+          - "Hands-on examples throughout the workshop"
+        notes: "Set expectations for the comprehensive workshop covering the entire data processing stack."
+
+      - type: "text"
+        title: "Storage Stack: From Hardware to Applications"
+        bullets:
+          - "Block Storage Devices: SSDs, HDDs, NVMe drives"
+          - "OS Page Cache: 4KB pages bridging storage and memory"
+          - "File Systems: ext4, NTFS, XFS managing block allocation"
+          - "Applications: Databases, analytics engines, file processors"
+        notes: "Establish the foundational storage hierarchy that everything builds upon."
+
+      - type: "text"
+        title: "OS Page Cache: The Critical Layer"
+        bullets:
+          - "Page Size: Typically 4KB chunks for memory-storage translation"
+          - "Caching Strategy: Keep frequently accessed pages in RAM"
+          - "Read Amplification: Must read entire 4KB page for 1 byte"
+          - "Write Amplification: Must write entire 4KB page for small updates"
+        notes: "Explain how the OS page cache affects all storage operations and introduces amplification effects."
+
+      - type: "text"
+        title: "Read vs Write Amplification Impact"
+        bullets:
+          - "Read Amplification: Reading 1 record → entire 4KB page loaded"
+          - "Write Amplification: Updating 1 field → entire 4KB page rewritten"
+          - "Network Impact: In distributed systems, amplifies network traffic"
+          - "Why It Matters: Affects query performance and storage efficiency"
+        notes: "Demonstrate how amplification effects multiply in distributed systems and affect performance."
+
+      - type: "text"
+        title: "OLTP vs OLAP: Different Access Patterns"
+        bullets:
+          - "OLTP (Online Transaction Processing):"
+          - "  • Point queries: 'Find user ID 12345'"
+          - "  • Small reads/writes to specific locations"
+          - "  • Optimized for low latency and high concurrency"
+          - "OLAP (Online Analytical Processing):"
+          - "  • Range queries: 'All transactions last 24 hours'"
+          - "  • Large sequential reads across many records"
+          - "  • Optimized for throughput and data scanning"
+        notes: "Establish the fundamental difference in access patterns that drives different storage and processing strategies."
+
+      - type: "text"
+        title: "Traditional Database Approach: Single File + B+Tree"
+        bullets:
+          - "One Table = One File: All data in a single file"
+          - "B+Tree Index: Optimizes point queries and range scans"
+          - "Page-based Access: Minimize file reads through smart indexing"
+          - "Works Well Until: File size grows beyond single machine capacity"
+        notes: "Explain the traditional approach and its effectiveness for OLTP workloads."
+
+  - title: "B+Tree Deep Dive: Optimizing File Access"
+    slides:
+      - type: "text"
+        title: "B+Tree Structure and Benefits"
+        bullets:
+          - "Balanced Tree: All leaves at same depth for consistent performance"
+          - "Page-aligned Nodes: Each node fits in one OS page (4KB)"
+          - "Fanout Factor: High branching reduces tree height"
+          - "Sequential Leaf Access: Efficient for range queries"
+        notes: "Explain the fundamental structure of B+Trees and why they're ideal for storage."
+
+      - type: "diagram"
+        title: "B+Tree Example: Customer Database"
+        diagramRef: "simple_btree_example"
+        bullets:
+          - "Scenario: 1 million customers, 100 bytes per record"
+          - "File Size: 100MB total data"
+          - "Without Index: Linear scan = 25,000 page reads average"
+          - "With B+Tree: Point query = 3-4 page reads maximum"
+          - "Height Calculation: log₁₀₀(1M) ≈ 3 levels + 1 leaf = 4 reads"
+        notes: "Concrete example showing dramatic improvement in file access efficiency with visual B+Tree structure generated using Graphviz."
+
+      - type: "text"
+        title: "B+Tree Page Access Pattern"
+        bullets:
+          - "Root Page: Always in memory (most accessed)"
+          - "Internal Pages: Cached based on query patterns"
+          - "Leaf Pages: Contain actual data, loaded on demand"
+          - "Range Scans: Follow leaf page links for sequential access"
+        notes: "Show how B+Trees minimize actual storage device access through intelligent caching."
+
+      - type: "text"
+        title: "B+Tree Limitations at Scale"
+        bullets:
+          - "Single Machine Bottleneck: File size limited by storage capacity"
+          - "Concurrent Access: Multiple users competing for same file"
+          - "Example Problem: 4TB database with 1000 concurrent users"
+          - "I/O Saturation: Storage device becomes the bottleneck"
+        notes: "Establish why single-machine databases hit limits and need distributed solutions."
+
+      - type: "text"
+        title: "When B+Trees Aren't Enough: OLAP Challenges"
+        bullets:
+          - "Analytics Query: 'Sum all sales from last month'"
+          - "Data Volume: Requires scanning TB of transaction data"
+          - "Single Machine: 4TB storage, 500MB/s read = 2+ hours"
+          - "User Experience: Unacceptable latency for business decisions"
+          - "Solution Needed: Distribute data and processing across machines"
+        notes: "Motivate the need for distributed processing by showing real-world OLAP limitations."
+
+  - title: "Introduction to Distributed Processing"
+    slides:
+      - type: "text"
+        title: "Why Distributed Processing?"
+        bullets:
+          - "Data volumes exceed single machine capacity (TB to PB scale)"
+          - "Processing time requirements demand parallel computation"
+          - "Need for fault tolerance and high availability"
+          - "Cost-effective scaling using commodity hardware"
+        notes: "Start with the fundamental motivation for distributed processing. Emphasize that it's not just about big data, but also about performance, reliability, and cost."
+
+      - type: "text"
+        title: "Distributed Storage: Breaking the Single File Limit"
+        bullets:
+          - "File Chunking: Split large files into smaller blocks"
+          - "Block Distribution: Store blocks across multiple machines"
+          - "Replication: Multiple copies for fault tolerance"
+          - "Example: 1TB file → 1000 × 1GB blocks across 100 machines"
+        notes: "Show how distributed storage solves the fundamental single-machine limitation."
+
+      - type: "text"
+        title: "Challenges of Distributed Computing"
+        bullets:
+          - "Coordination: How do nodes work together efficiently?"
+          - "Fault Tolerance: What happens when nodes fail?"
+          - "Data Movement: How to minimize expensive network transfers?"
+          - "Consistency: How to maintain correctness across nodes?"
+        notes: "Highlight the core challenges that any distributed processing framework must solve."
+
+      - type: "text"
+        title: "HDFS: Distributed File System Foundation"
+        bullets:
+          - "Block Size: 128MB default (much larger than OS pages)"
+          - "Replication: 3 copies for fault tolerance"
+          - "NameNode: Tracks block locations (metadata server)"
+          - "DataNodes: Store actual blocks (storage servers)"
+        notes: "Introduce HDFS as the foundation for distributed storage, emphasizing larger block sizes."
+
+      - type: "diagram"
+        title: "Distributed Processing Architecture"
+        diagramRef: "distributed_processing_architecture"
+        bullets:
+          - "Driver coordinates the overall execution"
+          - "Workers execute tasks in parallel"
+          - "Distributed storage provides data locality"
+        notes: "Show the high-level architecture of distributed processing frameworks."
+
+  - title: "Core Distributed Processing Concepts"
+    slides:
+      - type: "text"
+        title: "RDD: Resilient Distributed Dataset"
+        bullets:
+          - "Distributed Collection: Data spread across cluster nodes"
+          - "Immutable: Cannot be changed after creation"
+          - "Fault Tolerant: Can recreate lost partitions"
+          - "Lazy Evaluation: Computations deferred until action"
+        notes: "Introduce RDD as the fundamental abstraction for distributed data processing."
+
+      - type: "diagram"
+        title: "RDD Structure and Partitioning"
+        diagramRef: "rdd_partition_concept"
+        bullets:
+          - "Driver discovers HDFS blocks and creates partition mapping"
+          - "Each partition corresponds to data that can be processed independently"
+          - "Partition locations enable data locality optimization"
+        notes: "Show how RDDs map to underlying storage blocks and enable parallel processing."
+
+      - type: "text"
+        title: "From HDFS Blocks to RDD Partitions"
+        bullets:
+          - "HDFS Block: 128MB physical storage unit"
+          - "RDD Partition: Logical processing unit (maps to blocks)"
+          - "1:1 Mapping: Each partition typically processes one block"
+          - "Data Locality: Tasks scheduled on nodes with local data"
+        notes: "Explain the critical relationship between storage blocks and processing partitions."
+
+      - type: "diagram"
+        title: "Partition to Task Assignment"
+        diagramRef: "partition_to_task_assignment"
+        bullets:
+          - "Driver analyzes file structure and creates optimal partition strategy"
+          - "Task scheduler assigns partitions to workers based on data locality"
+          - "Each task processes exactly one partition independently"
+        notes: "Demonstrate how the framework optimally assigns work to minimize data movement."
+
+      - type: "text"
+        title: "Task Scheduling and Execution"
+        bullets:
+          - "Job Submission: User triggers an action (collect, save)"
+          - "Stage Creation: Framework analyzes dependencies"
+          - "Task Generation: One task per partition per stage"
+          - "Execution: Tasks run in parallel across cluster"
+        notes: "Walk through the complete lifecycle from user action to parallel execution."
+
+      - type: "diagram"
+        title: "Task Scheduling Flow"
+        diagramRef: "task_scheduling_flow"
+        bullets:
+          - "DAG Scheduler creates stages based on data dependencies"
+          - "Task Scheduler optimizes placement using data locality"
+          - "Executors run tasks and return results to driver"
+        notes: "Show the complete flow of how work gets distributed and executed."
+
+  - title: "Fault Tolerance in Distributed Systems"
+    slides:
+      - type: "text"
+        title: "Why Fault Tolerance Matters"
+        bullets:
+          - "Scale Reality: 1000 nodes = multiple failures per day"
+          - "Failure Types: Node crashes, network partitions, disk failures"
+          - "User Expectation: Jobs should complete despite failures"
+          - "Cost Impact: Restarting from beginning is expensive"
+        notes: "Establish why fault tolerance is critical at scale and the types of failures to expect."
+
+      - type: "diagram"
+        title: "Fault Tolerance Scenarios"
+        diagramRef: "fault_tolerance_scenarios"
+        bullets:
+          - "Task failure: Retry on different node"
+          - "Node failure: Reschedule all tasks from that node"
+          - "Data loss: Recompute using lineage information"
+        notes: "Demonstrate different failure scenarios and how the framework handles each."
+
+      - type: "text"
+        title: "Lineage: The Key to Fault Tolerance"
+        bullets:
+          - "Lineage Graph: Track how each partition was computed"
+          - "Recomputation: Recreate lost data instead of replication"
+          - "Minimal Recovery: Only recompute affected partitions"
+          - "Example: Lost partition recreated by re-reading source + transformations"
+        notes: "Explain how lineage enables efficient fault tolerance without expensive replication."
+
+      - type: "text"
+        title: "Performance Optimization: Data Locality"
+        bullets:
+          - "NODE_LOCAL: Data on same machine as task (optimal)"
+          - "RACK_LOCAL: Data on same rack as task (good)"
+          - "ANY: Data on different rack (requires network transfer)"
+          - "Performance Impact: 2-10x difference between local and remote"
+        notes: "Show the dramatic performance impact of data locality and how frameworks optimize for it."
+
+      - type: "diagram"
+        title: "Data Locality Optimization"
+        diagramRef: "data_locality_optimization"
+        bullets:
+          - "Scheduler prefers to run tasks where data is already stored"
+          - "Fallback strategies when optimal placement isn't available"
+          - "Network traffic minimization through intelligent scheduling"
+        notes: "Demonstrate how the scheduler optimizes task placement to minimize network overhead."
+
+  - title: "Introduction to Columnar Storage"
+    slides:
+      - type: "text"
+        title: "Row vs Column Storage for Analytics"
+        bullets:
+          - "Row Storage: Traditional approach, one record per row"
+          - "Column Storage: Group same attributes together"
+          - "Analytics Advantage: Often need only few columns from wide tables"
+          - "Example: 'SELECT sum(sales) FROM transactions' only needs sales column"
+        notes: "Introduce the fundamental concept of columnar storage and its advantages for analytical workloads."
+
+      - type: "text"
+        title: "Why Columnar Storage for OLAP?"
+        bullets:
+          - "Column Pruning: Only read needed columns, ignore rest"
+          - "Better Compression: Similar values compress better together"
+          - "Vectorized Processing: CPU-efficient batch operations"
+          - "Predicate Pushdown: Skip entire column chunks using statistics"
+        notes: "Explain the specific benefits that make columnar storage ideal for analytical processing."
+
+      - type: "text"
+        title: "Apache Parquet: Columnar Format for Big Data"
+        bullets:
+          - "Open Source: Standard format across big data ecosystem"
+          - "Optimized: Both storage efficiency and query performance"
+          - "Framework Support: Spark, Flink, Presto, Drill compatibility"
+          - "Schema Evolution: Handle changing data structures over time"
+        notes: "Introduce Parquet as the leading columnar format for distributed processing."
+
+  - title: "Parquet File Structure Deep Dive"
+    slides:
+      - type: "text"
+        title: "Parquet Hierarchical Structure"
+        bullets:
+          - "File Level: Complete Parquet file with header and footer"
+          - "Row Groups: ~128MB horizontal partitions for parallelism"
+          - "Column Chunks: All values for one column within a row group"
+          - "Pages: ~1MB units for I/O and compression"
+        notes: "Explain the four-level hierarchy that enables both parallel processing and efficient I/O."
+
+      - type: "text"
+        title: "Row Group Example: Breaking Down a 1GB File"
+        bullets:
+          - "File Size: 1GB Parquet file"
+          - "Row Groups: 8 groups × 128MB each"
+          - "Columns: 7 columns per row group"
+          - "Column Chunks: 56 total (8 row groups × 7 columns)"
+          - "Pages: ~896 pages (8 × 7 × ~16 pages per chunk)"
+        notes: "Provide concrete numbers to make the hierarchical structure tangible and understandable."
+
+      - type: "diagram"
+        title: "Parquet File Organization"
+        diagramRef: "parquet_file_structure"
+        bullets:
+          - "Footer contains metadata about all row groups and columns"
+          - "Row groups enable parallel processing"
+          - "Column chunks enable column pruning"
+          - "Pages enable efficient I/O and compression"
+        notes: "Visualize how the Parquet structure enables both parallel processing and query optimization."
+
+      - type: "text"
+        title: "Parquet Metadata: The Secret to Efficiency"
+        bullets:
+          - "Footer Metadata: Complete schema and statistics"
+          - "Row Group Stats: Min/max/null count per column per row group"
+          - "Page Stats: Fine-grained statistics within row groups"
+          - "Reading Process: Only 2 reads needed to get all metadata"
+        notes: "Explain how Parquet's rich metadata enables aggressive query optimization."
+
+      - type: "text"
+        title: "Parquet Reading Process"
+        bullets:
+          - "Step 1: Read last 8 bytes (footer length + magic number)"
+          - "Step 2: Read footer (~32KB) containing all metadata"
+          - "Step 3: Use metadata to plan optimal read strategy"
+          - "Step 4: Read only required row groups and columns"
+        notes: "Walk through the efficient reading process that minimizes I/O operations."
+
+  - title: "Distributed Processing with Parquet"
+    slides:
+      - type: "text"
+        title: "Parquet + Distributed Processing: Perfect Match"
+        bullets:
+          - "Row Groups = Natural Partitions: Each row group becomes a task"
+          - "Self-Describing: Metadata enables independent processing"
+          - "Predicate Pushdown: Skip entire row groups using statistics"
+          - "Column Pruning: Read only necessary data"
+        notes: "Explain why Parquet's design aligns perfectly with distributed processing frameworks."
+
+      - type: "diagram"
+        title: "Parquet to RDD Mapping"
+        diagramRef: "parquet_to_rdd_mapping"
+        bullets:
+          - "Driver reads Parquet footer to discover row groups"
+          - "Each row group becomes one RDD partition"
+          - "Tasks scheduled on nodes with local row group data"
+          - "Parallel processing of independent row groups"
+        notes: "Show how distributed frameworks map Parquet structure to parallel processing units."
+
+      - type: "text"
+        title: "Spark's Parquet Integration"
+        bullets:
+          - "ParquetInputFormat: Automatically creates one split per row group"
+          - "Catalyst Optimizer: Pushes predicates down to Parquet reader"
+          - "Vectorized Execution: Processes columnar data in batches"
+          - "Data Locality: Schedules tasks on nodes with row group data"
+        notes: "Detail how Apache Spark specifically optimizes for Parquet processing."
+
+      - type: "diagram"
+        title: "Complete Distributed Query Flow"
+        diagramRef: "parquet_distributed_query"
+        bullets:
+          - "Query planning: Analyze predicates and required columns"
+          - "Task creation: One task per qualifying row group"
+          - "Parallel execution: Independent processing of row groups"
+          - "Result collection: Combine results from all tasks"
+        notes: "Demonstrate the complete flow of a distributed analytical query on Parquet data."
+
+      - type: "text"
+        title: "Query Optimization with Parquet"
+        bullets:
+          - "Predicate Pushdown: Skip row groups where max < filter value"
+          - "Column Pruning: Only read columns used in query"
+          - "Projection Pushdown: Apply SELECT early to reduce data movement"
+          - "Example: Query 'SELECT name WHERE age > 30' reads only name/age columns from qualifying row groups"
+        notes: "Show concrete examples of how query optimization works with Parquet metadata."
+
+      - type: "diagram"
+        title: "Data Locality in Parquet Processing"
+        diagramRef: "parquet_data_locality"
+        bullets:
+          - "HDFS blocks contain Parquet row group data"
+          - "Tasks scheduled on nodes with local row group blocks"
+          - "Network traffic minimized through local processing"
+          - "Fault tolerance through block replication"
+        notes: "Demonstrate how data locality optimization works specifically with Parquet files."
+
+  - title: "Advanced Performance Optimization"
+    slides:
+      - type: "text"
+        title: "Memory Management and Vectorization"
+        bullets:
+          - "Vectorized Processing: Process columnar data in batches"
+          - "Lazy Loading: Load column chunks only when needed"
+          - "Dictionary Encoding: Reduce memory footprint for repeated values"
+          - "Page-level Processing: Efficient memory utilization"
+        notes: "Explain advanced techniques for optimizing memory usage and processing speed."
+
+      - type: "text"
+        title: "Compression and Encoding Strategies"
+        bullets:
+          - "Dictionary Encoding: Efficient for low-cardinality columns"
+          - "Run-Length Encoding: Optimal for sorted or repeated data"
+          - "Delta Encoding: Compress sequences of similar values"
+          - "Compression Codecs: SNAPPY for speed, GZIP for size"
+        notes: "Detail the various encoding and compression strategies available in Parquet."
+
+      - type: "diagram"
+        title: "End-to-End Spark + Parquet Execution"
+        diagramRef: "spark_parquet_execution"
+        bullets:
+          - "Driver analyzes Parquet metadata and creates execution plan"
+          - "Tasks distributed to executors with row group assignments"
+          - "Parallel processing with predicate and projection pushdown"
+          - "Results collected and combined for final output"
+        notes: "Show the complete execution flow highlighting all optimization techniques."
+
+      - type: "text"
+        title: "Performance Tuning Guidelines"
+        bullets:
+          - "Row Group Size: Balance parallelism vs overhead (128MB optimal)"
+          - "Partition Strategy: Align with common query patterns"
+          - "Compression Selection: SNAPPY for compute-bound, GZIP for I/O-bound"
+          - "Column Organization: Place frequently queried columns first"
+        notes: "Provide practical guidance for optimizing Parquet performance in production."
+
+      - type: "text"
+        title: "Real-World Performance Impact"
+        bullets:
+          - "Query Performance: 10-100x faster than row-based formats"
+          - "Storage Efficiency: 75% compression typical"
+          - "Network Reduction: 90% less data movement through column pruning"
+          - "Cost Savings: Significant reduction in compute and storage costs"
+        notes: "Quantify the real-world benefits achievable with optimized Parquet + Spark processing."
+
+  - title: "Workshop Summary and Next Steps"
+    slides:
+      - type: "text"
+        title: "Journey Completed: From KB to PB"
+        bullets:
+          - "Started: Single-machine file access with B+Trees"
+          - "Learned: Distributed processing fundamentals"
+          - "Mastered: Parquet + Spark optimization techniques"
+          - "Result: Can now handle petabyte-scale analytical workloads"
+        notes: "Summarize the complete journey from traditional database concepts to modern big data processing."
+
+      - type: "text"
+        title: "Key Architectural Principles"
+        bullets:
+          - "Data Locality: Always prefer local processing over network transfer"
+          - "Parallelism: Design for independent, parallel processing units"
+          - "Metadata: Rich metadata enables aggressive optimization"
+          - "Fault Tolerance: Build resilience into every layer"
+        notes: "Highlight the core principles that drive effective data architecture design."
+
+      - type: "text"
+        title: "Next Steps for Implementation"
+        bullets:
+          - "Start Small: Begin with single-node optimization"
+          - "Measure Everything: Profile before and after optimizations"
+          - "Incremental Migration: Gradually move to distributed processing"
+          - "Monitor Performance: Track locality ratios and compression effectiveness"
+        notes: "Provide practical guidance for applying these concepts in real projects."
+
+      - type: "text"
+        title: "Additional Resources"
+        bullets:
+          - "Apache Spark Documentation: In-depth guides and best practices"
+          - "Parquet Format Specification: Understanding file format details"
+          - "Performance Tuning Guides: Framework-specific optimization tips"
+          - "Community Forums: Join discussions and learn from others"
+        notes: "Point to resources for continued learning and community support."

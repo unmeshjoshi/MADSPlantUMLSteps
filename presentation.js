@@ -557,6 +557,18 @@ class PresentationViewer {
         
         // Clear drawings when changing slides
         this.clearDrawings();
+        
+        // Enable scrolling for all diagrams in this slide
+        this.enableScrollingForSlide(this.slides[index]);
+    }
+
+    enableScrollingForSlide(slideElement) {
+        const diagramContainers = slideElement.querySelectorAll('.diagram-container');
+        diagramContainers.forEach(container => {
+            // Enable simple scrolling
+            container.style.overflow = 'auto';
+            container.style.cursor = 'default';
+        });
     }
 
     showStep(slide) {
@@ -567,6 +579,12 @@ class PresentationViewer {
             step.style.display = i === this.currentStepIndex ? "block" : "none";
         });
         this.updateButtonStates();
+        
+        // Enable scrolling for diagrams in the current step
+        const currentStep = steps[this.currentStepIndex];
+        if (currentStep) {
+            this.enableScrollingForSlide(currentStep);
+        }
     }
 
     nextStep() {
@@ -608,6 +626,8 @@ class PresentationViewer {
 
     initializePresentation() {
         this.showSlide(this.currentSlideIndex);
+        // Initialize scrolling for all visible diagrams
+        this.enableScrollingForSlide(this.slides[this.currentSlideIndex]);
     }
 
     // Slide selector functionality
@@ -747,7 +767,7 @@ function toggleDiagramBullets(element) {
     element.classList.toggle('active');
 }
 
-// Diagram zoom functionality
+// Enhanced diagram zoom and pan functionality - GraphvizOnline style
 function toggleDiagramZoom(container) {
     // Prevent zoom when in drawing or laser mode
     if (document.body.classList.contains('drawing-mode') || 
@@ -755,20 +775,53 @@ function toggleDiagramZoom(container) {
         return;
     }
     
-    container.classList.toggle('zoomed');
+    const isZoomed = container.classList.contains('zoomed');
     
-    if (container.classList.contains('zoomed')) {
-        // Disable scrolling on body when zoomed
+    if (!isZoomed) {
+        // Enter zoom mode
+        container.classList.add('zoomed');
         document.body.style.overflow = 'hidden';
-        // Add ESC key listener
         document.addEventListener('keydown', handleZoomEscape);
+        
+        // Initialize pan/zoom if not already done
+        if (!container.dataset.panZoomInitialized) {
+            initializeAdvancedPanZoom(container);
+            container.dataset.panZoomInitialized = 'true';
+        }
+        
+        showZoomControls(container);
+        
+        // Add click-to-close on background
+        container._backgroundClickHandler = function(e) {
+            if (e.target === container) {
+                toggleDiagramZoom(container);
+            }
+        };
+        container.addEventListener('click', container._backgroundClickHandler);
+        
     } else {
-        // Re-enable scrolling
+        // Exit zoom mode
+        container.classList.remove('zoomed');
         document.body.style.overflow = '';
-        // Remove ESC key listener
         document.removeEventListener('keydown', handleZoomEscape);
+        hideZoomControls(container);
+        
+        // Remove click-to-close
+        if (container._backgroundClickHandler) {
+            container.removeEventListener('click', container._backgroundClickHandler);
+            delete container._backgroundClickHandler;
+        }
+        
+        // Reset diagram position
+        if (container._panZoom) {
+            container._panZoom.resetView();
+        }
     }
 }
+
+// Simple scrolling - no pan/zoom functionality needed
+
+// Removed complex zoom controls - using simple pan/zoom only
 
 function handleZoomEscape(e) {
     if (e.key === 'Escape') {
