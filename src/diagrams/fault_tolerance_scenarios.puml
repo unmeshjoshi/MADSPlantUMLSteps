@@ -1,0 +1,152 @@
+@startuml
+!include ../style.puml
+
+title Fault Tolerance in Distributed Processing
+
+' [step1 {"name":"Normal Operation"}]
+participant "Driver" as Driver
+participant "Executor 1" as E1
+participant "Executor 2" as E2
+participant "Executor 3" as E3
+participant "Storage" as Storage
+
+Driver -> E1: Task 1 (Partition A)
+Driver -> E2: Task 2 (Partition B)
+Driver -> E3: Task 3 (Partition C)
+
+E1 -> Storage: Read Partition A
+E2 -> Storage: Read Partition B
+E3 -> Storage: Read Partition C
+
+E1 --> Driver: Task 1 Success
+E2 --> Driver: Task 2 Success
+E3 --> Driver: Task 3 Success
+' [/step1]
+
+' [step2 {"name":"Task Failure Scenario", "newPage":"true"}]
+note over Driver, E3: **Scenario 1: Task Execution Failure**
+
+Driver -> E1: Task 1 (Partition A)
+Driver -> E2: Task 2 (Partition B)
+Driver -> E3: Task 3 (Partition C)
+
+E1 --> Driver: Task 1 Success
+E2 -[#red]-> Driver: Task 2 Failed (OutOfMemoryError)
+E3 --> Driver: Task 3 Success
+
+Driver -> Driver: Mark Task 2 as failed
+Driver -> E1: Retry Task 2 (Partition B)
+E1 -> Storage: Read Partition B
+E1 --> Driver: Task 2 Success (Retry)
+' [/step2]
+
+' [step3 {"name":"Node Failure Scenario"}]
+note over Driver, E3: **Scenario 2: Executor Node Failure**
+
+Driver -> E1: Task 1 (Partition A)
+Driver -> E2: Task 2 (Partition B)
+Driver -> E3: Task 3 (Partition C)
+
+E1 --> Driver: Task 1 Success
+E2 -[#red]-> E2: Node failure
+destroy E2
+E3 --> Driver: Task 3 Success
+
+Driver -> Driver: Detect E2 failure via timeout
+Driver -> Driver: Request new executor
+Driver -> E1: Task 2 (Partition B) - reassigned
+E1 -> Storage: Read Partition B
+E1 --> Driver: Task 2 Success
+' [/step3]
+
+' [step4 {"name":"Data Loss Recovery", "newPage":"true"}]
+note over Driver, Storage: **Scenario 3: Cached Data Loss Recovery**
+
+note over Driver, Storage
+**Lineage Tracking:**
+• Each RDD knows its parent RDDs
+• Transformations are recorded: Input → filter(x > 10) → map(x * 2)
+• Lost partitions can be recomputed
+• No need for expensive replication
+end note
+
+Driver -> E1: Cache MappedRDD partitions
+E1 -> E1: Store partitions in memory
+E1 -[#red]-> E1: Node failure (cached data lost)
+destroy E1
+
+Driver -> E2: Recompute lost partitions
+activate E2
+E2 -> Storage: Read original data
+E2 -> E2: Apply filter(x > 10)
+E2 -> E2: Apply map(x * 2)
+E2 --> Driver: Recomputed partitions
+deactivate E2
+' [/step4]
+
+' [step5 {"name":"Network Partition", "newPage":"true"}]
+note over Driver, E3: **Scenario 4: Network Partition**
+
+Driver -[#red]X E2: Network partition
+Driver -[#red]X E3: Network partition
+
+Driver -> E1: Continue with available tasks
+note right of E1: Tasks using cached data continue
+
+Driver -> Driver: Wait for partition to heal
+note right of Driver: Or reschedule on available nodes
+
+Driver -> E2: Network restored - Resume task scheduling
+Driver -> E3: Network restored - Resume task scheduling
+' [/step5]
+
+' [step6 {"name":"Speculative Execution"}]
+note over Driver, E3: **Scenario 5: Slow Task Speculation**
+
+Driver -> E1: Task 1 (Partition A)
+Driver -> E2: Task 2 (Partition B) 
+Driver -> E3: Task 3 (Partition C)
+
+E1 --> Driver: Task 1 Success (10s)
+E3 --> Driver: Task 3 Success (12s)
+note over E2: Task 2 running slowly (30s+)
+
+Driver -> Driver: Detect slow task (speculation threshold)
+Driver -> E1: Speculative Task 2 (Partition B)
+note right of Driver: Launch duplicate task
+
+group "Task Completion Race"
+  E2 --> Driver: Task 2 Success (45s)
+  E1 --> Driver: Task 2 Success (15s)
+end
+
+Driver -> Driver: Accept first result, cancel other
+' [/step6]
+
+' [step7 {"name":"Checkpointing Strategy", "newPage":"true"}]
+note over Driver, Storage: **Scenario 6: Long Lineage Protection**
+
+note over Driver, Storage
+**Long RDD Chain:**
+RDD1 → RDD2 → RDD3 → RDD4 → RDD5
+Each arrow represents a transformation
+
+**Checkpoint Decision:**
+• Lineage getting too long
+• Expensive to recompute
+• Break the chain with checkpoint
+end note
+
+Driver -> Storage: Checkpoint RDD3 to reliable storage
+Storage --> Driver: Checkpoint complete
+
+note over Driver, Storage
+**Benefits of Checkpointing:**
+• Truncates lineage chain
+• Faster recovery from failures
+• Reduces memory pressure
+• Enables efficient iterative algorithms
+end note
+' [/step7]
+
+@enduml 

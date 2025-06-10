@@ -1,0 +1,146 @@
+@startuml
+!include ../style.puml
+
+title RDD and Partition Concept
+
+' [step1 {"name":"Driver Queries HDFS for Block Information"}]
+rectangle "HDFS Discovery Process" as HDFSDiscovery #LightGray {
+  rectangle "Driver\nProgram" as Driver #LightBlue
+  rectangle "HDFS NameNode\n(Metadata Store)" as NameNode #LightYellow
+  rectangle "File: /data/large_file.txt\n(320MB total)" as HDFSFile #LightGreen
+}
+
+Driver --> NameNode : "1. getFileStatus()\n2. getBlockLocations()"
+NameNode --> HDFSFile : "Query file metadata"
+NameNode --> Driver : "Block locations:\n• Block1: 128MB at [DN1,DN2]\n• Block2: 128MB at [DN2,DN3]\n• Block3: 64MB at [DN3,DN1]"
+
+note bottom of HDFSDiscovery
+Driver Discovery Process:
+• Query NameNode for file metadata and block information
+• Receive block sizes, locations, and replication details
+• Use this information to determine optimal partitioning
+• Each HDFS block typically becomes one RDD partition
+end note
+' [/step1]
+
+' [step2 {"name":"Driver Creates RDD Structure from Block Metadata", "newPage":"true"}]
+rectangle "RDD Creation Process" as RDDCreation #LightPink {
+  rectangle "Partition 0\n(Block 1: 128MB)\nDataNodes: [1,2]" as P0 #LightGreen
+  rectangle "Partition 1\n(Block 2: 128MB)\nDataNodes: [2,3]" as P1 #LightGreen
+  rectangle "Partition 2\n(Block 3: 64MB)\nDataNodes: [3,1]" as P2 #LightGreen
+}
+
+note bottom
+Driver uses HDFS block information to:
+• Calculate partition count (3 blocks = 3 partitions)
+• Store preferred locations for each partition
+• Enable data locality during task scheduling
+
+Driver stores for each partition:
+• Block location information
+• Preferred DataNode locations
+• Block size and offset
+• Replication locations for fault tolerance
+end note
+
+' [/step2]
+
+' [step3 {"name":"How Driver Determines Partition Count"}]
+note bottom of RDDCreation
+How Driver Determines Partition Count:
+• HDFS Files: Query NameNode for blocks, one partition per block
+• Small Files: May combine multiple files per partition
+• parallelize(data, numPartitions): Explicit user specification
+• Transformed RDDs: Inherit from parent unless repartitioned
+• Key insight: Partition count drives parallelism degree
+end note
+' [/step3]
+
+' [step4 {"name":"From Partitions to Tasks"}]
+rectangle "Task Creation Process" as TaskCreation #LightPink {
+  rectangle "Task 0\nProcesses Partition 0" as T0 #Orange
+  rectangle "Task 1\nProcesses Partition 1" as T1 #Orange
+  rectangle "Task 2\nProcesses Partition 2" as T2 #Orange
+}
+
+P0 --> T0 : "1:1 mapping\nPartition to Task"
+P1 --> T1 : "Each task knows its\npartition location"
+P2 --> T2 : "Task contains\ntransformation logic"
+
+note bottom of TaskCreation
+Key Insight: Partition Count = Task Count
+• Action triggers task creation for each partition
+• Tasks are the unit of parallel execution
+• Each task processes exactly one partition
+end note
+' [/step4]
+
+' [step5 {"name":"Partition Distribution", "newPage":"true"}]
+rectangle "Cluster Nodes" as Cluster {
+  rectangle "Node 1" as N1 #LightYellow {
+    rectangle "Executor 1" as E1 #Orange
+  }
+  rectangle "Node 2" as N2 #LightYellow {
+    rectangle "Executor 2" as E2 #Orange
+  }
+  rectangle "Node 3" as N3 #LightYellow {
+    rectangle "Executor 3" as E3 #Orange
+  }
+}
+
+P0 --> E1 : "Task 0 assigned\nbased on data locality"
+P1 --> E2 : "Task 1 assigned\nbased on data locality"
+P2 --> E3 : "Task 2 assigned\nbased on data locality"
+' [/step5]
+
+' [step6 {"name":"Transformations"}]
+rectangle "Transformation: map(x => x * 2)" as Transform #LightCoral
+
+rectangle "Result RDD" as ResultRDD #LightPink {
+  rectangle "Partition 0'" as P0R #LightCyan {
+    rectangle "Transformed Data\n[2, 4, 6]" as D1R #White
+  }
+  rectangle "Partition 1'" as P1R #LightCyan {
+    rectangle "Transformed Data\n[8, 10, 12]" as D2R #White
+  }
+  rectangle "Partition 2'" as P2R #LightCyan {
+    rectangle "Transformed Data\n[14, 16, 18]" as D3R #White
+  }
+}
+
+RDDCreation --> Transform : "Apply transformation"
+Transform --> ResultRDD : "Creates new RDD"
+' [/step6]
+
+' [step7 {"name":"Parallel Processing"}]
+note bottom of Cluster
+Parallel Processing Benefits:
+• Each task processes its partition independently
+• Transformations applied in parallel across executors
+• No data movement between nodes for map operations
+• Fault tolerance through lineage tracking and task retry
+end note
+' [/step7]
+
+' [step8 {"name":"Lineage Graph", "newPage":"true"}]
+rectangle "RDD Lineage (DAG)" as Lineage #LightGray {
+  rectangle "Source RDD\n(parallelize)" as SourceRDD #LightGreen
+  rectangle "Mapped RDD\n(map)" as MappedRDD #LightYellow
+  rectangle "Filtered RDD\n(filter)" as FilteredRDD #LightBlue
+  rectangle "Final RDD\n(collect)" as FinalRDD #LightCoral
+}
+
+SourceRDD --> MappedRDD : "Narrow dependency"
+MappedRDD --> FilteredRDD : "Narrow dependency"
+FilteredRDD --> FinalRDD : "Action triggers execution"
+
+note bottom of Lineage
+Lineage Benefits:
+• Fault recovery: Recompute lost partitions using task retry
+• Optimization: Combine transformations before execution
+• Lazy evaluation: Execute only when actions are triggered
+• Memory management: Drop intermediate results when safe
+end note
+' [/step8]
+
+@enduml 

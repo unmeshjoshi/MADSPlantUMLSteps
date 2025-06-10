@@ -1,0 +1,128 @@
+@startuml
+!include ../style.puml
+
+title Task Scheduling and Execution Flow
+
+' [step1 {"name":"Job Submission"}]
+actor "User Application" as User
+participant "SparkContext" as SC
+participant "DAG Scheduler" as DAG
+participant "Task Scheduler" as TS
+participant "Cluster Manager" as CM
+
+User -> SC: rdd.collect()
+activate SC
+SC -> DAG: submitJob(rdd, partitions)
+activate DAG
+' [/step1]
+
+' [step2 {"name":"Stage Creation"}]
+DAG -> DAG: Analyze RDD dependencies
+DAG -> DAG: Create stages based on shuffle boundaries
+DAG -> DAG: Build task sets for each stage
+
+note right of DAG
+Stage Creation Process:
+1. Walk RDD lineage backwards from action
+2. Identify shuffle dependencies (wide transformations)
+3. Create stages at shuffle boundaries
+4. Generate one task per partition in each stage
+5. Tasks inherit partition count from RDD structure
+end note
+' [/step2]
+
+' [step3 {"name":"Task Set Submission", "newPage":"true"}]
+DAG -> TS: submitTasks(taskSet, stage)
+activate TS
+TS -> CM: Request executor resources
+activate CM
+CM --> TS: Available executors
+deactivate CM
+' [/step3]
+
+' [step4 {"name":"Resource Allocation"}]
+participant "Executor 1" as E1
+participant "Executor 2" as E2
+participant "Executor 3" as E3
+
+TS -> TS: Determine task placement
+note right of TS
+Task Placement Strategy:
+• Query partition preferred locations (HDFS block locations)
+• Prefer NODE_LOCAL: executor on same node as data
+• Fall back to PROCESS_LOCAL: cached data in same JVM
+• Then RACK_LOCAL: same rack but different node
+• Finally ANY: any available executor in cluster
+end note
+
+TS -> E1: launchTask(task1)
+TS -> E2: launchTask(task2)
+TS -> E3: launchTask(task3)
+' [/step4]
+
+' [step5 {"name":"Task Execution"}]
+activate E1
+activate E2
+activate E3
+
+E1 -> E1: Execute task on partition
+E2 -> E2: Execute task on partition
+E3 -> E3: Execute task on partition
+
+note across: Parallel Task Execution
+
+E1 -> E1: Apply transformations
+E2 -> E2: Apply transformations
+E3 -> E3: Apply transformations
+' [/step5]
+
+' [step6 {"name":"Result Collection"}]
+E1 --> TS: TaskResult(task1, result1)
+E2 --> TS: TaskResult(task2, result2)
+E3 --> TS: TaskResult(task3, result3)
+
+deactivate E1
+deactivate E2
+deactivate E3
+
+TS -> TS: Aggregate task results
+TS --> DAG: Stage completed
+deactivate TS
+' [/step6]
+
+' [step7 {"name":"Job Completion"}]
+DAG -> DAG: Check if all stages complete
+DAG --> SC: Job result
+deactivate DAG
+SC --> User: Final result
+deactivate SC
+' [/step7]
+
+' [step8 {"name":"Error Handling", "newPage":"true"}]
+note over E1, E3
+Common Failures:
+• Task execution errors
+• Executor node failures
+• Network partitions
+• Out of memory errors
+end note
+
+E1 -[#red]-> TS: TaskFailed(task1, exception)
+TS -> TS: Retry task on different executor
+TS -> E2: launchTask(task1_retry)
+E2 --> TS: TaskResult(task1, result1)
+' [/step8]
+
+' [step9 {"name":"Performance Optimizations", "newPage":"true"}]
+participant "System" as Sys
+
+note over Sys
+**Key Optimizations:**
+• **Data Locality**: Schedule tasks where data resides
+• **Speculation**: Launch duplicate tasks for slow executors
+• **Resource Sharing**: Reuse JVMs and cached data
+• **Pipeline Optimization**: Combine compatible transformations
+end note
+' [/step9]
+
+@enduml 

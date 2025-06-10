@@ -36,69 +36,54 @@ end
 ' [/step2]
 
 ' [step3 {"name":"Task Creation", "newPage":"true"}]
-Driver -> TS: Submit tasks for execution
-activate TS
+note top
+**Task Creation and Distribution:**
 
-TS -> TS: Create one task per row group
-TS -> TS: Determine preferred locations
-TS -> TS: Schedule tasks on available executors
+1. Driver submits tasks to Task Scheduler
+2. Task Scheduler creates one task per row group
+3. Determines preferred locations based on data locality
+4. Schedules tasks on available executors
 
-group #LightGreen "Task Distribution"
-  TS -> "Executor 1": Task 1 (Row Group 1)
-  TS -> "Executor 2": Task 2 (Row Group 2) 
-  TS -> "Executor 3": Task 3 (Row Group 3)
-  TS -> "Executor 1": Task 4 (Row Group 4)
-  note right: Tasks distributed based on\ndata locality and executor availability
-end
+**Task Distribution:**
+• Task 1 (Row Group 1) → Executor 1
+• Task 2 (Row Group 2) → Executor 2
+• Task 3 (Row Group 3) → Executor 3
+• Task 4 (Row Group 4) → Executor 1
+
+Tasks distributed based on data locality and executor availability.
+end note
 ' [/step3]
 
 ' [step4 {"name":"Parallel Execution"}]
-group #LightYellow "Parallel Execution Phase"
-  participant "Executor 1" as E1
-  participant "Executor 2" as E2
-  participant "Executor 3" as E3
-  participant "Storage" as Storage
+note right of TS
+**Parallel Execution Phase:**
 
-  activate E1
-  activate E2
-  activate E3
+1. Executors read row groups:
+   • Executor 1 → Storage: Read Row Group 1
+   • Executor 2 → Storage: Read Row Group 2
+   • Executor 3 → Storage: Read Row Group 3
 
-  E1 -> Storage: Read Row Group 1
-  E2 -> Storage: Read Row Group 2
-  E3 -> Storage: Read Row Group 3
-
-  activate Storage
-  Storage --> E1: RG1 data
-  Storage --> E2: RG2 data
-  Storage --> E3: RG3 data
-  deactivate Storage
-
-  E1 -> E1: Apply filters (age > 30)
-  E2 -> E2: Apply filters (age > 30)
-  E3 -> E3: Apply filters (age > 30)
-
-  E1 -> E1: Project required columns
-  E2 -> E2: Project required columns
-  E3 -> E3: Project required columns
-end
+2. Each executor processes its data:
+   • Apply filters (age > 30)
+   • Project required columns
+   • Prepare results for collection
+end note
 ' [/step4]
 
 ' [step5 {"name":"Result Collection"}]
-group #LightPink "Result Collection Phase"
-  E1 --> Driver: Filtered results from RG1
-  E2 --> Driver: Filtered results from RG2
-  E3 --> Driver: Filtered results from RG3
-  
-  deactivate E1
-  deactivate E2
-  deactivate E3
+note right of Driver
+**Result Collection Phase:**
 
-  Driver -> Driver: Combine results from all tasks
-  Driver -> Driver: Apply final transformations
-  Driver --> User: Query results
-  deactivate Driver
-  deactivate TS
-end
+1. Executors return filtered results:
+   • Executor 1 → Driver: RG1 filtered data
+   • Executor 2 → Driver: RG2 filtered data  
+   • Executor 3 → Driver: RG3 filtered data
+
+2. Driver processes results:
+   • Combine results from all tasks
+   • Apply final transformations
+   • Return query results
+end note
 ' [/step5]
 
 note bottom

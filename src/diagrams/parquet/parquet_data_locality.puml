@@ -52,46 +52,42 @@ end note
 ' [/step3]
 
 ' [step4 {"name":"Optimal Task Assignment", "newPage":"true"}]
-group #LightGreen "Optimal Task Assignment (Local Reads)"
-  TS -> ExA: Task 1 - Process RG1
-  note right: Local read from Block 1
-  
-  TS -> ExB: Task 2 - Process RG2  
-  note right: Local read from Block 2
-  
-  TS -> ExC: Task 3 - Process RG3
-  note right: Local read from Block 3
-  
-  ExA -> B1A: Read RG1 data locally
-  ExB -> B2B: Read RG2 data locally
-  ExC -> B3C: Read RG3 data locally
-end
+note top
+**Optimal Task Assignment (Local Reads):**
+
+Task Scheduler assigns:
+• Task 1 → Executor A: Process RG1 (Local read from Block 1)
+• Task 2 → Executor B: Process RG2 (Local read from Block 2)  
+• Task 3 → Executor C: Process RG3 (Local read from Block 3)
+
+All executors read data locally from their respective nodes.
+end note
 ' [/step4]
 
 ' [step5 {"name":"Fallback Scenarios"}]
-group #LightYellow "Fallback Scenario (Remote Reads)"
-  TS -> ExA: Task 1 - Process RG1 (Node A busy)
-  TS -> ExB: Task 2 - Process RG2
-  TS -> ExA: Task 3 - Process RG3 (Node C unavailable)
-  
-  ExA -> B1A: Read RG1 locally ✓
-  ExB -> B2B: Read RG2 locally ✓
-  ExA -> B3A: Read RG3 from replica
-  note right: Uses local replica instead\nof remote primary copy
-end
+note top
+**Fallback Scenario (Remote Reads):**
+
+When Node C is unavailable:
+• Task 1 → Executor A: Process RG1 (Read locally from Block 1) ✓
+• Task 2 → Executor B: Process RG2 (Read locally from Block 2) ✓
+• Task 3 → Executor A: Process RG3 (Read from replica Block 3)
+
+Uses local replica instead of remote primary copy for better performance.
+end note
 ' [/step5]
 
 ' [step6 {"name":"Network Traffic Analysis"}]
-note bottom of NodeC
-  **Local Reads (Optimal):**
-  • Zero network traffic for data
-  • Only metadata and results over network
-  • Maximum I/O throughput
-  
-  **Remote Reads (Fallback):**
-  • Data transfer over network
-  • Replica selection for minimum hops
-  • Bandwidth and latency overhead
+note bottom
+**Local Reads (Optimal):**
+• Zero network traffic for data
+• Only metadata and results over network
+• Maximum I/O throughput
+
+**Remote Reads (Fallback):**
+• Data transfer over network
+• Replica selection for minimum hops
+• Bandwidth and latency overhead
 end note
 ' [/step6]
 

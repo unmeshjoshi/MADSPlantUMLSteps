@@ -1,0 +1,141 @@
+@startuml
+!include ../style.puml
+
+title Worker Registration and Lifecycle Management
+
+' [step1 {"name":"Cluster Startup"}]
+participant "Cluster Manager" as CM
+participant "Driver Program" as Driver
+participant "Worker Node 1" as W1
+participant "Worker Node 2" as W2
+participant "Worker Node 3" as W3
+
+CM -> CM: Start cluster
+CM -> Driver: Cluster available
+Driver -> CM: Request application resources
+' [/step1]
+
+' [step2 {"name":"Worker Registration"}]
+CM -> W1: Start executor
+CM -> W2: Start executor  
+CM -> W3: Start executor
+
+activate W1
+activate W2
+activate W3
+
+W1 -> Driver: RegisterExecutor(executor1, cores=4, memory=8GB)
+W2 -> Driver: RegisterExecutor(executor2, cores=4, memory=8GB)
+W3 -> Driver: RegisterExecutor(executor3, cores=4, memory=8GB)
+
+Driver -> W1: RegisteredExecutor(executor1)
+Driver -> W2: RegisteredExecutor(executor2)
+Driver -> W3: RegisteredExecutor(executor3)
+' [/step2]
+
+' [step3 {"name":"Health Monitoring", "newPage":"true"}]
+group #LightBlue "Continuous Health Monitoring"
+    loop every 30 seconds
+        W1 -> Driver: Heartbeat(executor1, status)
+        W2 -> Driver: Heartbeat(executor2, status)
+        W3 -> Driver: Heartbeat(executor3, status)
+        
+        Driver -> W1: HeartbeatResponse
+        Driver -> W2: HeartbeatResponse
+        Driver -> W3: HeartbeatResponse
+    end
+end
+' [/step3]
+
+' [step4 {"name":"Task Assignment"}]
+Driver -> Driver: Receive job submission
+Driver -> Driver: Calculate task assignment strategy
+
+note right of Driver
+**Assignment Strategy:**
+• Prefer data-local executors
+• Balance load across executors
+• Consider available cores/memory
+• Account for current task queue
+end note
+
+Driver -> W1: LaunchTask(task1, partition1)
+Driver -> W2: LaunchTask(task2, partition2)
+Driver -> W3: LaunchTask(task3, partition3)
+' [/step4]
+
+' [step5 {"name":"Failure Scenarios", "newPage":"true"}]
+note over CM, W3
+**Executor Failure Handling**
+end note
+
+W2 -[#red]-> Driver: Connection lost (network failure)
+
+Driver -> Driver: Mark executor2 as failed
+Driver -> CM: Request replacement executor
+
+alt Worker recoverable
+    CM -> W2: Restart executor
+    W2 -> Driver: RegisterExecutor(executor2_new)
+    Driver -> W2: RegisteredExecutor(executor2_new)
+else Worker unrecoverable
+    CM -> CM: Start new worker node
+    CM -> Driver: RegisterExecutor(executor4)
+    Driver -> CM: RegisteredExecutor(executor4)
+end
+
+Driver -> Driver: Reschedule failed tasks
+' [/step5]
+
+' [step6 {"name":"Dynamic Scaling"}]
+note over CM, W3
+**Dynamic Resource Management**
+end note
+
+Driver -> CM: Request additional executors (scale up)
+CM -> CM: Start new worker node
+CM -> Driver: RegisterExecutor(executor4)
+
+Driver -> W1: RemoveExecutor(executor1) 
+W1 -> Driver: ExecutorRemoved(executor1)
+
+note bottom
+**Dynamic Resource Management:**
+• Scale up during peak load
+• Scale down during idle periods
+end note
+' [/step6]
+
+' [step7 {"name":"Resource Monitoring", "newPage":"true"}]
+participant "Monitoring System" as Monitor
+
+note over Monitor
+**Resource Monitoring Metrics:**
+• **CPU Usage**: Track core utilization per executor
+• **Memory Usage**: Monitor heap and off-heap memory
+• **Task Queue Depth**: Number of pending tasks per executor
+• **Network I/O**: Data transfer rates and latency
+• **Disk I/O**: Local storage read/write performance
+end note
+' [/step7]
+
+' [step8 {"name":"Cleanup Process", "newPage":"true"}]
+group #LightYellow "Application Shutdown"
+    Driver -> W1: Stop executor
+    Driver -> W2: Stop executor
+    Driver -> W3: Stop executor
+    
+    W1 -> Driver: ExecutorStopped(executor1)
+    W2 -> Driver: ExecutorStopped(executor2)
+    W3 -> Driver: ExecutorStopped(executor3)
+    
+    deactivate W1
+    deactivate W2
+    deactivate W3
+    
+    Driver -> CM: Application completed
+    CM -> CM: Release cluster resources
+end
+' [/step8]
+
+@enduml 

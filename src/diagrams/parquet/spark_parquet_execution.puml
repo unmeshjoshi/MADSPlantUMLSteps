@@ -107,13 +107,13 @@ deactivate Driver
 ' [/step6]
 
 ' [step7 {"name":"Performance Summary"}]
-note bottom of User
-  **Performance Optimizations Applied:**
-  • Row group pruning: 50% I/O reduction (2 of 4 RGs skipped)
-  • Column pruning: Only name,age columns read
-  • Predicate pushdown: Filter applied at storage level
-  • Data locality: Tasks executed on data-local nodes
-  • Vectorized execution: Batch processing for efficiency
+note bottom
+**Performance Optimizations Applied:**
+• Row group pruning: 50% I/O reduction (2 of 4 RGs skipped)
+• Column pruning: Only name,age columns read
+• Predicate pushdown: Filter applied at storage level
+• Data locality: Tasks executed on data-local nodes
+• Vectorized execution: Batch processing for efficiency
 end note
 ' [/step7]
 

@@ -1,0 +1,166 @@
+@startuml
+!include ../style.puml
+
+title Partition Discovery and Task Assignment Flow
+
+' [step1 {"name":"Data Source Analysis"}]
+participant "Driver" as Driver
+participant "HDFS/Storage" as Storage
+participant "Data Source" as DataSource
+
+Driver -> DataSource: analyze input data
+activate DataSource
+DataSource -> Storage: getFileBlocks()
+Storage --> DataSource: [Block1: 128MB, Block2: 128MB, Block3: 64MB]
+DataSource --> Driver: Partition count = 3 (one per block)
+deactivate DataSource
+
+note right of Driver
+Driver discovers partitions based on:
+• HDFS blocks (default 128MB each)
+• File sizes and split strategies
+• Explicit partitioning (e.g., parallelize(data, 8))
+• Previous RDD partitioning
+end note
+' [/step1]
+
+' [step2 {"name":"RDD Creation with Partitions", "newPage":"true"}]
+Driver -> Driver: createRDD(partitionCount=3)
+
+note over Driver
+**RDD Structure Created:**
+• Partition 0 (Block 1: 128MB)
+• Partition 1 (Block 2: 128MB)
+• Partition 2 (Block 3: 64MB)
+
+Each partition represents:
+• A logical slice of data
+• Work that can be processed independently
+• Input for exactly one task
+• Location hints for optimal placement
+end note
+' [/step2]
+
+' [step3 {"name":"Job Submission and Stage Creation"}]
+Driver -> Driver: action triggered (e.g., rdd.collect())
+Driver -> Driver: analyze RDD dependencies
+Driver -> Driver: create stages based on shuffle boundaries
+
+note over Driver
+**Stage 0 Created (No dependencies):**
+Stage contains tasks for all partitions:
+• Task 0 → processes Partition 0
+• Task 1 → processes Partition 1  
+• Task 2 → processes Partition 2
+end note
+' [/step3]
+
+' [step4 {"name":"Task Creation", "newPage":"true"}]
+Driver -> Driver: createTasks(stage, partitions)
+
+note over Driver
+**Task Set for Stage 0:**
+• Task 0 (Partition 0): Function map(x*2), Input: Partition 0
+• Task 1 (Partition 1): Function map(x*2), Input: Partition 1  
+• Task 2 (Partition 2): Function map(x*2), Input: Partition 2
+
+Key relationship: 1 Partition = 1 Task
+• Each task knows which partition to process
+• Task contains transformation logic
+• Task has preferred executor locations
+end note
+' [/step4]
+
+' [step5 {"name":"Executor Assignment Strategy"}]
+participant "Task Scheduler" as TS
+participant "Block Manager" as BM
+
+Driver -> TS: submitTasks(taskSet)
+activate TS
+
+TS -> BM: getPreferredLocations(Partition 0)
+BM --> TS: [Node1, Node2] (HDFS block locations)
+
+TS -> BM: getPreferredLocations(Partition 1)
+BM --> TS: [Node2, Node3] (HDFS block locations)
+
+TS -> BM: getPreferredLocations(Partition 2)
+BM --> TS: [Node3, Node1] (HDFS block locations)
+
+note right of TS
+Scheduler optimizes task placement:
+1. Prefer nodes with local data
+2. Consider executor availability
+3. Balance load across cluster
+4. Respect locality wait times
+end note
+' [/step5]
+
+' [step6 {"name":"Task Execution Assignment", "newPage":"true"}]
+participant "Executor 1" as E1
+participant "Executor 2" as E2
+participant "Executor 3" as E3
+
+TS -> E1: launchTask(Task 0, Partition 0)
+note right: NODE_LOCAL - optimal placement
+
+TS -> E2: launchTask(Task 1, Partition 1)
+note right: NODE_LOCAL - optimal placement
+
+TS -> E3: launchTask(Task 2, Partition 2)
+note right: NODE_LOCAL - optimal placement
+
+deactivate TS
+
+activate E1
+activate E2
+activate E3
+' [/step6]
+
+' [step7 {"name":"Parallel Task Execution"}]
+E1 -> Storage: read Partition 0 locally
+E2 -> Storage: read Partition 1 locally
+E3 -> Storage: read Partition 2 locally
+
+note over E1, E3: Tasks execute in parallel
+
+E1 -> E1: apply map(x*2) to partition data
+E2 -> E2: apply map(x*2) to partition data
+E3 -> E3: apply map(x*2) to partition data
+
+E1 --> TS: Task 0 complete, result
+E2 --> TS: Task 1 complete, result
+E3 --> TS: Task 2 complete, result
+
+deactivate E1
+deactivate E2
+deactivate E3
+' [/step7]
+
+' [step8 {"name":"Key Design Principles", "newPage":"true"}]
+note bottom
+Partition to Task Assignment Principles:
+
+Data-Driven Partitioning:
+• Input data structure determines initial partition count
+• HDFS blocks, file sizes, or explicit user specification
+• One-to-one mapping: 1 partition = 1 task
+
+Locality-Aware Scheduling:
+• Tasks prefer executors near their data
+• Multiple locality levels: PROCESS > NODE > RACK > ANY
+• Configurable wait times balance locality vs latency
+
+Fault Tolerance:
+• Task failures trigger re-execution on different executors
+• Partition data can be re-read from stable storage
+• Lineage enables reconstruction of lost cached data
+
+Performance Optimization:
+• Partition count affects parallelism degree
+• Too few partitions = underutilized cluster
+• Too many partitions = excessive overhead
+end note
+' [/step8]
+
+@enduml 

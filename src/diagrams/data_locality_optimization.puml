@@ -1,0 +1,144 @@
+@startuml
+!include ../style.puml
+
+title Data Locality Optimization in Distributed Processing
+
+' [step1 {"name":"Data Distribution"}]
+rectangle "HDFS Cluster" as HDFS {
+  rectangle "Node 1" as N1 #LightBlue {
+    rectangle "Block A (primary)" as BA1 #LightGreen
+    rectangle "Block C (replica)" as BC1 #LightCoral
+    rectangle "Executor 1" as E1 #Yellow
+  }
+  
+  rectangle "Node 2" as N2 #LightBlue {
+    rectangle "Block B (primary)" as BB2 #LightGreen
+    rectangle "Block A (replica)" as BA2 #LightCoral
+    rectangle "Executor 2" as E2 #Yellow
+  }
+  
+  rectangle "Node 3" as N3 #LightBlue {
+    rectangle "Block C (primary)" as BC3 #LightGreen
+    rectangle "Block B (replica)" as BB3 #LightCoral
+    rectangle "Executor 3" as E3 #Yellow
+  }
+}
+' [/step1]
+
+' [step2 {"name":"Locality Levels"}]
+note top of HDFS
+**Data Locality Levels (Best to Worst):**
+1. **PROCESS_LOCAL**: Data in same JVM (cached RDD)
+2. **NODE_LOCAL**: Data on same node (different process)
+3. **RACK_LOCAL**: Data on same rack (network hop)
+4. **ANY**: Data anywhere in cluster (multiple hops)
+end note
+' [/step2]
+
+' [step3 {"name":"Optimal Assignment", "newPage":"true"}]
+note over N1, N3
+**Task Scheduling Process:**
+
+1. Task Scheduler queries Block Manager:
+   - partition_A: [Node1, Node2] (primary + replica)
+   - partition_B: [Node2, Node3] (primary + replica)  
+   - partition_C: [Node3, Node1] (primary + replica)
+
+2. Optimal Task Assignment:
+   - Task A → Executor 1 (NODE_LOCAL)
+   - Task B → Executor 2 (NODE_LOCAL)
+   - Task C → Executor 3 (NODE_LOCAL)
+end note
+' [/step3]
+
+' [step4 {"name":"Suboptimal Scenarios"}]
+note over N1, N3
+**Scenario 1: Node 2 Unavailable**
+- Executor 2 failed or busy
+- Task B launched on Executor 3 (RACK_LOCAL)
+- Uses replica on Node 3 - still relatively efficient
+
+**Scenario 2: All Preferred Nodes Unavailable**
+- Task B launched on Executor 1 (ANY)
+- Must read Block B remotely over network
+- Significant network I/O overhead
+end note
+' [/step4]
+
+' [step5 {"name":"Performance Impact", "newPage":"true"}]
+note top
+**Performance Comparison:**
+
+**NODE_LOCAL**: ~200-500 MB/s (Disk speed)
+• Direct disk access, no network
+
+**RACK_LOCAL**: ~50-100 MB/s (Intra-rack network)  
+• Single network hop, shared bandwidth
+
+**ANY**: ~10-50 MB/s (Inter-rack network)
+• Multiple hops, potential congestion
+
+**Impact**: 2-10x performance difference
+end note
+' [/step5]
+
+' [step6 {"name":"Caching Strategy"}]
+note top
+**RDD Caching Strategy:**
+
+**Step 1: Initial Processing**
+• Read from HDFS (NODE_LOCAL)
+• Apply transformations  
+• Cache results in memory
+
+**Step 2: Subsequent Access**
+• Read from memory (PROCESS_LOCAL)
+• Instant access
+
+**Benefit**: Subsequent access uses PROCESS_LOCAL (best locality level)
+end note
+' [/step6]
+
+' [step7 {"name":"Scheduling Algorithm", "newPage":"true"}]
+note top
+**Locality Wait Strategy Algorithm:**
+
+1. Driver submits taskSet to Task Scheduler
+2. Scheduler calculates preferred locations
+3. For each locality level:
+   - Wait for NODE_LOCAL (3s)
+   - If available: Launch task (NODE_LOCAL)
+   - If timeout: Wait for RACK_LOCAL (1s)
+   - If available: Launch task (RACK_LOCAL)  
+   - If timeout: Launch task (ANY)
+
+**Benefits:**
+• Wait longer for better locality
+• Balances locality vs latency
+• Prevents resource starvation
+• Configurable wait times
+end note
+' [/step7]
+
+' [step8 {"name":"Best Practices"}]
+note bottom
+**Data Locality Best Practices:**
+
+**Storage Design:**
+• Co-locate compute and storage when possible
+• Use appropriate replication factor (typically 3)
+• Consider rack awareness in placement
+
+**Application Design:**
+• Cache frequently accessed datasets
+• Partition data appropriately
+• Use broadcast variables for small lookup tables
+
+**Cluster Configuration:**
+• Tune locality wait times based on workload
+• Monitor locality metrics and adjust
+• Consider data skew and hot-spotting
+end note
+' [/step8]
+
+@enduml 

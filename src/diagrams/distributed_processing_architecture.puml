@@ -1,0 +1,84 @@
+@startuml
+!include ../style.puml
+
+title Distributed Processing Framework Architecture
+
+' [step1 {"name":"Core Components"}]
+rectangle "Distributed Processing Framework" as Framework #LightBlue {
+  
+  rectangle "Driver Program" as Driver #LightGreen {
+    rectangle "SparkContext" as SC #Orange
+    rectangle "DAG Scheduler" as DAG #Orange
+    rectangle "Task Scheduler" as TS #Orange
+  }
+  
+  rectangle "Cluster Manager" as CM #LightYellow {
+    rectangle "Resource Manager" as RM #White
+    rectangle "Application Master" as AM #White
+  }
+  
+  rectangle "Worker Nodes" as Workers #LightCoral {
+    rectangle "Executor 1" as E1 #Yellow {
+      rectangle "Task 1" as T1 #White
+      rectangle "Task 2" as T2 #White
+    }
+    rectangle "Executor 2" as E2 #Yellow {
+      rectangle "Task 3" as T3 #White
+      rectangle "Task 4" as T4 #White
+    }
+    rectangle "Executor N" as EN #Yellow {
+      rectangle "Task N" as TN #White
+    }
+  }
+}
+' [/step1]
+
+' [step2 {"name":"Component Relationships"}]
+SC --> DAG : "Creates execution plan"
+DAG --> TS : "Submits stages"
+TS --> CM : "Requests resources"
+CM --> Workers : "Allocates executors"
+Driver --> Workers : "Sends tasks"
+Workers --> Driver : "Returns results"
+' [/step2]
+
+' [step3 {"name":"Key Responsibilities"}]
+note top of Driver
+**Driver Responsibilities:**
+• Creates SparkContext
+• Builds execution DAG
+• Schedules tasks across cluster
+• Collects and aggregates results
+end note
+
+note bottom of CM
+**Cluster Manager:**
+• Resource allocation
+• Node health monitoring
+• Load balancing
+• Fault tolerance
+end note
+
+note right of Workers
+**Executor Responsibilities:**
+• Execute assigned tasks
+• Store RDD partitions in memory
+• Report task status and results
+• Handle task failures
+end note
+' [/step3]
+
+' [step4 {"name":"Data Flow", "newPage":"true"}]
+actor "User Application" as User
+User -> SC : "Create RDDs & Submit Actions"
+SC -> DAG : "Analyze dependencies"
+DAG -> TS : "Create task sets"
+TS -> E1 : "Submit tasks"
+TS -> E2 : "Submit tasks"
+E1 --> TS : "Task results"
+E2 --> TS : "Task results"
+TS --> SC : "Aggregated results"
+SC --> User : "Final results"
+' [/step4]
+
+@enduml 
