@@ -1,0 +1,46 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+skinparam backgroundColor white
+
+title Database Scaling Bottlenecks
+
+package "Enterprise Database Server" {
+    component [B+Tree Engine] as BTree
+    component [Page Cache] as Cache
+    component [Transaction Log] as TxLog
+    component [Lock Manager] as Locks
+}
+
+package "Storage Layer" {
+    component [File System] as FS
+    component [Storage Device] as Storage
+    note top of Storage : **60K+ IOPS Required**\nfor real-time operations
+}
+
+package "Concurrent Access" {
+    actor "User 1...500" as Users
+    note top of Users : **500+ Concurrent Users**\ncompeting for resources
+}
+
+package "Data Volume" {
+    database "Database Files" as DB
+    note top of DB : **10TB+ per server**\nbefore sharding needed
+}
+
+Users --> BTree : Point Queries
+BTree --> Cache : Page Access
+BTree --> Locks : Concurrent Control
+Cache --> FS : Page Faults
+FS --> Storage : I/O Operations
+TxLog --> Storage : Write Operations
+Storage --> DB : Physical Storage
+
+note as N1
+**Performance Cliff at Scale:**
+• 500+ users → Lock contention
+• 60K+ IOPS → Storage saturation  
+• 10TB+ → Single machine limits
+end note
+
+@enduml 

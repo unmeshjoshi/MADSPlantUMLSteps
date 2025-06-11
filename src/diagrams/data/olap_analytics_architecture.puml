@@ -1,0 +1,109 @@
+@startuml
+!theme plain
+!include ../../style.puml
+
+'[common]
+skinparam componentStyle rectangle
+skinparam backgroundColor white
+top to bottom direction
+
+actor "Business Analyst" as Analyst
+note top of Analyst : **Analytics Team Goal:**\nScan 17TB dataset (7B events)\nin seconds, not hours
+'[/common]
+
+'[step1]
+title Step 1: Business Requirements for Modern Analytics
+
+package "Analytics Requirement" {
+    component [Query Engine] as QueryEngine
+    database "17TB Dataset" as Dataset
+    note bottom of Dataset : **7 billion events**\nCustomer transactions\nNeeds fast aggregation
+}
+
+package "Performance Target" {
+    cloud "Business Need" as Target
+    note right of Target : **Interactive Response**\n< 2 minutes for decisions\nNot 20+ minutes waiting
+}
+
+Analyst --> QueryEngine : "Sum all sales last month"
+QueryEngine --> Dataset : Must scan massive data
+Dataset --> Target : Business expects speed
+
+note as N1
+**The Challenge:**
+• Traditional databases designed for small queries
+• Analytics requires scanning entire datasets  
+• Business decisions need interactive response times
+• Current solutions take 20+ minutes - unacceptable
+end note
+
+'[/step1]
+
+'[step2 {"name":"Traditional Row Storage Limitations", "newPage":"true"}]
+
+title Step 2: Traditional Row Storage Limitations
+
+package "Traditional B+Tree Approach" {
+    component [Row-Oriented Engine] as RowEngine
+    database "Row Storage" as RowData
+    note bottom of RowData : **Row-by-row scanning**\nReads ALL columns\nEven unused ones
+}
+
+package "Performance Reality" {
+    cloud "20+ Minutes" as SlowResult
+    note right of SlowResult : **Unacceptable Latency**\nFull table scan required\nI/O bandwidth wasted
+}
+
+package "The Problem" {
+    component [Inefficient I/O] as Problem
+    note right of Problem : **Why So Slow?**\n• Reads unnecessary columns\n• Poor compression\n• Sequential page scanning
+}
+
+Analyst --> RowEngine : "Sum sales last month"
+RowEngine --> RowData : Scan entire table
+RowData --> Problem : Wasteful I/O pattern
+Problem --> SlowResult : Business waits...
+
+note as N2
+**Traditional Storage Problems:**
+• Row format reads unnecessary data (name, address for sum(sales))
+• Poor compression - similar values scattered
+• No column-level optimizations
+• Sequential scanning hits every page
+end note
+'[/step2]
+
+'[step3 {"name":"Modern Columnar Storage Solution", "newPage":"true"}]
+
+title Step 3: Modern Columnar Storage Solution
+
+package "Columnar Analytics Engine" {
+    component [Column-Oriented Engine] as ColEngine
+    database "Columnar Storage" as ColData
+    note bottom of ColData : **Column pruning**\nReads ONLY sales column\nHighly compressed
+}
+
+package "Performance Achievement" {
+    cloud "80 Seconds" as FastResult
+    note right of FastResult : **Interactive Response**\nColumn-selective I/O\n15-20x improvement
+}
+
+package "The Solution" {
+    component [Optimized I/O] as Solution
+    note right of Solution : **Why So Fast?**\n• Column pruning\n• Better compression\n• Vectorized processing
+}
+
+Analyst --> ColEngine : "Sum sales last month"  
+ColEngine --> ColData : Read ONLY sales column
+ColData --> Solution : Efficient I/O pattern
+Solution --> FastResult : Business gets answers!
+
+note as N3
+**Columnar Storage Advantages:**
+• Column pruning - read only needed data
+• Better compression - similar values together  
+• Vectorized processing - CPU efficiency
+• Predicate pushdown - skip irrelevant data
+end note
+'[/step3] 
+@enduml

@@ -1,0 +1,49 @@
+# JFreeChart Configuration for OLAP Query Performance Comparison
+chartType: xy_line
+title: Analytics Query Performance - Row vs Column Storage
+xAxisLabel: Data Size (TB)
+yAxisLabel: Query Time (seconds)
+yAxisType: logarithmic
+width: 800
+height: 600
+
+# System parameters
+dataSize17TB: 17.0  # Example large dataset size
+
+# Data series configuration
+series:
+  - name: Traditional Row Storage (B+Tree)
+    color: red
+    strokeWidth: 3.0
+    xMin: 1
+    xMax: 20
+    xStep: 0.5
+    formula: traditional_olap_performance
+  - name: Modern Columnar Storage (OLAP)
+    color: blue
+    strokeWidth: 3.0
+    xMin: 1
+    xMax: 20
+    xStep: 0.5
+    formula: columnar_olap_performance
+  - name: Interactive Threshold (2 minutes)
+    color: orange
+    strokeWidth: 2.0
+    strokeStyle: dashed
+    xMin: 1
+    xMax: 20
+    xStep: 1
+    formula: interactive_threshold
+
+# Markers and annotations
+markers:
+  - type: vertical_line
+    value: "${dataSize17TB}"
+    color: green
+    strokeWidth: 2.0
+    label: Example Dataset (17TB)
+
+# Chart styling
+backgroundColor: white
+gridLines: true
+legend: true 

@@ -74,7 +74,9 @@ public class ChartGenerator {
     }
     
     private void generateDataSeries(XYSeries series, Map<String, Object> seriesConfig, Map<String, Object> config) {
-        Double mu = ((Number) config.getOrDefault("serviceRate", 1000.0)).doubleValue();
+        // Get parameter value based on formula type
+        String formula = (String) seriesConfig.get("formula");
+        double param = getParameterForFormula(formula, config);
         
         Number xMinNum = (Number) seriesConfig.get("xMin");
         Number xMaxNum = (Number) seriesConfig.get("xMax");
@@ -84,38 +86,85 @@ public class ChartGenerator {
         double xMax = xMaxNum != null ? xMaxNum.doubleValue() : 1000;
         double xStep = xStepNum != null ? xStepNum.doubleValue() : 10;
         
-        String formula = (String) seriesConfig.get("formula");
-        
         for (double x = xMin; x <= xMax; x += xStep) {
-            double y = calculateFormulaValue(formula, x, mu);
+            double y = calculateFormulaValue(formula, x, param);
             if (!Double.isInfinite(y) && !Double.isNaN(y)) {
                 series.add(x, y);
             }
         }
     }
     
-    private double calculateFormulaValue(String formula, double lambda, double mu) {
+    private double getParameterForFormula(String formula, Map<String, Object> config) {
+        if (formula == null) return 1000.0;
+        
+        switch (formula) {
+            case "throughput_curve":
+            case "mm1_latency":
+            case "overload_latency":
+                return ((Number) config.getOrDefault("serviceRate", 1000.0)).doubleValue();
+                
+            case "btree_concurrent_degradation":
+            case "linear_baseline":
+                return ((Number) config.getOrDefault("maxOptimalUsers", 500.0)).doubleValue();
+                
+            case "traditional_olap_performance":
+            case "columnar_olap_performance":
+            case "interactive_threshold":
+                return ((Number) config.getOrDefault("dataSize17TB", 17.0)).doubleValue();
+                
+            default:
+                return 1000.0;
+        }
+    }
+    
+    private double calculateFormulaValue(String formula, double x, double param) {
         if (formula == null) return 0.0;
         
         switch (formula) {
             case "throughput_curve":
-                if (lambda <= mu) {
-                    return lambda;  // Linear phase
+                if (x <= param) {
+                    return x;  // Linear phase
                 } else {
                     // Beyond saturation: decline due to overhead
-                    double overload = (lambda - mu) / mu;
-                    double throughput = mu * (1 - 0.1 * overload);
+                    double overload = (x - param) / param;
+                    double throughput = param * (1 - 0.1 * overload);
                     return Math.max(0, throughput);
                 }
                 
             case "mm1_latency":
-                double rho = lambda / mu;
-                double serviceTime = 1.0 / mu;
+                double rho = x / param;
+                double serviceTime = 1.0 / param;
                 if (rho >= 1.0) return Double.POSITIVE_INFINITY;
                 return (serviceTime / (1 - rho)) * 1000;  // Convert to milliseconds
                 
             case "overload_latency":
                 return 5000.0;  // High constant latency in overload
+                
+            // New formulas for B+Tree scaling
+            case "btree_concurrent_degradation":
+                double maxOptimalUsers = param; // e.g., 500
+                if (x <= maxOptimalUsers) {
+                    return 10 + (x / maxOptimalUsers) * 40; // Linear 10-50ms
+                } else {
+                    // Exponential degradation after cliff
+                    double excess = x - maxOptimalUsers;
+                    return 50 * Math.exp(excess / 100); // Exponential explosion
+                }
+                
+            case "linear_baseline":
+                return 10 + (x * 0.1); // Simple linear baseline for comparison
+                
+            // OLAP performance formulas
+            case "traditional_olap_performance":
+                // Traditional row storage: exponential with data size
+                return Math.pow(x, 1.8) * 60; // Approximately x^1.8 * 60 seconds
+                
+            case "columnar_olap_performance":
+                // Columnar storage: much better scaling
+                return x * 5 + 20; // Linear scaling: ~5 seconds per TB + 20s overhead
+                
+            case "interactive_threshold":
+                return 120.0; // 2 minutes constant line
                 
             default:
                 return 0.0;

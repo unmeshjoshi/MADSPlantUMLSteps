@@ -1,0 +1,42 @@
+# JFreeChart Configuration for B+Tree Concurrent User Performance
+chartType: xy_line
+title: B+Tree Performance vs Concurrent Users
+xAxisLabel: Concurrent Users
+yAxisLabel: Average Response Time (milliseconds)
+yAxisType: logarithmic
+width: 800
+height: 600
+
+# System parameters
+maxOptimalUsers: 500.0  # Point where performance starts degrading
+
+# Data series configuration
+series:
+  - name: Traditional B+Tree System
+    color: red
+    strokeWidth: 3.0
+    xMin: 0
+    xMax: 800
+    xStep: 10
+    formula: btree_concurrent_degradation
+  - name: Theoretical Linear
+    color: blue
+    strokeWidth: 2.0
+    strokeStyle: dashed
+    xMin: 0
+    xMax: 800
+    xStep: 10
+    formula: linear_baseline
+
+# Markers and annotations
+markers:
+  - type: vertical_line
+    value: "${maxOptimalUsers}"
+    color: red
+    strokeWidth: 2.0
+    label: Performance Cliff (500 users)
+
+# Chart styling
+backgroundColor: white
+gridLines: true
+legend: true 

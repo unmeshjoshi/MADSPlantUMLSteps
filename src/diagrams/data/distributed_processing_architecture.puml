@@ -63,17 +63,4 @@ note right of Workers
 end note
 ' [/step2]
 
-' [step3 {"name":"Data Flow", "newPage":"true"}]
-actor "User Application" as User
-User -> SC : "Create RDDs & Submit Actions"
-SC -> DAG : "Analyze dependencies"
-DAG -> TS : "Create task sets"
-TS -> E1 : "Submit tasks"
-TS -> E2 : "Submit tasks"
-E1 --> TS : "Task results"
-E2 --> TS : "Task results"
-TS --> SC : "Aggregated results"
-SC --> User : "Final results"
-' [/step3]
-
 @enduml 

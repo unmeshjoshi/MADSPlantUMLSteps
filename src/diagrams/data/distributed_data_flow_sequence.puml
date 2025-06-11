@@ -1,0 +1,171 @@
+@startuml
+!include ../../style.puml
+!theme plain
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 20
+skinparam maxmessagesize 60
+skinparam sequenceParticipant underline
+
+participant "User App" as User
+participant "Driver\n(SparkContext)" as Driver
+participant "DAG Scheduler" as DAG
+participant "Task Scheduler" as TaskSched
+participant "Cluster Manager" as ClusterMgr
+participant "Executor 1" as Exec1
+participant "Executor 2" as Exec2
+participant "HDFS" as HDFS
+
+'[step1]
+
+User -> Driver : **1. submitJob()**\n.count(), .collect(), .save()
+activate Driver
+
+Driver -> Driver : **2. Create RDD lineage**\nBuild dependency graph
+
+Driver -> DAG : **3. dagScheduler.submitJob()**\nRDD + action function
+activate DAG
+
+DAG -> DAG : **4. Build execution DAG**\nAnalyze dependencies\nIdentify stages
+
+DAG -> DAG : **5. Create missing stages**\nFind ShuffleDependencies\nDetermine stage boundaries
+
+DAG -> HDFS : **6. getFileStatus()**\nQuery file: /data/sales.txt (512MB)
+activate HDFS
+HDFS --> DAG : **7. file metadata**\nFile size: 512MB\nBlock size: 128MB\n4 HDFS blocks total
+deactivate HDFS
+
+DAG -> DAG : **8. InputFormat.getSplits()**\nTextInputFormat analyzes file\nCreate splits at block boundaries
+
+DAG -> HDFS : **9. getBlockLocations()**\nGet location for each block
+activate HDFS
+HDFS --> DAG : **10. block locations**\nBlock 0 (0-128MB): [node1, node2, node3]\nBlock 1 (128-256MB): [node2, node4, node5]\nBlock 2 (256-384MB): [node3, node5, node6]\nBlock 3 (384-512MB): [node4, node6, node1]
+deactivate HDFS
+
+DAG -> DAG : **11. Create RDD partitions**\nPartition 0: bytes 0-128MB → Block 0\nPartition 1: bytes 128-256MB → Block 1\nPartition 2: bytes 256-384MB → Block 2\nPartition 3: bytes 384-512MB → Block 3
+
+DAG -> DAG : **12. Create task objects**\nTask 0 → Partition 0 (prefers node1)\nTask 1 → Partition 1 (prefers node2)\nTask 2 → Partition 2 (prefers node3)\nTask 3 → Partition 3 (prefers node4)
+
+DAG --> Driver : **13. Stage ready for submission**\nStage 0: 4 tasks with locality info
+
+note right of DAG
+**Partition-to-Block Mapping:**
+• File size ÷ Block size = Number of partitions
+• 512MB file ÷ 128MB blocks = 4 partitions
+• Each partition reads exactly one HDFS block
+• InputFormat ensures splits align with block boundaries
+• Block replica locations → Task locality preferences
+end note
+
+deactivate DAG
+deactivate Driver
+'[/step1]
+
+'[step2 {"name":"Resource Allocation and Task Scheduling", "newPage":"true"}]
+
+Driver -> TaskSched : **14. taskScheduler.submitTasks()**\nStage 0: 4 tasks with locality prefs
+activate TaskSched
+
+TaskSched -> TaskSched : **15. Analyze task locality**\nTask 0 prefers node1\nTask 1 prefers node2\nSort by locality requirements
+
+TaskSched -> ClusterMgr : **16. requestExecutors()**\nNeed 4 executors on preferred nodes
+activate ClusterMgr
+
+ClusterMgr -> ClusterMgr : **17. Find available nodes**\nCheck node1, node2 availability\nFallback to any available nodes
+
+ClusterMgr -> Exec1 : **18. launchExecutor()**\nnode1: 2GB RAM, 2 cores
+activate Exec1
+
+ClusterMgr -> Exec2 : **19. launchExecutor()**\nnode2: 2GB RAM, 2 cores  
+activate Exec2
+
+ClusterMgr --> TaskSched : **20. executorsAdded**\nExec1@node1, Exec2@node2 ready
+
+TaskSched -> TaskSched : **21. Match tasks to executors**\nTask 0 → Exec1 (NODE_LOCAL)\nTask 1 → Exec2 (NODE_LOCAL)\nTasks 2,3 → any available
+
+note right of TaskSched
+**Task Scheduling Strategy:**
+• NODE_LOCAL preferred (same node as data)
+• RACK_LOCAL fallback (same rack)
+• ANY if no locality possible
+• Balance load across executors
+end note
+
+deactivate ClusterMgr
+'[/step2]
+
+'[step3 {"name":"Task Execution and Data Processing", "newPage":"true"}]
+
+TaskSched -> Exec1 : **22. launchTask()**\nTask 0: process Partition 0 (bytes 0-128MB)
+TaskSched -> Exec2 : **23. launchTask()**\nTask 1: process Partition 1 (bytes 128-256MB)
+
+Exec1 -> HDFS : **24. read partition data**\nLocal HDFS Block 0 (bytes 0-128MB)
+activate HDFS
+HDFS --> Exec1 : **25. partition data**\n~1M records (NODE_LOCAL read)
+deactivate HDFS
+
+Exec2 -> HDFS : **26. read partition data**\nLocal HDFS Block 1 (bytes 128-256MB)
+activate HDFS
+HDFS --> Exec2 : **27. partition data**\n~1M records (NODE_LOCAL read)
+deactivate HDFS
+
+Exec1 -> Exec1 : **28. execute task**\nmap() → filter() operations\nProcess 1M → 500K records
+
+Exec2 -> Exec2 : **29. execute task**\nmap() → filter() operations\nProcess 1M → 750K records
+
+Exec1 --> TaskSched : **30. taskCompleted**\nTask 0 result: 500K filtered records
+Exec2 --> TaskSched : **31. taskCompleted**\nTask 1 result: 750K filtered records
+
+note right of Exec1
+**NODE_LOCAL Processing Benefits:**
+• Read data from local HDFS block
+• No network transfer for input data
+• Map and filter in executor memory
+• Results ready for next stage
+end note
+
+deactivate Exec1
+deactivate Exec2
+'[/step3]
+
+'[step4 {"name":"Result Collection and Aggregation", "newPage":"true"}]
+
+TaskSched --> DAG : **32. stageCompleted**\nStage 0: all 4 tasks finished
+
+DAG -> DAG : **33. Check stage dependencies**\nStage 1 can now start\nReduce stage ready
+
+DAG -> TaskSched : **34. submitMissingTasks()**\nStage 1: 2 reduce tasks
+
+TaskSched -> Exec1 : **35. launchTask()**\nTask 2: reduce Partition 0 results
+activate Exec1
+
+TaskSched -> Exec2 : **36. launchTask()**\nTask 3: reduce Partition 1 results
+activate Exec2
+
+Exec1 -> Exec1 : **37. local reduce**\nSum(500K records) = 15M
+Exec2 -> Exec2 : **38. local reduce**\nSum(750K records) = 22M
+
+Exec1 --> TaskSched : **39. taskCompleted**\nTask 2 partial sum: 15M
+Exec2 --> TaskSched : **40. taskCompleted**\nTask 3 partial sum: 22M
+
+TaskSched --> DAG : **41. stageCompleted**\nStage 1 finished: all results collected
+
+DAG --> Driver : **42. jobCompleted**\nAll stages complete
+
+Driver -> Driver : **43. final aggregation**\nCombine partial results\n15M + 22M = 37M
+
+Driver --> User : **44. job completed**\nFinal result: 37M
+
+note right of Driver
+**Result Aggregation Process:**
+• TaskScheduler collects all task results
+• DAG Scheduler tracks stage completion
+• Driver performs final aggregation
+• Complete lineage enables fault tolerance
+end note
+
+deactivate TaskSched
+deactivate Exec1
+deactivate Exec2
+'[/step4]
+
+@enduml 
