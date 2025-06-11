@@ -1,5 +1,5 @@
 @startuml
-!include ../style.puml
+!include ../../style.puml
 
 title Fault Tolerance in Distributed Processing
 

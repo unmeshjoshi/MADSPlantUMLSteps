@@ -14,8 +14,9 @@ sections:
           - "Hands-on examples throughout the workshop"
         notes: "Set expectations for the comprehensive workshop covering the entire data processing stack."
 
-      - type: "text"
+      - type: "diagram"
         title: "Storage Stack: From Hardware to Applications"
+        diagramRef: "storage_stack"
         bullets:
           - "Block Storage Devices: SSDs, HDDs, NVMe drives"
           - "OS Page Cache: 4KB pages bridging storage and memory"
@@ -23,45 +24,75 @@ sections:
           - "Applications: Databases, analytics engines, file processors"
         notes: "Establish the foundational storage hierarchy that everything builds upon."
 
-      - type: "text"
-        title: "OS Page Cache: The Critical Layer"
+      - type: "diagram"
+        title: "File Structure: Collections of 4KB Pages"
+        diagramRef: "file_pages"
         bullets:
-          - "Page Size: Typically 4KB chunks for memory-storage translation"
-          - "Caching Strategy: Keep frequently accessed pages in RAM"
-          - "Read Amplification: Must read entire 4KB page for 1 byte"
-          - "Write Amplification: Must write entire 4KB page for small updates"
-        notes: "Explain how the OS page cache affects all storage operations and introduces amplification effects."
+          - "Files are logical collections of fixed-size pages (4KB each)"
+          - "Page addressing: startOffset = pageId × pageSize"
+          - "All I/O operations happen at page granularity"
+          - "Foundation for understanding amplification effects"
+        notes: "Show how files are structured as collections of pages, setting up amplification concepts."
 
-      - type: "text"
-        title: "Read vs Write Amplification Impact"
+      - type: "diagram"
+        title: "Read Amplification: 100 Bytes → 4KB Page"
+        diagramRef: "read_amplification"
         bullets:
-          - "Read Amplification: Reading 1 record → entire 4KB page loaded"
-          - "Write Amplification: Updating 1 field → entire 4KB page rewritten"
-          - "Network Impact: In distributed systems, amplifies network traffic"
-          - "Why It Matters: Affects query performance and storage efficiency"
-        notes: "Demonstrate how amplification effects multiply in distributed systems and affect performance."
+          - "Application requests: 100 bytes (single record)"
+          - "OS must read: Entire 4KB page (40 records)"
+          - "40x amplification factor: Storage reads more than needed"
+          - "Mitigated by: Page cache keeps page in memory for future reads"
+        notes: "Show step-by-step how small reads trigger full page reads from storage."
 
-      - type: "text"
-        title: "OLTP vs OLAP: Different Access Patterns"
+      - type: "diagram"
+        title: "Write Amplification: Read-Modify-Write Cycle"
+        diagramRef: "write_amplification"
         bullets:
-          - "OLTP (Online Transaction Processing):"
-          - "  • Point queries: 'Find user ID 12345'"
-          - "  • Small reads/writes to specific locations"
-          - "  • Optimized for low latency and high concurrency"
-          - "OLAP (Online Analytical Processing):"
-          - "  • Range queries: 'All transactions last 24 hours'"
-          - "  • Large sequential reads across many records"
-          - "  • Optimized for throughput and data scanning"
-        notes: "Establish the fundamental difference in access patterns that drives different storage and processing strategies."
+          - "Application updates: 10 bytes in existing record"
+          - "OS must: Read 4KB page, modify 10 bytes, write 4KB page"
+          - "400x amplification factor: 10 bytes → 8KB total I/O"
+          - "Always expensive: Cannot be cached away like reads"
+        notes: "Demonstrate why writes are always amplified and cannot be optimized like reads."
 
-      - type: "text"
-        title: "Traditional Database Approach: Single File + B+Tree"
+      - type: "diagram"
+        title: "OLTP Pattern: Point Queries with Small Pages"
+        diagramRef: "oltp_point_query"
         bullets:
-          - "One Table = One File: All data in a single file"
-          - "B+Tree Index: Optimizes point queries and range scans"
-          - "Page-based Access: Minimize file reads through smart indexing"
-          - "Works Well Until: File size grows beyond single machine capacity"
-        notes: "Explain the traditional approach and its effectiveness for OLTP workloads."
+          - "Point queries: 'Find customer ID 12345' → single record lookup"
+          - "4-8KB pages minimize read amplification for small reads"
+          - "Optimized for <10ms latency and high concurrency"
+          - "Row-oriented storage keeps related data together"
+        notes: "Show why OLTP uses small pages to minimize latency for point queries."
+
+      - type: "diagram"
+        title: "OLAP Pattern: Column Scans with Large Data Blocks"
+        diagramRef: "olap_column_scan"
+        bullets:
+          - "Analytical queries: 'Sum all sales last month' → scan millions of rows"
+          - "1-4MB stripes maximize bandwidth utilization"
+          - "Column-oriented storage enables efficient compression and SIMD"
+          - "Optimized for throughput, not latency"
+        notes: "Demonstrate why OLAP uses large stripes to maximize scan performance."
+
+      - type: "diagram"
+        title: "Clustered B+Tree: Data Pages as Leaf Nodes"
+        diagramRef: "clustered_btree_lookup"
+        bullets:
+          - "Single file stores entire B+tree with data at leaf level"
+          - "Point lookup requires 3 random I/Os (root → internal → leaf)"
+          - "Leaf pages contain full row data (no additional fetch needed)"
+          - "Examples: InnoDB clustered tables, SQL Server clustered indexes"
+        notes: "Show how clustered B+trees minimize I/O by storing data in leaf pages."
+
+      - type: "diagram"
+        title: "Heap + Index: Separate Data and Index Files"
+        diagramRef: "heap_index_lookup"
+        bullets:
+          - "Index and data stored in separate files"
+          - "Point lookup requires 4 random I/Os (3 index + 1 heap fetch)"
+          - "Index leaf pages contain only {key, TID} pointers"
+          - "Examples: PostgreSQL heap tables, Oracle non-clustered indexes"
+        notes: "Demonstrate the additional I/O overhead when index and data are separated."
 
   - title: "B+Tree Deep Dive: Optimizing File Access"
     slides:
@@ -73,6 +104,77 @@ sections:
           - "Fanout Factor: High branching reduces tree height"
           - "Sequential Leaf Access: Efficient for range queries"
         notes: "Explain the fundamental structure of B+Trees and why they're ideal for storage."
+
+     # ─── Slide Cluster: Page-Aligned vs Non-Aligned B+Tree Nodes ───
+
+      - type: "text"
+        title: "B+Tree Node = OS Page: Perfect Alignment"
+        bullets:
+          - "Each B+Tree node = one OS page (4KB)"
+          - "Single I/O loads complete node into page cache"
+          - "~32-33 key+pointer pairs per 4KB node (80% fill factor)"
+          - "High fanout (30-40) ⇒ tree height ≤ 3 for millions of rows"
+          - "Matches CPU cache lines & flash blocks – no waste"
+        notes: |
+          Stress that classic B-trees were *co-designed* with 4 KB OS pages to minimise read & write amplification
+          across disk, flash, and CPU caches. Mention fill-factor (70–90 %) so students appreciate real-world fan-out.
+      
+          **What is Fanout?**
+          • Definition: Number of child pointers per internal node
+          • Physical constraint: Limited by the 4KB page size
+          
+          **How is 30-40 calculated?**
+          • 4KB node with 100-byte keys + 8-byte pointers = ~37 entries
+          • Formula: (4096 - overhead) / (key_size + pointer_size)
+          • Real example: (4096 - 100) / (100 + 8) ≈ 37 entries → fanout of ~38
+          
+          **Why does high fanout matter?**
+          • Higher fanout = Shorter tree = Fewer I/O operations
+          • Dramatic difference:
+            - 1M records with fanout 40 = 3-level tree (3 I/Os max)
+            - 1M records with fanout 2 = 20-level tree (20 I/Os max)
+          
+          Fanout is crucial to B+tree performance - it's the key multiplier that determines tree height and I/O efficiency.
+
+
+
+      - type: "diagram"
+        title: "Problems with Non-Aligned Nodes"
+        diagramRef: "multiple_nodes_per_page"
+        bullets:
+          - "Thought-experiment: 1KB nodes → four nodes per 4KB page"
+          - "Read Amplification: need 1KB, load 4KB (4× over-read)"
+          - "Cache Pollution: 3KB unwanted data clogs caches"
+          - "Latch Contention: four nodes share one page lock"
+          - "Write Amplification: small update dirties entire 4KB"
+        notes: |
+          Visual demonstration of the amplification and cache pollution problems. Show how reading Node B 
+          forces loading of unwanted Nodes A, C, and D.
+
+      - type: "text"
+        title: "Discussion: Could Memory-Mapped Files Help?"
+        bullets:
+          - "Scenario: keep 1KB nodes, use mmap() for 'selective' access"
+          - "Hope: kernel lazily loads just the 1KB slice needed"
+          - "Reality: page-fault still pulls full 4KB from disk"
+          - "Readahead: kernel may prefetch unpredictably → bursty I/O"
+          - "Good fit: append-only/read-only workloads (LMDB, DuckDB)"
+          - "Question: when would you accept this trade-off?"
+        notes: |
+          Use this slide to spark discussion. Have students list mmap-based engines (LMDB, FoundationDB, DuckDB)
+          and identify why they work (append-only, copy-on-write).
+
+      - type: "diagram"
+        title: "Why Memory Mapping *Doesn't* Solve Alignment"
+        diagramRef: "aligned_vs_nonaligned_comparison"
+        bullets:
+          - "Read Amplification Remains: demand 1 KB → kernel issues 4 KB read (4x)"
+          - "Dual Cache Pollution: unwanted 3 KB occupies OS page cache *and* CPU L2/L3"
+          - "Latch Contention Multiplies: four logical nodes share one page-level lock"
+          - "Loss of I/O Control: can't batch or pipeline with preadv()/async-io - kernel decides"
+        notes: |
+          Side-by-side comparison showing why page alignment is optimal. Even with memory mapping,
+          the fundamental I/O and caching inefficiencies remain. Show 100% vs 25% efficiency.
 
       - type: "diagram"
         title: "B+Tree Example: Customer Database"

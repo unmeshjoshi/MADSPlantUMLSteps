@@ -9,10 +9,20 @@ import java.util.regex.Pattern;
 
 public class StepParser {
     private static final Pattern STEP_START_PATTERN = Pattern.compile("'\\s*\\[step(?:\\d+)?(?:\\s*\\{(.*)\\})?\\]");
+    private static final Pattern COMMON_START_PATTERN = Pattern.compile("'\\s*\\[common\\]");
+    private static final Pattern COMMON_END_PATTERN = Pattern.compile("'\\s*\\[/common\\]");
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public boolean isStepStart(String line) {
         return STEP_START_PATTERN.matcher(line.trim()).matches();
+    }
+    
+    public boolean isCommonStart(String line) {
+        return COMMON_START_PATTERN.matcher(line.trim()).matches();
+    }
+    
+    public boolean isCommonEnd(String line) {
+        return COMMON_END_PATTERN.matcher(line.trim()).matches();
     }
     
     public Map<String, Object> parseMetadata(String line) {
@@ -34,16 +44,31 @@ public class StepParser {
     public ParsedPlantUmlFile parse(PumlFile sourceFile) throws IOException {
         List<Step> steps = new ArrayList<>();
 
-
         List<String> includes = new ArrayList<>();
         List<String> participants = new ArrayList<>();
+        List<String> commonDefinitions = new ArrayList<>();
 
         List<String> lines = sourceFile.readLines();
         StringBuilder currentContent = new StringBuilder();
         StringBuilder stepContent = new StringBuilder(); // Track content added to current step
+        boolean inCommonBlock = false;
         
         for (String line : lines) {
-            if (line.trim().startsWith("!include")) {
+            if (isCommonStart(line)) {
+                inCommonBlock = true;
+                // Don't add the marker line to content
+                
+            } else if (isCommonEnd(line)) {
+                inCommonBlock = false;
+                // Don't add the marker line to content
+                
+            } else if (inCommonBlock) {
+                // Store common definitions for reuse in all steps
+                commonDefinitions.add(line);
+                // Also add to current content (for steps that don't have newPage)
+                currentContent.append(line).append("\n");
+                
+            } else if (line.trim().startsWith("!include")) {
                 addInclude(line, includes, currentContent);
 
             } else if (line.trim().startsWith("participant")) {
@@ -52,7 +77,7 @@ public class StepParser {
 
             } else if (isStepStart(line)) {
                 endPreviousStep(steps, currentContent, stepContent);
-                createStep(line, currentContent, includes, participants, steps);
+                createStep(line, currentContent, includes, participants, commonDefinitions, steps);
                 stepContent.setLength(0); // Reset step content tracker
 
             } else {
@@ -147,7 +172,7 @@ public class StepParser {
         return result.toString();
     }
 
-    private int createStep(String line, StringBuilder currentContent, List<String> includes, List<String> participants, List<Step> steps) {
+    private int createStep(String line, StringBuilder currentContent, List<String> includes, List<String> participants, List<String> commonDefinitions, List<Step> steps) {
         Map<String, Object> metadata = parseMetadata(line);
         int stepNumber = steps.size() + 1;
         if (metadata.containsKey("newPage")) {
@@ -155,6 +180,7 @@ public class StepParser {
             currentContent.append("@startuml\n");
             addIncludes(currentContent, includes);
             addParticipants(currentContent, participants);
+            addCommonDefinitions(currentContent, commonDefinitions);
         }
         steps.add(new Step(stepNumber, metadata));
         return stepNumber;
@@ -163,6 +189,12 @@ public class StepParser {
     private void addParticipants(StringBuilder currentContent, List<String> participants) {
         for (String participant : participants) {
             currentContent.append(participant).append("\n");
+        }
+    }
+    
+    private void addCommonDefinitions(StringBuilder currentContent, List<String> commonDefinitions) {
+        for (String commonDef : commonDefinitions) {
+            currentContent.append(commonDef).append("\n");
         }
     }
 

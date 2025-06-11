@@ -1,5 +1,5 @@
 @startuml
-!include ../../style.puml
+!include ../../../style.puml
 
 title Parquet File to RDD Partitions Mapping
 

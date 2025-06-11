@@ -1,0 +1,24 @@
+@startuml
+!include ../../style.puml
+
+title Read-Modify-Write Amplification (4 KB page)
+
+skinparam ParticipantPadding 20
+participant Application as App
+participant "OS / Page Cache" as OS
+participant "Storage Device" as SSD
+
+App -> OS : 1. update 10 bytes
+OS  -> SSD: 2. read 4 KB page
+SSD --> OS : 3. return 4 KB
+OS  -> OS : 4. modify 10 bytes\n(in memory)
+OS  -> SSD : 5. write entire 4 KB\n(400× amplification) #red;line:thickness=3
+SSD --> OS : 6. confirm write
+OS --> App : 7. confirm update
+
+note over OS
+Before ➜ After page image  
+(only 10 bytes change,  
+yet 4096 bytes written)
+end note
+@enduml 

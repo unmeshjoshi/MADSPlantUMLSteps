@@ -1,0 +1,10 @@
+@startuml
+!include ../../style.puml
+== OLTP  —  4-8 KB pages ==
+App  -> RowStore : read 100 B  (one customer record)
+RowStore --> App : read 4–8 KB page
+note over App, RowStore
+ Point reads/writes touch only a few KB ⇒ small page keeps read-amp down
+end note
+ 
+@enduml 

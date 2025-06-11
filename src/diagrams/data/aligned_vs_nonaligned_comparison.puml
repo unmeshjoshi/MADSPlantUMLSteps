@@ -1,0 +1,100 @@
+@startuml
+
+!include ../../style.puml
+
+' [common]
+title Memory Mapping: The False Hope
+
+top to bottom direction
+' [/common]
+
+' [step1 {"name":"The Hope: Memory Mapping Magic"}]
+rectangle "Application Code" as app #LightBlue {
+  note "mmap() file into memory\nRead ptr[1024] (just Node B)" as hope
+}
+
+rectangle "Virtual Memory Space" as vmem #LightGreen {
+  rectangle "Page 1 (4KB mapped)" as vpage #LightYellow {
+    rectangle "Node A (1KB)" as vnodeA #LightGray
+    rectangle "Node B (1KB)" as vnodeB #LightBlue  
+    rectangle "Node C (1KB)" as vnodeC #LightGray
+    rectangle "Node D (1KB)" as vnodeD #LightGray
+  }
+}
+
+app -> vnodeB : "Hope: touch only 1KB"
+
+note bottom of vmem
+**Developer's Hope:**
+• mmap() gives illusion of direct memory access
+• "Read only what you touch" – just Node B
+• Kernel handles paging transparently
+• No explicit I/O syscalls needed
+end note
+' [/step1]
+
+' [step2 {"name":"The Reality: Page Fault Triggers Full Page Load", "newPage": true}]
+rectangle "Application Code" as app2 #LightBlue {
+  note "ptr[1024] access\n→ PAGE FAULT!" as fault
+}
+
+rectangle "Virtual Memory Space" as vmem2 #LightGreen {
+  rectangle "Page 1 (4KB mapped)" as vpage2 #LightYellow {
+    rectangle "Node A (1KB)" as vnodeA2 #LightCoral
+    rectangle "Node B (1KB)" as vnodeB2 #LightBlue  
+    rectangle "Node C (1KB)" as vnodeC2 #LightCoral
+    rectangle "Node D (1KB)" as vnodeD2 #LightCoral
+  }
+}
+
+rectangle "Storage Device" as disk #Orange
+
+app2 -> vnodeB2 : "Touch Node B"
+vnodeB2 -> disk : "PAGE FAULT: read 4KB"
+disk -> vpage2 : "Kernel loads entire page"
+
+note bottom of disk
+**Kernel Reality:**
+• Page fault forces 4KB disk read
+• All 4 nodes loaded into memory
+• Read amplification: 4x over-read
+• Can't selectively load 1KB slices
+end note
+' [/step2]
+
+' [step3 {"name":"Dual Cache Pollution: OS + CPU Caches", "newPage": true}]
+rectangle "Application Code" as app3 #LightBlue {
+  note "Got Node B data\n(what we wanted)" as success
+}
+
+rectangle "OS Page Cache" as oscache #Orange {
+  rectangle "4KB Page Entry" as ospage #LightYellow {
+    rectangle "Node A (unwanted)" as osA #LightCoral
+    rectangle "Node B (wanted)" as osB #LightBlue  
+    rectangle "Node C (unwanted)" as osC #LightCoral
+    rectangle "Node D (unwanted)" as osD #LightCoral
+  }
+}
+
+rectangle "CPU L2/L3 Cache" as cpucache #Yellow {
+  rectangle "Cache Lines" as clines #LightGray {
+    rectangle "64B: Node A data" as clA #LightCoral
+    rectangle "64B: Node B data" as clB #LightBlue
+    rectangle "64B: Node C data" as clC #LightCoral
+    rectangle "64B: Node D data" as clD #LightCoral
+  }
+}
+
+app3 -> osB : "Access Node B"
+ospage -> clines : "Cache lines populated"
+
+note bottom of cpucache
+**Dual Cache Pollution:**
+• OS page cache: 75% waste (3KB of 4KB)
+• CPU cache: evicts useful data
+• Memory mapping ≠ magical efficiency
+• Same amplification as explicit I/O!
+end note
+' [/step3]
+
+@enduml 

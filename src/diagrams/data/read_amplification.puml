@@ -1,0 +1,21 @@
+@startuml
+!include ../../style.puml
+
+title Read Amplification (4 KB page → 100 B record)
+
+skinparam ParticipantPadding 20
+participant Application as App
+participant "OS / Page Cache" as OS
+participant "Storage Device" as SSD
+
+App -> OS  : 1. read 100 B
+OS  -> SSD : 2. read full 4 KB page\n(40 × amplification)
+SSD --> OS : 3. return 4 KB
+OS --> App : 4. extract 100 B
+
+note over OS
+App sees: Record 23 (100 B)\n
+OS handles: 4 KB page with 40 records\n
+Storage transfers: 4 KB sector
+end note
+@enduml 

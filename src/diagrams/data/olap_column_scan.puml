@@ -1,0 +1,9 @@
+@startuml
+!include ../../style.puml
+== OLAP  —  1-4 MB data blocks ==
+App -> ColStore : read <i>sales</i> &amp; <i>tax</i> columns
+ColStore --> App : read 1–4 MB stripe
+note over App, ColStore #F08080
+Sequential 1–4 MB I/O streams hundreds of <u>4 KB OS pages</u> at once  
+end note
+@enduml 

@@ -203,37 +203,3 @@ digraph BTreeTraversal_Complete {
 }
 // [/step6]
 
-// [step7 {"name":"Performance Comparison Summary"}]
-digraph PerformanceComparison {
-    rankdir=TB;
-    node [shape=record, fontname="Helvetica"];
-    
-    // Two approaches
-    subgraph cluster_linear {
-        label="Linear Search (No Index)";
-        color=red;
-        style=filled;
-        fillcolor=mistyrose;
-        
-        linear_steps [label="Linear Process:|1. Start at page 1|2. Read sequentially|3. Check each page|4. Continue until found||Result: 1,625 reads|Time: ~1.6 seconds", fillcolor="lightcoral", style="filled"];
-    }
-    
-    subgraph cluster_btree {
-        label="B+Tree Search (With Index)";
-        color=green;
-        style=filled;
-        fillcolor=lightgreen;
-        
-        btree_steps [label="B+Tree Process:|1. Start at root|2. Navigate internal|3. Navigate to leaf|4. Find target||Result: 2 reads|Time: ~0.2 milliseconds", fillcolor="lightblue", style="filled"];
-    }
-    
-    // Comparison
-    improvement [label="Performance Gain:|812x fewer reads|8,000x faster|Sub-millisecond response", fillcolor="gold", style="filled"];
-    
-    linear_steps -> improvement [style="dashed", color="red", penwidth=2];
-    btree_steps -> improvement [style="solid", color="green", penwidth=2];
-    
-    { rank=same; linear_steps, btree_steps }
-    { rank=same; improvement }
-}
-// [/step7]

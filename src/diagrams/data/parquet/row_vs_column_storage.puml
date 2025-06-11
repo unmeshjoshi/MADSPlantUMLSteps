@@ -1,5 +1,5 @@
 @startuml
-!include ../../style.puml
+!include ../../../style.puml
 
 ' Scale the diagram for better visibility
 scale 1.5

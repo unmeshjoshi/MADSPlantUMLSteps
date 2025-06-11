@@ -1,5 +1,5 @@
 @startuml
-!include ../../style.puml
+!include ../../../style.puml
 
 title Parquet Efficient Reads with Row Groups and Predicate Pushdown
 

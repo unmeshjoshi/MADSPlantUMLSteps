@@ -1,6 +1,6 @@
 @startuml
 
-!include ../style.puml
+!include ../../style.puml
 
 title B+Tree Search: Find Customer ID 65,000
 

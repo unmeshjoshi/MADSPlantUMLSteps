@@ -1,0 +1,30 @@
+@startuml
+!include ../../style.puml
+'── style ────────────────────────────────────────────────
+skinparam dpi 150
+skinparam ParticipantPadding 12
+skinparam Shadowing false
+skinparam SequenceMessageAlign center
+skinparam ArrowThickness 1
+'─────────────────────────────────────────────────────────
+
+participant Client
+
+box "customers.dat  — single file on disk" #ADD8E6
+  participant "Root page"       as Root
+  participant "Internal page"   as Internal
+  participant "Leaf page = Data page" as LeafData
+end box
+
+Client  -> Root      : read root  (I/O 1)
+Root    -> Internal  : read child (I/O 2)
+Internal -> LeafData : read leaf  (I/O 3)
+LeafData --> Client  : return 100 B row
+
+note over Root, LeafData
+• Leaf already stores full row
+• Point lookup = 3 random I/Os (root + internal + leaf)  
+• Same file holds all pages  
+<i>Examples – InnoDB tables = one big B+-tree pages ordered by PRIMARY KEY</i>
+end note
+@enduml 

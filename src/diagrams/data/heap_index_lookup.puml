@@ -1,0 +1,36 @@
+@startuml
+!include ../../style.puml
+'── style ────────────────────────────────────────────────
+skinparam dpi 150
+skinparam ParticipantPadding 12
+skinparam Shadowing false
+skinparam SequenceMessageAlign center
+skinparam ArrowThickness 1
+'─────────────────────────────────────────────────────────
+
+participant Client
+
+box "customers_id_idx  — index file" #90EE90
+  participant "Root page"     as RootIdx
+  participant "Internal page" as IntIdx
+  participant "Leaf page"     as LeafIdx
+end box
+
+box "customers heap  — data file" #ADD8E6
+  participant "Heap data page" as HeapPage
+end box
+
+Client   -> RootIdx   : read root  (I/O 1)
+RootIdx  -> IntIdx    : read child (I/O 2)
+IntIdx   -> LeafIdx   : read child (I/O 3)
+LeafIdx  -> HeapPage  : follow TID → heap page (I/O 4)
+HeapPage --> Client   : return 100 B row
+
+note over RootIdx, HeapPage
+<b>Heap + secondary B-tree index</b>  
+• Leaf holds {key, TID} only → <b>extra heap fetch</b>  
+• Point lookup = 4 random I/Os (3 index + 1 heap)  
+• Index and heap are separate relation files  
+<i>Examples – PostgreSQL heap + B-tree, Oracle non-clustered index</i>
+end note
+@enduml 

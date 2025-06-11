@@ -1,5 +1,6 @@
-@startuml queue_length_vs_utilization
-!theme materia
+@startuml
+
+!include ../style.puml
 
 title Queue Length (Lq) vs. System Utilization (ρ)
 caption Based on M/M/1 model: Lq = ρ² / (1 - ρ). This illustrates *average* queue length.

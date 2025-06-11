@@ -1,0 +1,54 @@
+@startuml
+!include ../../style.puml
+
+top to bottom direction
+
+' [common]
+
+' Define shared elements that appear in all steps
+rectangle "OS Page (4KB)" as page {
+  rectangle "B+Tree Node A (1KB)" as nodeA #LightBlue
+  rectangle "B+Tree Node B (1KB)" as nodeB #LightGreen  
+  rectangle "B+Tree Node C (1KB)" as nodeC #LightCoral
+  rectangle "B+Tree Node D (1KB)" as nodeD #LightPink
+}
+
+rectangle "CPU L1 Cache" as cache #Yellow {
+  note "Only 32KB total" as cacheNote
+}
+
+rectangle "Page Cache" as pageCache #Orange {
+  note "Memory pages" as pageCacheNote  
+}
+
+' Force vertical layout with hidden arrows
+page -[hidden]-> cache
+cache -[hidden]-> pageCache
+
+' [/common]
+
+' [step1]
+note top of page : **Step 1: Read Request for Node B**
+note top of nodeB : Target: Only need 1KB
+note top of cache : Clean cache
+' [/step1]
+
+' [step2 {"newPage": true}]
+note top of page : **Step 2: OS Loads Entire Page**
+nodeA --> cache : Node A loaded (1KB)
+nodeB --> cache : Node B loaded (1KB) 
+nodeC --> cache : Node C loaded (1KB)
+nodeD --> cache : Node D loaded (1KB)
+note bottom of cache : **Problem: Cache pollution!**<br/>Nodes A, C, D evict useful data
+' [/step2]
+
+' [step3 {"newPage": true}]  
+note top of page : **Step 3: Read Amplification Impact**
+page --> pageCache : 4KB transferred from disk
+note bottom of nodeA : Wasted I/O bandwidth
+note bottom of nodeC : Unwanted data
+note bottom of nodeD : More wasted resources
+note bottom of cache : Cache thrashing: 75% pollution<br/>(3KB unwanted, 1KB useful)
+' [/step3]
+
+@enduml 

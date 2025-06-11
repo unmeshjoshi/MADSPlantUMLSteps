@@ -1,0 +1,38 @@
+// [step1 {"name":"Logical File Structure"}]
+digraph FilePagesHTML {
+  rankdir = TB;                 // file node on top, legend below
+  bgcolor = "white";
+
+  /* ── default node + edge styling ─────────────────────────────── */
+  node [shape=plaintext,
+        fontname="Helvetica", fontsize=11];
+  edge [style=invis];
+
+  /* ── single FILE node built as an HTML table ─────────────────── */
+  file [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="4">
+      <!-- header row -->
+      <tr>
+        <td bgcolor="#E8F4FF" colspan="5"><b>File (logical view)</b></td>
+      </tr>
+
+      <!-- page row (light-yellow) -->
+      <tr>
+        <td bgcolor="lightyellow">Page&nbsp;0<br/>0–4095</td>
+        <td bgcolor="lightyellow">Page&nbsp;1<br/>4096–8191</td>
+        <td bgcolor="lightyellow">Page&nbsp;2<br/>8192–12&nbsp;287</td>
+        <td bgcolor="lightyellow">Page&nbsp;3<br/>12&nbsp;288–16&nbsp;383</td>
+        <td align="center">…</td>
+      </tr>
+    </table>
+  >];
+
+  /* ── explanatory note underneath ─────────────────────────────── */
+  legend [shape=note, fontsize=10,
+          label="Collection of fixed-size pages (4 KB)\n\
+startOffset = pageId × pageSize\n\
+endOffset   = startOffset + pageSize − 1\n\
+Reads & writes happen per page"];
+
+  file -> legend;              // keeps the legend directly below
+} 

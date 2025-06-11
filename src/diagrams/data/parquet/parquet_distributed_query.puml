@@ -1,5 +1,5 @@
 @startuml
-!include ../../style.puml
+!include ../../../style.puml
 
 title Distributed Query Execution Flow with Parquet
 

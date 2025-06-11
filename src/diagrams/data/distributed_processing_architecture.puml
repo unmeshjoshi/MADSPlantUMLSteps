@@ -1,5 +1,5 @@
 @startuml
-!include ../style.puml
+!include ../../style.puml
 
 ' [step1 {"name":"Core Components"}]
 rectangle "Distributed Processing Framework" as Framework #LightBlue {

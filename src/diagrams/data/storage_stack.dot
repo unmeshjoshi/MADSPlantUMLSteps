@@ -1,0 +1,37 @@
+// [step1 {"name":"Storage Stack Architecture"}]
+digraph StorageStack {
+    rankdir=TB;
+    node [shape=record, style="rounded,filled"];
+    
+    // Applications Layer
+    subgraph cluster_apps {
+        label="Application Layer";
+        style="rounded,filled";
+        fillcolor="lightblue";
+        
+        database [fillcolor="lightcyan", label="Databases|MySQL, PostgreSQL"];
+        analytics [fillcolor="lightcyan", label="Analytics Engines|Spark, Flink"];
+        fileproc [fillcolor="lightcyan", label="File Processors|ETL, Backup"];
+    }
+    
+    // File System Layer
+    filesystem [fillcolor="lightgreen", 
+               label="File System Layer|{ext4, NTFS, XFS}"];
+    
+    // OS Page Cache
+    pagecache [fillcolor="lightyellow",
+              label="OS Page Cache|{4KB Pages}"];
+    
+    // Block Storage
+    blockstore [fillcolor="lightcoral", 
+               label="Block Storage Device|4KB sectors"];
+    
+    // Connections - Vertical Stack Flow
+    database -> filesystem;
+    analytics -> filesystem;
+    fileproc -> filesystem;
+    
+    filesystem -> pagecache;
+    
+    pagecache -> blockstore;
+}

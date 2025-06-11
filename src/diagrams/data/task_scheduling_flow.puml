@@ -1,5 +1,5 @@
 @startuml
-!include ../style.puml
+!include ../../style.puml
 
 title Task Scheduling and Execution Flow
 
