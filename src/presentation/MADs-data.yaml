@@ -415,6 +415,36 @@ sections:
           - "Schema Evolution: Handle changing data structures over time"
         notes: "Introduce Parquet as the leading columnar format for distributed processing."
 
+  - title: "Object Store Fundamentals"
+    slides:
+      - type: "text"
+        title: "Object Stores: Key-Value Nature"
+        bullets:
+          - "Flat namespace: No real directories, just key prefixes"
+          - "Immutable objects: Write-once, read-many model"
+          - "No append operations: Must rewrite entire object"
+          - "No partial updates: Full object replacement required"
+        notes: "Introduce the fundamental characteristics of object stores that make them different from traditional file systems."
+
+      - type: "diagram"
+        title: "Object Store: Key-Value Nature and Limitations"
+        diagramRef: "objectstore_keyvalue"
+        bullets:
+          - "Keys are unique string identifiers (no hierarchy)"
+          - "Values are immutable blobs (no partial updates)"
+          - "No native support for transactions or atomic operations"
+          - "Example: PUT/GET operations on S3-like storage"
+        notes: "Visual representation of object store's key-value nature and its fundamental limitations."
+
+      - type: "text"
+        title: "Impact on Data Storage"
+        bullets:
+          - "Tables can't be single files: Need multiple objects"
+          - "Updates require new versions: No in-place modifications"
+          - "Consistency challenges: No native transaction support"
+          - "Performance implications: Full object rewrites"
+        notes: "Explain how object store limitations affect data storage and processing patterns."
+
   - title: "Parquet File Structure Deep Dive"
     slides:
       - type: "text"

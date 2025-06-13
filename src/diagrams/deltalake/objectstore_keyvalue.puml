@@ -1,0 +1,25 @@
+@startuml object_store_kv_flat
+!include ../../style.puml
+
+' ─── Actors ──────────────────────────────────────────────────────────
+actor "Client\n(analytics app, backup tool, …)" as C
+
+' ─── Single logical bucket / flat namespace ─────────────────────────
+database "Object Store\n(flat key-value space)" as STORE
+
+' ─── Typical interactions ───────────────────────────────────────────
+C --> STORE : PUT  "photos/2025/kitty.jpg"  (4 MB blob)
+C --> STORE : GET  "invoices/0423.pdf"
+
+' ─── Call-out summarising the key properties ────────────────────────
+note right of STORE
+  • **Keys** = unique strings  
+    (no real folders, just prefixes)
+
+  • **Values** = immutable blobs  
+    write-once → read-many
+
+  • No **append** / partial overwrite  
+    → replace entire object
+end note
+@enduml
