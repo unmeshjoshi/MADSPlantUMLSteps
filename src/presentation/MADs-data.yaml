@@ -73,27 +73,6 @@ sections:
           - "Column-oriented storage enables efficient compression and SIMD"
           - "Optimized for throughput, not latency"
         notes: "Demonstrate why OLAP uses large stripes to maximize scan performance."
-
-      - type: "diagram"
-        title: "Clustered B+Tree: Data Pages as Leaf Nodes"
-        diagramRef: "clustered_btree_lookup"
-        bullets:
-          - "Single file stores entire B+tree with data at leaf level"
-          - "Point lookup requires 3 random I/Os (root → internal → leaf)"
-          - "Leaf pages contain full row data (no additional fetch needed)"
-          - "Examples: InnoDB clustered tables, SQL Server clustered indexes"
-        notes: "Show how clustered B+trees minimize I/O by storing data in leaf pages."
-
-      - type: "diagram"
-        title: "Heap + Index: Separate Data and Index Files"
-        diagramRef: "heap_index_lookup"
-        bullets:
-          - "Index and data stored in separate files"
-          - "Point lookup requires 4 random I/Os (3 index + 1 heap fetch)"
-          - "Index leaf pages contain only {key, TID} pointers"
-          - "Examples: PostgreSQL heap tables, Oracle non-clustered indexes"
-        notes: "Demonstrate the additional I/O overhead when index and data are separated."
-
   - title: "B+Tree Deep Dive: Optimizing File Access"
     slides:
       - type: "text"
@@ -135,8 +114,6 @@ sections:
             - 1M records with fanout 2 = 20-level tree (20 I/Os max)
           
           Fanout is crucial to B+tree performance - it's the key multiplier that determines tree height and I/O efficiency.
-
-
 
       - type: "diagram"
         title: "Problems with Non-Aligned Nodes"
@@ -196,6 +173,50 @@ sections:
           - "Range Scans: Follow leaf page links for sequential access"
         notes: "Show how B+Trees minimize actual storage device access through intelligent caching."
 
+      - type: "text"
+        title: "Key Design Decision: Where to Store the Data?"
+        bullets:
+          - "Clustered B+Tree: Data stored directly in leaf pages of the index"
+          - "Heap + Index: Data stored separately in heap files, index points to heap locations"
+          - "This choice fundamentally affects both read and write performance"
+        notes: "Introduce the fundamental architectural choice between storing data in the index structure vs. separate heap files."
+
+      - type: "text"
+        title: "Clustered B+Tree: Write Operation Challenges"
+        bullets:
+          - "Delete/Update Challenge: May trigger node merging and tree rebalancing"
+          - "Example: Deleting customer ID 5000 might merge two leaf nodes"
+          - "Used by: MySQL InnoDB, SQL Server clustered indexes"
+        notes: "Explain the specific challenges clustered B+Trees face with write operations, using a concrete example and real database products."
+
+      - type: "diagram"
+        title: "Clustered B+Tree: Data Pages as Leaf Nodes"
+        diagramRef: "clustered_btree_lookup"
+        bullets:
+          - "Single file stores entire B+tree with data at leaf level"
+          - "Point lookup requires 3 random I/Os (root → internal → leaf)"
+          - "Leaf pages contain full row data (no additional fetch needed)"
+          - "Examples: InnoDB clustered tables, SQL Server clustered indexes"
+        notes: "Show how clustered B+trees minimize I/O by storing data in leaf pages."
+
+      - type: "text"
+        title: "Heap Files: Write Operation Advantages"
+        bullets:
+          - "Delete/Update Efficiency: No tree restructuring required"
+          - "Example: Delete customer → set tombstone bit, reclaim space later"
+          - "Used by: PostgreSQL heap tables, Oracle non-clustered storage"
+        notes: "Show how heap files provide more flexible write operations by avoiding tree maintenance, with a concrete example and real database products."
+
+      - type: "diagram"
+        title: "Heap + Index: Separate Data and Index Files"
+        diagramRef: "heap_index_lookup"
+        bullets:
+          - "Index and data stored in separate files"
+          - "Point lookup requires 4 random I/Os (3 index + 1 heap fetch)"
+          - "Index leaf pages contain only {key, TID} pointers"
+          - "Examples: PostgreSQL heap tables, Oracle non-clustered indexes"
+        notes: "Demonstrate the additional I/O overhead when index and data are separated."
+
       - type: "diagram"
         title: "B+Tree Limitations at Scale"
         diagramRef: "database_scaling_bottlenecks"
@@ -220,11 +241,19 @@ sections:
         title: "When B+Trees Aren't Enough: OLAP Challenges"
         diagramRef: "olap_analytics_architecture"
         bullets:
-          - "**Analytics requirement**: Scan 17TB dataset in seconds, not hours"
-          - "**Traditional approach**: 20+ minutes for complex analytical queries"
-          - "**Modern columnar systems**: Same analysis completed in under 80 seconds"
-          - "**15-20x improvement** needed for interactive analytics"
+          - "Analytics requirement: Scan 17TB dataset in seconds, not hours"
+          - "Traditional approach: 20+ minutes for complex analytical queries"
+          - "Modern columnar systems: Same analysis completed in under 80 seconds"
+          - "15-20x improvement: needed for interactive analytics"
         notes: "Show the clear architectural challenge where row-oriented storage cannot deliver the performance needed for large-scale analytics."
+      
+      - type: "diagram"
+        title: "Row vs Column Storage"
+        diagramRef: "row_vs_column_storage"
+        bullets:
+          - "Traditional row-based storage vs Parquet's columnar approach"
+          - "How columnar storage enables better compression"
+        notes: "Visualize the difference between row and column storage to help understand the fundamental concept."
 
       - type: "diagram"
         title: "Query Performance: The Analytics Gap"
@@ -235,6 +264,65 @@ sections:
           - "Interactive threshold (2 minutes) shows business requirement"
           - "17TB example dataset demonstrates real-world scale"
         notes: "Quantify the performance gap between traditional and modern approaches, showing why architectural change is necessary."
+
+  - title: "Parquet File Structure Deep Dive"
+    slides:
+      - type: "text"
+        title: "Parquet Hierarchical Structure"
+        bullets:
+          - "File Level: Complete Parquet file with header and footer"
+          - "Row Groups: ~128MB horizontal partitions for parallelism"
+          - "Column Chunks: All values for one column within a row group"
+          - "Pages: ~1MB units for I/O and compression"
+        notes: "Explain the four-level hierarchy that enables both parallel processing and efficient I/O."
+
+      - type: "text"
+        title: "Row Group Example: Breaking Down a 1GB File"
+        bullets:
+          - "File Size: 1GB Parquet file"
+          - "Row Groups: 8 groups × 128MB each"
+          - "Columns: 7 columns per row group"
+          - "Column Chunks: 56 total (8 row groups × 7 columns)"
+          - "Pages: ~896 pages (8 × 7 × ~16 pages per chunk)"
+        notes: "Provide concrete numbers to make the hierarchical structure tangible and understandable."
+
+      - type: "diagram"
+        title: "Parquet File Organization"
+        diagramRef: "parquet_file_structure"
+        bullets:
+          - "Footer contains metadata about all row groups and columns"
+          - "Row groups enable parallel processing"
+          - "Column chunks enable column pruning"
+          - "Pages enable efficient I/O and compression"
+        notes: "Visualize how the Parquet structure enables both parallel processing and query optimization."
+
+      - type: "text"
+        title: "Parquet Metadata: The Secret to Efficiency"
+        bullets:
+          - "Footer Metadata: Complete schema and statistics"
+          - "Row Group Stats: Min/max/null count per column per row group"
+          - "Page Stats: Fine-grained statistics within row groups"
+          - "Reading Process: Only 2 reads needed to get all metadata"
+        notes: "Explain how Parquet's rich metadata enables aggressive query optimization."
+
+      - type: "text"
+        title: "Parquet Reading Process"
+        bullets:
+          - "Step 1: Read last 8 bytes (footer length + magic number)"
+          - "Step 2: Read footer (~32KB) containing all metadata"
+          - "Step 3: Use metadata to plan optimal read strategy"
+          - "Step 4: Read only required row groups and columns"
+        notes: "Walk through the efficient reading process that minimizes I/O operations."
+
+      - type: "text"
+        title: "Parquet Immutability: Why Files Can't Be Modified"
+        bullets:
+          - "Footer offsets would be wrong if you appended new bytes"
+          - "Any in-place change would force rewriting the footer and every downstream byte"
+          - "Object stores (S3/GCS/Azure) don't support partial overwrite—you'd have to re-PUT the entire file"
+          - "Immutability avoids file-level locks: multiple writers can safely create new files in parallel"
+          - "Repeatable scans and reproducibility are crucial for analytics"
+        notes: "Explain why Parquet files are immutable by design and how this affects storage and processing patterns."
 
   - title: "Introduction to Distributed Processing"
     slides:
@@ -397,103 +485,6 @@ sections:
           - "Example: 'SELECT sum(sales) FROM transactions' only needs sales column"
         notes: "Introduce the fundamental concept of columnar storage and its advantages for analytical workloads."
 
-      - type: "text"
-        title: "Why Columnar Storage for OLAP?"
-        bullets:
-          - "Column Pruning: Only read needed columns, ignore rest"
-          - "Better Compression: Similar values compress better together"
-          - "Vectorized Processing: CPU-efficient batch operations"
-          - "Predicate Pushdown: Skip entire column chunks using statistics"
-        notes: "Explain the specific benefits that make columnar storage ideal for analytical processing."
-
-      - type: "text"
-        title: "Apache Parquet: Columnar Format for Big Data"
-        bullets:
-          - "Open Source: Standard format across big data ecosystem"
-          - "Optimized: Both storage efficiency and query performance"
-          - "Framework Support: Spark, Flink, Presto, Drill compatibility"
-          - "Schema Evolution: Handle changing data structures over time"
-        notes: "Introduce Parquet as the leading columnar format for distributed processing."
-
-  - title: "Object Store Fundamentals"
-    slides:
-      - type: "text"
-        title: "Object Stores: Key-Value Nature"
-        bullets:
-          - "Flat namespace: No real directories, just key prefixes"
-          - "Immutable objects: Write-once, read-many model"
-          - "No append operations: Must rewrite entire object"
-          - "No partial updates: Full object replacement required"
-        notes: "Introduce the fundamental characteristics of object stores that make them different from traditional file systems."
-
-      - type: "diagram"
-        title: "Object Store: Key-Value Nature and Limitations"
-        diagramRef: "objectstore_keyvalue"
-        bullets:
-          - "Keys are unique string identifiers (no hierarchy)"
-          - "Values are immutable blobs (no partial updates)"
-          - "No native support for transactions or atomic operations"
-          - "Example: PUT/GET operations on S3-like storage"
-        notes: "Visual representation of object store's key-value nature and its fundamental limitations."
-
-      - type: "text"
-        title: "Impact on Data Storage"
-        bullets:
-          - "Tables can't be single files: Need multiple objects"
-          - "Updates require new versions: No in-place modifications"
-          - "Consistency challenges: No native transaction support"
-          - "Performance implications: Full object rewrites"
-        notes: "Explain how object store limitations affect data storage and processing patterns."
-
-  - title: "Parquet File Structure Deep Dive"
-    slides:
-      - type: "text"
-        title: "Parquet Hierarchical Structure"
-        bullets:
-          - "File Level: Complete Parquet file with header and footer"
-          - "Row Groups: ~128MB horizontal partitions for parallelism"
-          - "Column Chunks: All values for one column within a row group"
-          - "Pages: ~1MB units for I/O and compression"
-        notes: "Explain the four-level hierarchy that enables both parallel processing and efficient I/O."
-
-      - type: "text"
-        title: "Row Group Example: Breaking Down a 1GB File"
-        bullets:
-          - "File Size: 1GB Parquet file"
-          - "Row Groups: 8 groups × 128MB each"
-          - "Columns: 7 columns per row group"
-          - "Column Chunks: 56 total (8 row groups × 7 columns)"
-          - "Pages: ~896 pages (8 × 7 × ~16 pages per chunk)"
-        notes: "Provide concrete numbers to make the hierarchical structure tangible and understandable."
-
-      - type: "diagram"
-        title: "Parquet File Organization"
-        diagramRef: "parquet_file_structure"
-        bullets:
-          - "Footer contains metadata about all row groups and columns"
-          - "Row groups enable parallel processing"
-          - "Column chunks enable column pruning"
-          - "Pages enable efficient I/O and compression"
-        notes: "Visualize how the Parquet structure enables both parallel processing and query optimization."
-
-      - type: "text"
-        title: "Parquet Metadata: The Secret to Efficiency"
-        bullets:
-          - "Footer Metadata: Complete schema and statistics"
-          - "Row Group Stats: Min/max/null count per column per row group"
-          - "Page Stats: Fine-grained statistics within row groups"
-          - "Reading Process: Only 2 reads needed to get all metadata"
-        notes: "Explain how Parquet's rich metadata enables aggressive query optimization."
-
-      - type: "text"
-        title: "Parquet Reading Process"
-        bullets:
-          - "Step 1: Read last 8 bytes (footer length + magic number)"
-          - "Step 2: Read footer (~32KB) containing all metadata"
-          - "Step 3: Use metadata to plan optimal read strategy"
-          - "Step 4: Read only required row groups and columns"
-        notes: "Walk through the efficient reading process that minimizes I/O operations."
-
   - title: "Distributed Processing with Parquet"
     slides:
       - type: "text"
@@ -534,45 +525,6 @@ sections:
           - "Result collection: Combine results from all tasks"
         notes: "Demonstrate the complete flow of a distributed analytical query on Parquet data."
 
-      - type: "text"
-        title: "Query Optimization with Parquet"
-        bullets:
-          - "Predicate Pushdown: Skip row groups where max < filter value"
-          - "Column Pruning: Only read columns used in query"
-          - "Projection Pushdown: Apply SELECT early to reduce data movement"
-          - "Example: Query 'SELECT name WHERE age > 30' reads only name/age columns from qualifying row groups"
-        notes: "Show concrete examples of how query optimization works with Parquet metadata."
-
-      - type: "diagram"
-        title: "Data Locality in Parquet Processing"
-        diagramRef: "parquet_data_locality"
-        bullets:
-          - "HDFS blocks contain Parquet row group data"
-          - "Tasks scheduled on nodes with local row group blocks"
-          - "Network traffic minimized through local processing"
-          - "Fault tolerance through block replication"
-        notes: "Demonstrate how data locality optimization works specifically with Parquet files."
-
-  - title: "Advanced Performance Optimization"
-    slides:
-      - type: "text"
-        title: "Memory Management and Vectorization"
-        bullets:
-          - "Vectorized Processing: Process columnar data in batches"
-          - "Lazy Loading: Load column chunks only when needed"
-          - "Dictionary Encoding: Reduce memory footprint for repeated values"
-          - "Page-level Processing: Efficient memory utilization"
-        notes: "Explain advanced techniques for optimizing memory usage and processing speed."
-
-      - type: "text"
-        title: "Compression and Encoding Strategies"
-        bullets:
-          - "Dictionary Encoding: Efficient for low-cardinality columns"
-          - "Run-Length Encoding: Optimal for sorted or repeated data"
-          - "Delta Encoding: Compress sequences of similar values"
-          - "Compression Codecs: SNAPPY for speed, GZIP for size"
-        notes: "Detail the various encoding and compression strategies available in Parquet."
-
       - type: "diagram"
         title: "End-to-End Spark + Parquet Execution"
         diagramRef: "spark_parquet_execution"
@@ -584,15 +536,6 @@ sections:
         notes: "Show the complete execution flow highlighting all optimization techniques."
 
       - type: "text"
-        title: "Performance Tuning Guidelines"
-        bullets:
-          - "Row Group Size: Balance parallelism vs overhead (128MB optimal)"
-          - "Partition Strategy: Align with common query patterns"
-          - "Compression Selection: SNAPPY for compute-bound, GZIP for I/O-bound"
-          - "Column Organization: Place frequently queried columns first"
-        notes: "Provide practical guidance for optimizing Parquet performance in production."
-
-      - type: "text"
         title: "Real-World Performance Impact"
         bullets:
           - "Query Performance: 10-100x faster than row-based formats"
@@ -601,7 +544,37 @@ sections:
           - "Cost Savings: Significant reduction in compute and storage costs"
         notes: "Quantify the real-world benefits achievable with optimized Parquet + Spark processing."
 
-  - title: "Workshop Summary and Next Steps"
+  - title: "Object Store Fundamentals"
+    slides:
+      - type: "text"
+        title: "Object Stores: Key-Value Nature"
+        bullets:
+          - "Flat namespace: No real directories, just key prefixes"
+          - "Immutable objects: Write-once, read-many model"
+          - "No append operations: Must rewrite entire object"
+          - "No partial updates: Full object replacement required"
+        notes: "Introduce the fundamental characteristics of object stores that make them different from traditional file systems."
+
+      - type: "diagram"
+        title: "Object Store: Key-Value Nature and Limitations"
+        diagramRef: "objectstore_keyvalue"
+        bullets:
+          - "Keys are unique string identifiers (no hierarchy)"
+          - "Values are immutable blobs (no partial updates)"
+          - "No native support for transactions or atomic operations"
+          - "Example: PUT/GET operations on S3-like storage"
+        notes: "Visual representation of object store's key-value nature and its fundamental limitations."
+
+      - type: "text"
+        title: "Impact on Data Storage"
+        bullets:
+          - "Tables can't be single files: Need multiple objects"
+          - "Updates require new versions: No in-place modifications"
+          - "Consistency challenges: No native transaction support"
+          - "Performance implications: Full object rewrites"
+        notes: "Explain how object store limitations affect data storage and processing patterns."
+
+  - title: "Summary"
     slides:
       - type: "text"
         title: "Journey Completed: From KB to PB"
@@ -620,21 +593,3 @@ sections:
           - "Metadata: Rich metadata enables aggressive optimization"
           - "Fault Tolerance: Build resilience into every layer"
         notes: "Highlight the core principles that drive effective data architecture design."
-
-      - type: "text"
-        title: "Next Steps for Implementation"
-        bullets:
-          - "Start Small: Begin with single-node optimization"
-          - "Measure Everything: Profile before and after optimizations"
-          - "Incremental Migration: Gradually move to distributed processing"
-          - "Monitor Performance: Track locality ratios and compression effectiveness"
-        notes: "Provide practical guidance for applying these concepts in real projects."
-
-      - type: "text"
-        title: "Additional Resources"
-        bullets:
-          - "Apache Spark Documentation: In-depth guides and best practices"
-          - "Parquet Format Specification: Understanding file format details"
-          - "Performance Tuning Guides: Framework-specific optimization tips"
-          - "Community Forums: Join discussions and learn from others"
-        notes: "Point to resources for continued learning and community support."
