@@ -217,15 +217,14 @@ sections:
           - "Examples: PostgreSQL heap tables, Oracle non-clustered indexes"
         notes: "Demonstrate the additional I/O overhead when index and data are separated."
 
-      - type: "diagram"
-        title: "B+Tree Limitations at Scale"
-        diagramRef: "database_scaling_bottlenecks"
+      - type: "text"
+        title: "B+Tree Limitations: Data Scale"
         bullets:
-          - "**500+ concurrent users** accessing scheduling data simultaneously"
-          - "**60K+ IOPS requirements** for real-time operational systems"  
-          - "**10TB+ per physical database** before horizontal partitioning becomes necessary"
-          - "**Transaction ID wraparound** issues in production systems with billions of records"
-        notes: "Show the architectural bottlenecks that force the transition from single-server to distributed systems."
+          - "Single Node Storage: 10TB+ databases hit physical limits"
+          - "Memory Constraints: Cannot cache entire working set"
+          - "CPU Bottlenecks: Single-threaded query processing"
+          - "I/O Saturation: 60K+ IOPS requirements exceed single disk capacity"
+        notes: "Explain how data scale pushes single-node B+Tree systems beyond their physical limits."
 
       - type: "diagram"
         title: "Performance Cliff: Concurrent User Scaling"
@@ -237,23 +236,40 @@ sections:
           - "Real-world example: enterprise scheduling systems hitting this wall"
         notes: "Visual demonstration of how B+Tree systems hit hard performance limits with realistic concurrent user loads."
 
-      - type: "diagram"
-        title: "When B+Trees Aren't Enough: OLAP Challenges"
-        diagramRef: "olap_analytics_architecture"
+      - type: "text"
+        title: "B+Tree Limitations: Query Pattern Mismatch"
         bullets:
-          - "Analytics requirement: Scan 17TB dataset in seconds, not hours"
-          - "Traditional approach: 20+ minutes for complex analytical queries"
-          - "Modern columnar systems: Same analysis completed in under 80 seconds"
-          - "15-20x improvement: needed for interactive analytics"
-        notes: "Show the clear architectural challenge where row-oriented storage cannot deliver the performance needed for large-scale analytics."
-      
+          - "OLTP Pattern: Few records, ALL columns → Row storage optimal"
+          - "OLAP Pattern: ALL records, FEW columns → Row storage wasteful"
+          - "Example: 'SELECT sum(sales) FROM 1B transactions' reads entire rows"
+          - "Waste Factor: 90% of data read but not used in analytical queries"
+        notes: "Explain the fundamental mismatch between row-oriented storage and analytical query patterns."
+
+      - type: "text"
+        title: "When B+Tree Indexes Aren't Useful"
+        bullets:
+          - "Need ALL records → index provides no benefit"
+          - "Example: 'Sum revenue for last six months' must scan every record in last six months anyway"
+          - "Sequential I/O: Direct file scan is faster than random index traversal"
+        notes: "Explain why B+Tree indexes become useless overhead when analytical queries need to access all or most records."
+
       - type: "diagram"
-        title: "Row vs Column Storage"
+        title: "Row vs Column Storage: The Pattern Mismatch"
         diagramRef: "row_vs_column_storage"
         bullets:
-          - "Traditional row-based storage vs Parquet's columnar approach"
-          - "How columnar storage enables better compression"
-        notes: "Visualize the difference between row and column storage to help understand the fundamental concept."
+          - "Row Storage: Optimized for OLTP (few records, all columns)"
+          - "Column Storage: Optimized for OLAP (all records, few columns)"
+          - "Analytical Query Efficiency: 10x less I/O with column storage"
+        notes: "Visualize how column storage solves the analytical query pattern mismatch."
+
+      - type: "text"
+        title: "Requirements for Scale-Out Solution"
+        bullets:
+          - "Splittable Format: Enable parallel processing across machines"
+          - "Column Storage: Optimize for analytical query patterns"
+          - "Rich Metadata: Enable query optimization and predicate pushdown"
+          - "Self-Describing: Independent processing without external schema"
+        notes: "Define the key requirements that drive the need for modern analytical storage formats like Parquet."
 
       - type: "diagram"
         title: "Query Performance: The Analytics Gap"
@@ -473,17 +489,6 @@ sections:
           - "Fallback strategies when optimal placement isn't available"
           - "Network traffic minimization through intelligent scheduling"
         notes: "Demonstrate how the scheduler optimizes task placement to minimize network overhead."
-
-  - title: "Introduction to Columnar Storage"
-    slides:
-      - type: "text"
-        title: "Row vs Column Storage for Analytics"
-        bullets:
-          - "Row Storage: Traditional approach, one record per row"
-          - "Column Storage: Group same attributes together"
-          - "Analytics Advantage: Often need only few columns from wide tables"
-          - "Example: 'SELECT sum(sales) FROM transactions' only needs sales column"
-        notes: "Introduce the fundamental concept of columnar storage and its advantages for analytical workloads."
 
   - title: "Distributed Processing with Parquet"
     slides:
