@@ -218,6 +218,26 @@ sections:
         notes: "Demonstrate the additional I/O overhead when index and data are separated."
 
       - type: "text"
+        title: "Assignment 1: Build City Index (Working Around Insert-Only B+Tree)"
+        bullets:
+          - "Real World: Secondary indexes update incrementally as data is inserted"
+          - "Our Limitation: sparklite B+Tree only supports insert, no updates"
+          - "Workaround: Collect city mappings in-memory during insertion phase"
+          - "Then: Create B+Tree city index from complete in-memory collection"
+          - "Learning Focus: Secondary index benefits, not the implementation workaround"
+        notes: "The focus is on learning secondary index concepts and performance benefits, not the implementation workaround."
+
+      - type: "text"
+        title: "Assignment 2: Analyze B+Tree Disk Access Patterns"
+        bullets:
+          - "Run Existing Tests: Execute BTreePageAccessDemo and BTreeMultiPageDemo"
+          - "Observe I/O Logging: See real page reads/writes in the output"
+          - "Compare Scenarios: Single-page vs multi-page tree performance"
+          - "Measure Efficiency: Count disk operations for different query patterns"
+          - "Key Insight: Tree height directly correlates with I/O operations per query"
+        notes: "Run pre-built educational tests that show exactly how B+Tree operations translate to disk I/O. The comprehensive logging makes database internals visible and measurable."
+
+      - type: "text"
         title: "B+Tree Limitations: Data Scale"
         bullets:
           - "Single Node Storage: 10TB+ databases hit physical limits"
