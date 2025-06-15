@@ -1,0 +1,82 @@
+// [step1 {"name":"File Overview"}]
+digraph ParquetFileStructure {
+  rankdir = TB;
+  bgcolor = "white";
+
+  /* ── default node + edge styling ─────────────────────────────── */
+  node [shape=plaintext,
+        fontname="Helvetica", fontsize=11];
+  edge [style=invis];
+
+  /* ── PARQUET FILE with nested tables for column chunks ─── */
+  parquet_file [label=<
+    <table border="0" cellborder="1" cellspacing="0" cellpadding="4">
+     
+      <!-- header row -->
+      <tr>
+        <td bgcolor="#E8F4FF" colspan="2"><b>Parquet File (physical layout)</b></td>
+      </tr>
+
+      <!-- file header -->
+      <tr>
+        <td bgcolor="lightgreen" colspan="2">File Header: PAR1 Magic (4 bytes)</td>
+      </tr>
+
+      <!-- row group 1 -->
+      <tr>
+        <td colspan="2">
+          <table border="0" cellborder="1" cellspacing="0" cellpadding="3">
+            <tr>
+              <td bgcolor="#F0F8FF" colspan="2"><b>Row Group 1 (~128 MiB)</b></td>
+            </tr>
+            <tr>
+              <td bgcolor="lightyellow">Column A Chunk 1<br/>(Dictionary + Data Pages)<br/>~64 MiB</td>
+              <td bgcolor="lightyellow">Column B Chunk 1<br/>(Dictionary + Data Pages)<br/>~64 MiB</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- row group 2 -->
+      
+      <tr>
+        <td colspan="2">
+          <table border="0" cellborder="1" cellspacing="0" cellpadding="3">
+            <tr>
+              <td bgcolor="#F0F8FF" colspan="2"><b>Row Group 2 (~128 MiB)</b></td>
+            </tr>
+            <tr>
+              <td bgcolor="lightyellow">Column A Chunk 2<br/>(Dictionary + Data Pages)<br/>~64 MiB</td>
+              <td bgcolor="lightyellow">Column B Chunk 2<br/>(Dictionary + Data Pages)<br/>~64 MiB</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+    <tr>
+        <td colspan="2">
+          <table border="0" cellborder="1" cellspacing="0" cellpadding="3">
+            <tr>
+              <td bgcolor="#F0F8FF" colspan="2"><b>More Row Groups ... </b></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- file footer -->
+      <tr>
+        <td bgcolor="lightcoral" colspan="2">File Footer: Metadata + Footer Length + PAR1 Magic (~32 KiB)</td>
+      </tr>
+    </table>
+  >];
+
+  /* ── explanatory note underneath ─────────────────────────────── */
+  legend [shape=note, fontsize=10,
+          label="Nested Parquet Layout:\n\
+• Each row group contains a separate table of column chunks\n\
+• Column chunks are physically contiguous within each row group\n\
+• Footer metadata describes all nested structures"];
+
+  parquet_file -> legend;
+}
+// [/step1] 

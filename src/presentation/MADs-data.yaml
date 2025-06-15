@@ -360,6 +360,17 @@ sections:
           - "Repeatable scans and reproducibility are crucial for analytics"
         notes: "Explain why Parquet files are immutable by design and how this affects storage and processing patterns."
 
+      - type: "text"
+        title: "Assignment 3: Implement a Parquet File Reader"
+        bullets:
+          - "Goal: Build a metadata-driven Parquet reader to understand columnar storage optimization"
+          - "Part 1: Read footer metadata and extract row group statistics"
+          - "Part 2: Implement predicate pushdown using min/max statistics"
+          - "Part 3: Implement column pruning to read only required columns"
+          - "Part 4: Measure and compare I/O efficiency vs naive full-file reading"
+          - "Learning Focus: How metadata enables query optimization in columnar formats"
+        notes: "Students implement core Parquet reading concepts before learning distributed processing. This bridges file-level optimization with cluster-level parallelism."
+
   - title: "Introduction to Distributed Processing"
     slides:
       - type: "text"
