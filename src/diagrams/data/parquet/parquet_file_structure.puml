@@ -12,6 +12,9 @@ skinparam rectangleMargin 10
 
 title Parquet File Structure
 
+' Force top-to-bottom layout
+top to bottom direction
+
 ' [step1 {"name":"File Overview"}]
 note as N1
   **File Header:**
@@ -39,6 +42,10 @@ rectangle "Parquet File Structure\n(Binary Format)" as ParquetFile #LightBlue {
     rectangle "PAR1 Magic Number\n(4 bytes)" as FooterMagic #Orange
   }
 }
+
+' Force vertical layout with hidden arrows outside the container
+Header -[hidden]down-> DataSection
+DataSection -[hidden]down-> Footer
 
 N1 --> ParquetFile
 ' [/step1]
