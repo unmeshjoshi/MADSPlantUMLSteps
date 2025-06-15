@@ -51,21 +51,23 @@ body {
 .content-container ul,
 .content-container ol {
     font-size: 2rem;
-    line-height: 1.7;
+    line-height: 1.6;
     padding-left: 2rem;
     width: 85%;
     max-width: 900px;
     text-align: left;
     color: var(--text-secondary);
-    margin: 1.5rem auto;
+    margin: 0 auto;
     background: var(--surface);
     padding: 2rem 3rem;
     border-radius: 12px;
     box-shadow: var(--shadow-md);
+    max-height: none;
+    box-sizing: border-box;
 }
 
 .content-container li {
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
     position: relative;
     padding-left: 0.5rem;
 }
@@ -75,9 +77,33 @@ body {
     font-weight: 600;
 }
 
-/* Improve list item spacing */
-.content-container li {
-    margin-bottom: 15px; /* More space between list items */
+/* Responsive list item spacing based on number of items */
+.content-container ul:has(li:nth-child(7)) li,
+.content-container ol:has(li:nth-child(7)) li {
+    margin-bottom: 0.6rem; /* Tighter spacing for 7+ items */
+}
+
+.content-container ul:has(li:nth-child(10)) li,
+.content-container ol:has(li:nth-child(10)) li {
+    margin-bottom: 0.4rem; /* Even tighter spacing for 10+ items */
+}
+
+/* Fallback for browsers without :has() support */
+@supports not (selector(:has(*))) {
+    .content-container li {
+        margin-bottom: 0.6rem; /* Conservative spacing */
+    }
+}
+
+/* Responsive font sizing for long lists */
+.content-container ul:has(li:nth-child(8)) {
+    font-size: 1.8rem;
+    line-height: 1.5;
+}
+
+.content-container ul:has(li:nth-child(12)) {
+    font-size: 1.6rem;
+    line-height: 1.4;
 }
 
 .slide-container {
@@ -190,11 +216,34 @@ body {
     display: flex;
     width: 100%;
     height: calc(100% - 60px); /* Subtract title container height */
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     box-sizing: border-box;
-    padding: 0;
-    overflow: hidden;
+    padding: 1rem 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Subtle scroll indicator */
+.content-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.content-container::-webkit-scrollbar-track {
+    background: var(--surface-alt);
+    border-radius: 3px;
+}
+
+.content-container::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 3px;
+    opacity: 0.7;
+}
+
+.content-container::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+    opacity: 1;
 }
 
 /* Progress bar */
@@ -1037,9 +1086,14 @@ button:hover:not(:disabled) i.fa-chevron-left,
 
     .content-container ul,
     .content-container ol {
-        font-size: 20px;
-        padding-left: 25px;
-        width: 90%;
+        font-size: 1.4rem;
+        padding: 1.5rem 2rem;
+        width: 95%;
+        line-height: 1.4;
+    }
+    
+    .content-container li {
+        margin-bottom: 0.5rem;
     }
 
     .diagram-bullets {
