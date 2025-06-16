@@ -712,9 +712,9 @@ body {
     flex-direction: column;
     width: 100%;
     height: 100%;
-    align-items: center;
-    justify-content: center;
-    padding: 1.5rem;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 0;
     overflow: hidden;
 }
 
@@ -857,14 +857,14 @@ body {
 
 .step {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: flex-start; /* Align to top instead of center */
     width: 100%;
     height: 100%;
     max-height: 100%; /* Ensure step doesn't exceed parent container */
     position: relative;
     box-sizing: border-box;
-    padding: 10px;
+    padding: 0;
     /* Ensure step container maintains size */
     min-height: 500px;
     overflow-y: auto; /* Allow vertical scrolling for tall diagrams */
@@ -872,23 +872,22 @@ body {
 }
 
 .step img {
-    width: 65%;       /* Reduced to 80% for better visual balance */
-    max-width: 65%;   /* Cap maximum width */
-    height: auto;     /* Allow height to adjust based on content */
-    /* Remove max-height to allow full diagram display */
-    /* Remove object-fit to allow natural scaling */
-    border: 1px solid var(--border-dark);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-    transition: all 0.3s ease;
+    /* Match content-container ul positioning exactly */
+    width: 85%;
+    max-width: 900px;
+    margin: 0 auto;
     background: var(--surface);
-    padding: 1.5rem;
-    /* Add margin for better vertical spacing */
-    margin: 1rem 0;
-    /* Center the image */
+    padding: 2.5rem 3rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    box-sizing: border-box;
+    
+    /* Image-specific styling */
+    height: auto;
+    object-fit: contain;
+    transition: all 0.3s ease;
     display: block;
-    margin-left: auto;
-    margin-right: auto;
+    border: 1px solid var(--border);
 }
 
 .step img:hover {
@@ -1035,9 +1034,8 @@ button:hover:not(:disabled) i.fa-chevron-left,
     }
 
     .step img {
-        max-width: 80%;
-        width: 75%;       /* Proportionally smaller for tablets (80% desktop -> 75% tablet) */
-        /* Remove max-height to allow full diagram display on mobile */
+        width: 95%;
+        padding: 1.8rem 2rem;
     }
 
     /* Mobile responsive styles for floating bullets */
@@ -1097,9 +1095,8 @@ button:hover:not(:disabled) i.fa-chevron-left,
     }
     
     .step img {
-        max-width: 80%;
-        width: 70%;       /* Proportionally smaller for phones (80% desktop -> 70% phone) */
-        /* Remove max-height to allow full diagram display on very small screens */
+        width: 95%;
+        padding: 1.8rem 2rem;
     }
     
     .title-container h2 {
