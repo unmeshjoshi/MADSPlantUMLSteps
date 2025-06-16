@@ -1,0 +1,83 @@
+@startuml
+
+!include ../../style.puml
+
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+title Delta Lake Action Types and JSON Structure
+
+rectangle "Transaction Log Entry" as log_entry #LightBlue {
+  note as log_structure
+    File: 00000000000000000005.json
+    Contains: List of Actions (one per line)
+  end note
+}
+
+rectangle "Action Types" as actions {
+  
+  rectangle "CommitInfo" as commit_info #LightGreen {
+    note as commit_json
+      {
+        "commitInfo": {
+          "timestamp": 1640995200000,
+          "operation": "WRITE",
+          "operationParameters": {"mode": "Append"},
+          "clientVersion": "delta-0.8.0"
+        }
+      }
+    end note
+  }
+  
+  rectangle "AddFile" as add_file #LightYellow {
+    note as add_json
+      {
+        "add": {
+          "path": "part-00000-abc123.parquet",
+          "size": 1024,
+          "modificationTime": 1640995200000,
+          "dataChange": true,
+          "stats": "{\"numRecords\": 100}"
+        }
+      }
+    end note
+  }
+  
+  rectangle "RemoveFile" as remove_file #LightPink {
+    note as remove_json
+      {
+        "remove": {
+          "path": "part-00001-def456.parquet",
+          "deletionTimestamp": 1640995300000,
+          "dataChange": true
+        }
+      }
+    end note
+  }
+  
+  rectangle "Metadata" as metadata #LightCyan {
+    note as metadata_json
+      {
+        "metaData": {
+          "id": "12345678-1234-1234-1234-123456789012",
+          "schemaString": "{\"type\":\"struct\",\"fields\":[...]}",
+          "partitionColumns": [],
+          "configuration": {}
+        }
+      }
+    end note
+  }
+}
+
+log_entry --> actions : "Contains"
+
+note bottom
+  Key Principles:
+  • Each action is a separate JSON object on its own line
+  • Actions describe what changed, not how to change it
+  • Log replay reconstructs current table state
+  • Actions are immutable once written
+end note
+
+@enduml 

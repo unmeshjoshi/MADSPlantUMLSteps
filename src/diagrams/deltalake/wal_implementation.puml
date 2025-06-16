@@ -1,0 +1,58 @@
+@startuml
+
+!include ../../style.puml
+
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+title Delta Lake Write-Ahead Log Implementation
+
+participant "Application" as app
+participant "DeltaTable" as table
+participant "DeltaLog" as log
+participant "Object Store" as store
+
+' [step1 {"name":"Step 1: Prepare Transaction Actions"}]
+app -> table : insert(records)
+table -> table : Write records to Parquet file
+table -> table : Create AddFile action
+
+note over table
+  Actions Prepared:
+  • AddFile: path="data-001.parquet", size=1024
+  • CommitInfo: operation="INSERT", timestamp=now
+end note
+' [/step1]
+
+' [step2 {"name":"Step 2: Write to Transaction Log", "newPage": "true"}]
+table -> log : commit(actions, version=5)
+log -> log : Create log entry JSON
+
+note over log
+  Log Entry (00000000000000000005.json):
+  {
+    "commitInfo": {"operation": "INSERT", ...},
+    "add": {"path": "data-001.parquet", "size": 1024}
+  }
+end note
+
+log -> store : Atomic write log file
+note right : write(00000000000000000005.json, overwrite=false)
+store --> log : Success (file created atomically)
+' [/step2]
+
+' [step3 {"name":"Step 3: Changes Now Visible", "newPage": "true"}]
+log --> table : Commit successful
+table --> app : Insert complete
+
+note over app, store
+  WAL Guarantees:
+  • Changes logged before becoming visible
+  • Atomic log file creation ensures consistency
+  • Recovery possible by replaying log files
+  • Multiple readers see consistent view
+end note
+' [/step3]
+
+@enduml 

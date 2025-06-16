@@ -603,6 +603,138 @@ sections:
           - "Performance implications: Full object rewrites"
         notes: "Explain how object store limitations affect data storage and processing patterns."
 
+  - title: "Delta Lake: ACID Transactions on Object Stores"
+    slides:
+      - type: "text"
+        title: "The Object Store Problem"
+        bullets:
+          - "Object stores: Immutable blobs with key-value access"
+          - "No atomic updates: Can't modify existing files"
+          - "No transactions: Multiple operations not atomic"
+          - "Examples: S3, Azure Blob Storage, Google Cloud Storage"
+          - "Challenge: How to build ACID databases on immutable storage?"
+        notes: "Reference delta-module1 - shows basic file operations and limitations. Introduce the fundamental problem Delta Lake solves."
+
+      - type: "diagram"
+        title: "Object Store vs Database Requirements"
+        diagramRef: "objectstore_vs_database_needs"
+        bullets:
+          - "Database needs: ACID properties, update-in-place, transactions"
+          - "Object store provides: Immutable objects, eventual consistency"
+          - "The gap: How to bridge these fundamental differences"
+          - "Solution: Delta Lake transaction protocol"
+        notes: "Visual comparison showing why traditional database approaches don't work on object stores."
+
+      - type: "text"
+        title: "Step 1: Transaction Log Solution"
+        bullets:
+          - "Core idea: Log all changes as immutable JSON files"
+          - "Each commit creates new numbered file: 00000000000000000001.json"
+          - "Files contain list of Actions describing changes"
+          - "Table state = replay all log files in order"
+          - "Example: delta-module2/DeltaLog.java shows log file creation"
+        notes: "Reference delta-module2/DeltaLog.java - shows how transaction logs are implemented in practice."
+
+      - type: "text"
+        title: "Step 2: Action Types - The Building Blocks"
+        bullets:
+          - "AddFile: Adds new data file to table"
+          - "RemoveFile: Logically removes file from table"
+          - "CommitInfo: Metadata about the commit (timestamp, operation)"
+          - "Metadata: Schema and table properties"
+          - "Protocol: Version compatibility information"
+        notes: "Reference delta-module2/actions/ package - shows concrete Action implementations students can examine."
+
+      - type: "diagram"
+        title: "Step 3: Write-Ahead Log Implementation"
+        diagramRef: "wal_implementation"
+        bullets:
+          - "Changes logged before becoming visible"
+          - "Atomic log file creation ensures consistency"
+          - "Recovery possible by replaying log files"
+          - "Multiple readers see consistent view"
+        notes: "Show the fundamental WAL pattern that enables ACID properties on object stores."
+
+      - type: "diagram"
+        title: "Delta Lake Action Types and Structure"
+        diagramRef: "delta_action_types"
+        bullets:
+          - "Each action is a separate JSON object"
+          - "Actions describe what changed, not how to change"
+          - "Log replay reconstructs current table state"
+          - "Actions are immutable once written"
+        notes: "Visual showing the JSON structure students will work with in delta-module assignments."
+
+      - type: "text"
+        title: "Step 4: Snapshot-Based Reads"
+        bullets:
+          - "Snapshot = point-in-time view of table"
+          - "Created by reading log up to specific version"
+          - "Immutable once created - no changes during read"
+          - "Multiple readers can share same snapshot"
+          - "Example: delta-module3/Snapshot.java implementation"
+        notes: "Reference delta-module3/Snapshot.java - shows how point-in-time consistency is implemented."
+
+      - type: "text"
+        title: "Step 5: Time Travel Queries"
+        bullets:
+          - "Read table as it existed at version N"
+          - "SQL syntax: SELECT * FROM table VERSION AS OF 42"
+          - "Use cases: Debugging, auditing, reproducible analytics"
+          - "Cost: Only metadata scan, no data reprocessing"
+          - "Assignment: Implement version-based reads"
+        notes: "Show the power of versioned transaction logs for analytical workloads."
+
+      - type: "text"
+        title: "Step 6: The Concurrent Writers Challenge"
+        bullets:
+          - "Problem: Multiple writers, single log sequence"
+          - "Traditional solution: Pessimistic locking (doesn't scale)"
+          - "Delta Lake solution: Optimistic concurrency control"
+          - "Key insight: Most transactions don't actually conflict"
+          - "Reference: delta-module4/OptimisticTransaction.java"
+        notes: "Introduce the core challenge of concurrent access and why optimistic concurrency is the right solution."
+
+      - type: "diagram"
+        title: "Step 7: Optimistic Transaction Flow"
+        diagramRef: "atomic_commit"
+        bullets:
+          - "Both transactions read version V"
+          - "Both prepare changes independently"
+          - "First to commit wins (creates V+1)"
+          - "Second detects conflict, retries or fails"
+        notes: "Perfect use of existing atomic_commit.puml! Shows the complete optimistic concurrency control flow."
+
+      - type: "text"
+        title: "Step 8: Conflict Detection and Resolution"
+        bullets:
+          - "Read version when transaction starts"
+          - "At commit: check if any new versions exist"
+          - "Analyze conflicting actions for logical conflicts"
+          - "Retry if safe, abort if true conflict"
+          - "Assignment: Implement OptimisticTransaction.commit() method"
+        notes: "Reference delta-module4/OptimisticTransaction.java - students implement the core concurrency control logic."
+
+      - type: "text"
+        title: "Delta Lake Hands-On Journey"
+        bullets:
+          - "Module 1: Basic file operations and limitations"
+          - "Module 2: Transaction log and atomic commits"
+          - "Module 3: Snapshot isolation and consistent reads"
+          - "Module 4: Optimistic concurrency control"
+          - "Result: Complete understanding of ACID on object stores"
+        notes: "Summary of the progressive learning journey through the delta-module repositories."
+
+      - type: "text"
+        title: "Real-World Delta Lake Benefits"
+        bullets:
+          - "ACID guarantees on petabyte-scale data lakes"
+          - "Time travel for data lineage and debugging"
+          - "Schema evolution without breaking existing queries"
+          - "Optimized file management and compaction"
+          - "Integration with Spark, Presto, and other engines"
+        notes: "Connect the technical concepts to real-world value and production use cases."
+
   - title: "Summary"
     slides:
       - type: "text"

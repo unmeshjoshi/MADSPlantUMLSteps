@@ -1,0 +1,68 @@
+@startuml
+
+!include ../../style.puml
+
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+title Object Store vs Database Requirements
+
+rectangle "Database Requirements" as db_req #LightBlue {
+  rectangle "ACID Properties" as acid {
+    note as acid_note
+      • Atomicity: All-or-nothing operations
+      • Consistency: Valid state transitions
+      • Isolation: Concurrent transaction safety
+      • Durability: Permanent once committed
+    end note
+  }
+  
+  rectangle "Core Operations" as db_ops {
+    note as db_ops_note
+      • Update-in-place records
+      • Atomic multi-record changes
+      • Transaction coordination
+      • Write-ahead logging
+      • Index maintenance
+    end note
+  }
+}
+
+rectangle "Object Store Capabilities" as obj_cap #LightCoral {
+  rectangle "Storage Model" as storage {
+    note as storage_note
+      • Immutable objects (write-once)
+      • Key-value access only
+      • No partial updates
+      • Eventually consistent
+    end note
+  }
+  
+  rectangle "Available Operations" as obj_ops {
+    note as obj_ops_note
+      • PUT object (create new)
+      • GET object (read entire)
+      • DELETE object (remove)
+      • LIST objects (enumerate)
+      • Conditional PUT (if-not-exists)
+    end note
+  }
+}
+
+rectangle "The Gap" as gap #LightYellow {
+  note as gap_note
+    Problem: How to build ACID transactions
+    on top of immutable, eventually consistent storage?
+    
+    Solution: Delta Lake Transaction Protocol
+    • Write-ahead transaction log
+    • Optimistic concurrency control
+    • Atomic log file commits
+  end note
+}
+
+db_req --> gap : "Needs"
+obj_cap --> gap : "Provides"
+
+@enduml 
