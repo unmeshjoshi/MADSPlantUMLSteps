@@ -9,7 +9,7 @@
     --accent-light: #f8fafc;    /* Very light blue-gray */
     
     /* Text Colors - High Contrast */
-    --text-primary: #0f172a;    /* Near black with slight blue tint */
+    --text-primary: #1e293b;    /* Professional slate blue-gray */
     --text-secondary: #475569;  /* Medium gray */
     --text-light: #94a3b8;      /* Light gray */
     --text-on-dark: #f1f5f9;    /* Light gray for dark backgrounds */
@@ -50,60 +50,84 @@ body {
 /* Bullet point slides styling */
 .content-container ul,
 .content-container ol {
-    font-size: 2rem;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 1.5rem;
     line-height: 1.6;
     padding-left: 2rem;
     width: 85%;
     max-width: 900px;
     text-align: left;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     margin: 0 auto;
     background: var(--surface);
-    padding: 2rem 3rem;
+    padding: 2.5rem 3rem;
     border-radius: 12px;
     box-shadow: var(--shadow-md);
     max-height: none;
     box-sizing: border-box;
+    font-weight: 400;
 }
 
 .content-container li {
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.9rem;
     position: relative;
     padding-left: 0.5rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    color: var(--text-primary);
+    font-family: inherit;
 }
 
 .content-container li::marker {
     color: var(--primary-color);
     font-weight: 600;
+    font-size: 1em;
 }
 
 /* Responsive list item spacing based on number of items */
 .content-container ul:has(li:nth-child(7)) li,
 .content-container ol:has(li:nth-child(7)) li {
-    margin-bottom: 0.6rem; /* Tighter spacing for 7+ items */
+    margin-bottom: 0.7rem; /* Tighter spacing for 7+ items */
 }
 
 .content-container ul:has(li:nth-child(10)) li,
 .content-container ol:has(li:nth-child(10)) li {
-    margin-bottom: 0.4rem; /* Even tighter spacing for 10+ items */
+    margin-bottom: 0.5rem; /* Even tighter spacing for 10+ items */
+}
+
+.content-container ul:has(li:nth-child(15)) li,
+.content-container ol:has(li:nth-child(15)) li {
+    margin-bottom: 0.4rem; /* Very tight spacing for 15+ items */
 }
 
 /* Fallback for browsers without :has() support */
 @supports not (selector(:has(*))) {
     .content-container li {
-        margin-bottom: 0.6rem; /* Conservative spacing */
+        margin-bottom: 0.7rem; /* Conservative spacing */
+        color: var(--text-primary);
+    }
+    
+    .content-container ul,
+    .content-container ol {
+        font-size: 1.35rem; /* Slightly smaller for better fit */
+        font-family: 'Inter', 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--text-primary);
     }
 }
 
 /* Responsive font sizing for long lists */
-.content-container ul:has(li:nth-child(8)) {
-    font-size: 1.8rem;
+.content-container ul:has(li:nth-child(8)),
+.content-container ol:has(li:nth-child(8)) {
+    font-size: 1.35rem;
     line-height: 1.5;
+    font-family: inherit;
 }
 
-.content-container ul:has(li:nth-child(12)) {
-    font-size: 1.6rem;
+.content-container ul:has(li:nth-child(12)),
+.content-container ol:has(li:nth-child(12)) {
+    font-size: 1.2rem;
     line-height: 1.4;
+    font-family: inherit;
 }
 
 .slide-container {
@@ -449,9 +473,7 @@ body {
 
 /* Special handling for small diagrams like row_vs_column_storage and parquet_file_structure */
 .diagram-container img[src*="row_vs_column"],
-.diagram-container svg[src*="row_vs_column"],
-.diagram-container img[src*="parquet_file_structure"],
-.diagram-container svg[src*="parquet_file_structure"] {
+.diagram-container svg[src*="row_vs_column"] {
     width: 100%;
     max-width: 100%;
     min-height: 600px;
@@ -1086,14 +1108,19 @@ button:hover:not(:disabled) i.fa-chevron-left,
 
     .content-container ul,
     .content-container ol {
-        font-size: 1.4rem;
-        padding: 1.5rem 2rem;
+        font-family: 'Inter', 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 1.2rem;
+        padding: 1.8rem 2rem;
         width: 95%;
-        line-height: 1.4;
+        line-height: 1.5;
+        font-weight: 400;
+        color: var(--text-primary);
     }
     
     .content-container li {
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.7rem;
+        letter-spacing: 0.005em;
+        color: var(--text-primary);
     }
 
     .diagram-bullets {
