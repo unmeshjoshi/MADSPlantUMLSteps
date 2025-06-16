@@ -28,31 +28,4 @@ RG2 --> P1 : "1:1 Mapping"
 RG3 --> P2 : "1:1 Mapping"
 RG4 --> P3 : "1:1 Mapping"
 ' [/step3]
-
-' [step4 {"name":"Executor Assignment", "newPage":"true"}]
-rectangle "Cluster Nodes" as Cluster {
-  rectangle "Node 1" as N1 {
-    rectangle "Executor 1" as E1 #Yellow
-  }
-  rectangle "Node 2" as N2 {
-    rectangle "Executor 2" as E2 #Yellow
-  }
-}
-
-P0 --> E1
-P1 --> E1
-P2 --> E2
-P3 --> E2
-' [/step4]
-
-' [step5 {"name":"Benefits"}]
-note bottom of Cluster
-  **Key Benefits:**
-  • One-to-one mapping enables optimal parallelism
-  • Each partition processes independently 
-  • Data locality optimization possible
-  • Fault tolerance through partition re-execution
-end note
-' [/step5]
-
 @enduml 

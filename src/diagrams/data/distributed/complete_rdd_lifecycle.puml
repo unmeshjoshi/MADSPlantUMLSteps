@@ -1,0 +1,114 @@
+@startuml
+
+!include ../../../style.puml
+
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+title Complete RDD Lifecycle: From Creation to Results
+
+rectangle "Step 1: RDD Creation" as creation {
+  rectangle "Data Source" as source {
+    note as source_note
+      • File: textFile("data.txt")
+      • Collection: parallelize([1,2,3,4,5])
+      • Database: jdbc("SELECT * FROM table")
+    end note
+  }
+  
+  rectangle "Initial RDD" as initial_rdd {
+    note as initial_note
+      RDD[String] or RDD[Integer]
+      Partitioned across cluster
+    end note
+  }
+  
+  source -> initial_rdd : "Create RDD"
+}
+
+rectangle "Step 2: Transformation Chain" as transformations {
+  rectangle "RDD Operations" as ops {
+    rectangle "map()" as map_op
+    rectangle "filter()" as filter_op
+    rectangle "groupBy()" as group_op
+    
+    map_op -> filter_op : "Chain transformations"
+    filter_op -> group_op : "Build computation graph"
+  }
+  
+  note right of ops : LAZY EVALUATION\nNo computation yet!\nJust building the graph
+}
+
+rectangle "Step 3: Action Triggers Execution" as action {
+  rectangle "Action Called" as action_call {
+    note as action_note
+      • collect(): Get all results
+      • count(): Count elements  
+      • save(): Write to storage
+      • first(): Get first element
+    end note
+  }
+}
+
+rectangle "Step 4: Job Planning" as planning {
+  rectangle "DAG Scheduler" as dag_scheduler {
+    rectangle "Stage Creation" as stages
+    rectangle "Task Generation" as tasks
+    
+    stages -> tasks : "1 partition = 1 task"
+  }
+  
+  note right of dag_scheduler : Analyze dependencies\nCreate execution plan
+}
+
+rectangle "Step 5: Task Scheduling" as scheduling {
+  rectangle "Task Scheduler" as task_scheduler {
+    rectangle "Data Locality" as locality
+    rectangle "Worker Assignment" as assignment
+    
+    locality -> assignment : "Optimize placement"
+  }
+  
+  note right of task_scheduler : Prefer local data\nBalance workload
+}
+
+rectangle "Step 6: Parallel Execution" as execution {
+  rectangle "Worker Cluster" as workers {
+    rectangle "Worker 1\nTask A" as w1
+    rectangle "Worker 2\nTask B" as w2
+    rectangle "Worker 3\nTask C" as w3
+    rectangle "Worker 4\nTask D" as w4
+  }
+  
+  note right of workers : All tasks run\nin parallel
+}
+
+rectangle "Step 7: Result Collection" as results {
+  rectangle "Driver Program" as driver {
+    note as driver_note
+      Collect results from all workers
+      Combine into final result
+      Return to user application
+    end note
+  }
+}
+
+' Flow connections
+creation -> transformations : "Build pipeline"
+transformations -> action : "User calls action"
+action -> planning : "Trigger execution"
+planning -> scheduling : "Submit tasks"
+scheduling -> execution : "Distribute work"
+execution -> results : "Return results"
+
+note bottom
+  Key Insights:
+  • Transformations are lazy (no computation until action)
+  • Framework optimizes entire pipeline before execution
+  • Parallel execution across cluster for scalability
+  • Data locality optimization minimizes network traffic
+  • Fault tolerance through lineage-based recovery
+end note
+
+@enduml 

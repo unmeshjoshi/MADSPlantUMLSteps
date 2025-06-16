@@ -49,7 +49,7 @@ note right of Driver
 end note
 ' [/step3]
 
-' [step4 {"name":"Task Distribution"}]
+' [step4 {"name":"Task Distribution" , "newPage":"true"}]
 participant "Task Scheduler" as TS
 participant "Executor 1 (Node A)" as E1
 participant "Executor 2 (Node C)" as E2
@@ -66,7 +66,7 @@ TS --> Driver: Tasks submitted
 deactivate TS
 ' [/step4]
 
-' [step5 {"name":"Parallel Execution"}]
+' [step5 {"name":"Parallel Execution", "newPage":"true"}]
 E1 -> PF: Read Row Group 1
 E2 -> PF: Read Row Group 3
 
@@ -74,9 +74,6 @@ activate PF
 PF --> E1: RG1 column chunks
 PF --> E2: RG3 column chunks
 deactivate PF
-
-E1 -> E1: Vectorized processing
-E2 -> E2: Vectorized processing
 
 note right of E1
   **Processing Steps:**
@@ -93,7 +90,7 @@ E1 -> E1: Select: name, age
 E2 -> E2: Select: name, age
 ' [/step5]
 
-' [step6 {"name":"Result Collection"}]
+' [step6 {"name":"Result Collection", "newPage":"true"}]
 E1 --> Driver: Filtered results from RG1
 E2 --> Driver: Filtered results from RG3
 
@@ -113,7 +110,6 @@ note bottom
 • Column pruning: Only name,age columns read
 • Predicate pushdown: Filter applied at storage level
 • Data locality: Tasks executed on data-local nodes
-• Vectorized execution: Batch processing for efficiency
 end note
 ' [/step7]
 

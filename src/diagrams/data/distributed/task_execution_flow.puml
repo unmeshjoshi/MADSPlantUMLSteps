@@ -1,0 +1,108 @@
+@startuml
+
+!include ../../../style.puml
+
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+title Task Execution Flow in Distributed Processing
+' [common]
+box "Driver Program" #LightBlue
+  participant "Driver" as driver
+  participant "DAG Scheduler" as dag
+  participant "Task Scheduler" as task_sched
+end box
+
+box "Worker Cluster" #LightGreen
+  participant "Worker A" as workerA
+  participant "Worker B" as workerB
+  participant "Worker C" as workerC
+end box
+'[/common]
+
+' [step1 {"name":"Step 1: Action Triggers Job Planning"}]
+driver -> dag : RDD.collect() triggered
+note right : Action triggers execution
+
+dag -> dag : Analyze RDD pipeline
+note right : Create execution plan\nBreak into stages
+
+dag -> dag : Create tasks for each partition
+note right : 1 partition = 1 task
+
+note over driver, dag
+  Job Planning Phase:
+  • User calls action (collect, count, save)
+  • DAG Scheduler analyzes transformation pipeline
+  • Creates execution plan with stages and tasks
+end note
+' [/step1]
+
+' [step2 {"name":"Step 2: Task Scheduling and Optimization", "newPage": "true"}]
+dag -> task_sched : Submit tasks for stage
+note right : Tasks ready for execution
+
+task_sched -> task_sched : Optimize task placement
+note right : Consider data locality\nand worker availability
+
+note over dag, task_sched
+  Task Scheduling Phase:
+  • Receive tasks from DAG Scheduler
+  • Analyze data locality preferences
+  • Optimize task-to-worker assignments
+  • Consider worker capacity and availability
+end note
+' [/step2]
+
+' [step3 {"name":"Step 3: Parallel Task Distribution", "newPage": "true"}]
+par Parallel Task Execution
+  task_sched -> workerA : Execute Task 0 (Partition 0)
+  task_sched -> workerB : Execute Task 1 (Partition 1)  
+  task_sched -> workerC : Execute Task 2 (Partition 2)
+end
+
+note over task_sched, workerC
+  Task Distribution Phase:
+  • Tasks sent to workers simultaneously
+  • Each worker receives specific partition assignment
+  • Workers prepare to process their assigned data
+end note
+' [/step3]
+
+' [step4 {"name":"Step 4: Parallel Processing Execution", "newPage": "true"}]
+par Parallel Processing
+  workerA -> workerA : Process partition 0
+  workerB -> workerB : Process partition 1
+  workerC -> workerC : Process partition 2
+end
+
+note over workerA, workerC
+  Parallel Execution Phase:
+  • All workers process their partitions simultaneously
+  • Each partition processed independently
+  • Transformations applied to partition data
+  • Results prepared for return
+end note
+' [/step4]
+
+' [step5 {"name":"Step 5: Result Collection and Aggregation", "newPage": "true"}]
+par Return Results
+  workerA -> driver : Results from partition 0
+  workerB -> driver : Results from partition 1
+  workerC -> driver : Results from partition 2
+end
+
+driver -> driver : Combine all results
+driver -> driver : Return final result to user
+
+note over driver, workerC
+  Result Collection Phase:
+  • Workers return processed results to driver
+  • Driver combines results from all partitions
+  • Final result returned to user application
+  • Job completion logged and resources cleaned up
+end note
+' [/step5]
+
+@enduml 

@@ -1,0 +1,40 @@
+@startuml
+
+!include ../../../style.puml
+
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+title Lazy Evaluation: Transformations vs Actions
+
+participant "Developer" as dev
+participant "RDD Pipeline" as pipeline
+participant "Execution Engine" as engine
+
+dev -> pipeline : rdd.map(x -> x * 2)
+note right : Creates MapRDD\nNO COMPUTATION
+pipeline -> pipeline : MapRDD created
+
+dev -> pipeline : .filter(x -> x > 5)
+note right : Creates FilterRDD\nNO COMPUTATION
+pipeline -> pipeline : FilterRDD created
+
+dev -> pipeline : .collect()
+note right : ACTION TRIGGERED\nNOW COMPUTATION STARTS
+
+pipeline -> engine : Execute entire pipeline
+note right : Framework optimizes\nentire pipeline before execution
+
+engine -> engine : Process all partitions\nin parallel
+
+engine -> dev : Return results
+note right : [6, 8, 10]
+
+note over dev, engine
+  Key Insight: Transformations are lazy (no computation)
+  Actions trigger execution of entire pipeline
+  Framework can optimize before running
+end note
+
+@enduml 

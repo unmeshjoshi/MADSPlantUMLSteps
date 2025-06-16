@@ -1,0 +1,60 @@
+@startuml
+
+!include ../../../style.puml
+
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+title Data Partitioning Across Worker Nodes
+
+rectangle "Original Data" as data {
+  note as n1
+    [1, 2, 3, 4, 5, 6, 7, 8]
+    Split into 4 partitions
+  end note
+}
+
+rectangle "Worker Node A" as nodeA {
+  rectangle "Partition 0" as p0 {
+    note as n2
+      [1, 2]
+    end note
+  }
+}
+
+rectangle "Worker Node B" as nodeB {
+  rectangle "Partition 1" as p1 {
+    note as n3
+      [3, 4]
+    end note
+  }
+}
+
+rectangle "Worker Node C" as nodeC {
+  rectangle "Partition 2" as p2 {
+    note as n4
+      [5, 6]
+    end note
+  }
+}
+
+rectangle "Worker Node D" as nodeD {
+  rectangle "Partition 3" as p3 {
+    note as n5
+      [7, 8]
+    end note
+  }
+}
+
+data --> p0 : "Partition 0"
+data --> p1 : "Partition 1"
+data --> p2 : "Partition 2"
+data --> p3 : "Partition 3"
+
+note bottom
+  Each partition can be processed independently
+  Enables parallel processing across cluster
+end note
+
+@enduml 
