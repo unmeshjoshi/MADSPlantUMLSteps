@@ -1,0 +1,167 @@
+@startuml
+
+!include ../../../style.puml
+
+' [common]
+title Parquet Write Process Lifecycle
+
+' [/common]
+
+' [step1 {"name":"Step 1: Initialize Writer with Schema"}]
+participant "Application" as app
+participant "ParquetWriter" as writer
+participant "RowGroupWriter" as rowgroup
+participant "ColumnWriter" as colwriter
+participant "FileSystem" as fs
+participant "Parquet File" as file
+
+note over app
+**try-with-resources block starts**
+ParquetWriter<Group> writer = 
+  operations.createParquetWriter(...)
+end note
+
+app -> writer: createParquetWriter(path, schema, rowGroupSize)
+activate writer
+
+writer -> fs: create file handle
+activate fs
+fs -> file: create empty .parquet file
+activate file
+
+note over file
+**File Header Written:**
+4 bytes: "PAR1" magic number
+File is now "open" but incomplete
+end note
+
+writer -> app: return ParquetWriter instance
+deactivate fs
+' [/step1]
+
+' [step2 {"name":"Step 2: Write Data Rows - Buffering in Memory", "newPage": "true"}]
+loop for each data record
+    app -> writer: write(record)
+    
+    alt if new row group needed
+        writer -> rowgroup: create new RowGroupWriter
+        activate rowgroup
+        
+        loop for each column
+            rowgroup -> colwriter: create ColumnWriter
+            activate colwriter
+        end
+    end
+    
+    writer -> colwriter: writeValue(columnData)
+    
+    note over colwriter
+    **Data Buffering:**
+    • Values stored in memory buffers
+    • Statistics computed (min/max/count)
+    • Encoding applied (dictionary, RLE, etc.)
+    • Compression prepared
+    end note
+end
+
+note over app, writer
+**Key Point:** All data is buffered in memory
+Nothing written to disk yet except file header!
+end note
+' [/step2]
+
+' [step3 {"name":"Step 3: Row Group Completion - Flush to Disk", "newPage": "true"}]
+alt when row group size limit reached
+    writer -> colwriter: flush column chunk
+    
+    note over colwriter
+    **Column Chunk Write:**
+    • Compress buffered data
+    • Write data pages to file
+    • Record page statistics
+    • Calculate column metadata
+    end note
+    
+    colwriter -> file: write compressed column data
+    colwriter -> rowgroup: return column metadata
+    deactivate colwriter
+    
+    rowgroup -> writer: return row group metadata
+    deactivate rowgroup
+    
+    note over file
+    **File State:**
+    Header + Row Group 1 data written
+    But file still incomplete - no footer!
+    end note
+end
+' [/step3]
+
+' [step4 {"name":"Step 4: Critical Close() Method - File Finalization", "newPage": "true"}]
+app -> writer: close()
+
+note over writer
+This is where Parquet file becomes complete
+end note
+
+writer -> rowgroup: flush any remaining row group
+activate rowgroup
+rowgroup -> colwriter: flush final column chunks
+activate colwriter
+colwriter -> file: write final data
+deactivate colwriter
+rowgroup -> writer: return final metadata
+deactivate rowgroup
+
+writer -> writer: compute file metadata
+note over writer
+**Footer Preparation:**
+• Collect all row group metadata
+• Finalize schema information
+• Calculate file-level statistics
+• Prepare column chunk locations
+end note
+
+writer -> file: write file footer
+note over file
+**Footer Contents:**
+• Schema definition
+• Row group metadata (locations, sizes)
+• Column statistics (min/max/count/nulls)
+• Key-value metadata
+end note
+
+writer -> file: write footer length (4 bytes)
+writer -> file: write final "PAR1" magic
+
+note over file
+**File Complete!**
+Header: PAR1 + Data + Footer + Length + PAR1
+File is now immutable and ready for reading
+end note
+
+deactivate writer
+deactivate file
+' [/step4]
+
+' [step5 {"name":"Step 5: Immutable File - Why No Further Writes", "newPage": "true"}]
+note over app, file
+**Why Parquet Files Are Immutable:**
+
+1. **Footer at the end** - Contains all metadata
+2. **Fixed file structure** - Header + Data + Footer + Magic
+3. **Metadata dependencies** - Statistics span entire file
+4. **Optimization design** - Readers expect complete metadata
+
+**Cannot modify because:**
+• Adding data would invalidate footer location
+• Changing data would invalidate statistics
+• Footer length would change
+• Would break reader expectations
+
+**Result:** Write-once, read-many pattern
+Perfect for analytical workloads!
+end note
+' [/step5]
+
+@enduml 

@@ -333,7 +333,7 @@ sections:
         notes: "Visualize how the Parquet structure enables both parallel processing and query optimization."
 
       - type: "text"
-        title: "Parquet Metadata: The Secret to Efficiency"
+        title: "Parquet Metadata"
         bullets:
           - "Footer Metadata: Complete schema and statistics"
           - "Row Group Stats: Min/max/null count per column per row group"
@@ -359,6 +359,16 @@ sections:
           - "Immutability avoids file-level locks: multiple writers can safely create new files in parallel"
           - "Repeatable scans and reproducibility are crucial for analytics"
         notes: "Explain why Parquet files are immutable by design and how this affects storage and processing patterns."
+
+      - type: "diagram"
+        title: "Parquet Write Process: From Buffer to Immutable File"
+        diagramRef: "parquet_write_lifecycle"
+        bullets:
+          - "Data buffered in memory during write operations"
+          - "Row groups flushed to disk when size limit reached"
+          - "Critical close() method finalizes file with footer and magic bytes"
+          - "Result: Complete, immutable file ready for distributed processing"
+        notes: "Show the complete write lifecycle that demonstrates why Parquet files become immutable and how the close() method is critical for file completion."
 
       - type: "text"
         title: "Assignment 3: Implement a Parquet File Reader"
@@ -401,13 +411,26 @@ sections:
         notes: "Highlight the core challenges that any distributed processing framework must solve."
 
       - type: "text"
-        title: "HDFS: Distributed File System Foundation"
+        title: "Distribution-Friendly Storage Formats: Splittability"
         bullets:
-          - "Block Size: 128MB default (much larger than OS pages)"
-          - "Replication: 3 copies for fault tolerance"
-          - "NameNode: Tracks block locations (metadata server)"
-          - "DataNodes: Store actual blocks (storage servers)"
-        notes: "Introduce HDFS as the foundation for distributed storage, emphasizing larger block sizes."
+          - "Distributed processing requires files that can be split into independent chunks"
+          - "Each chunk must be processable without reading the entire file"
+          - "Critical: Split boundaries must align with logical record boundaries"
+          - "HDFS Example: Each 128MB block is a split point for parallel processing"
+          - "Parquet Example: Row groups (~128MB) are natural split boundaries"
+          - "Splittability is the foundation that enables true cluster-wide parallelism"
+        notes: "Emphasize that splittable file formats are the fundamental requirement for distributed processing. Split boundaries must respect data structure to ensure each chunk can be processed independently."
+
+      - type: "text"
+        title: "Compression Strategy Impact on Splittability"
+        bullets:
+          - "Compression strategy determines whether splits remain independent"
+          - "Independent Block Compression: Each split compressed separately"
+          - "Parquet Example: Each row group compressed independently → splittable"
+          - "Whole-File Compression: Creates dependencies across entire file"
+          - "Compressed CSV Example: Must decompress from beginning → not splittable"
+          - "Algorithm doesn't matter: gzip, Snappy, LZ4 all work if applied per-block"
+        notes: "The key insight is compression strategy, not algorithm choice. Independent block compression preserves splittability while whole-file compression destroys it, regardless of which compression algorithm is used."
 
       - type: "diagram"
         title: "Distributed Processing Architecture"
