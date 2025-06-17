@@ -565,6 +565,18 @@ sections:
         notes: "Show the complete execution flow highlighting all optimization techniques."
 
       - type: "text"
+        title: "Assignment: Distributed Parquet Processing"
+        bullets:
+          - "File: `sparklite/src/test/java/minispark/fileformat/ParquetWorkerTest.java`"
+          - "Goal: Build end-to-end distributed Parquet processing system"
+          - "Task 1: Implement FileFormatRDD with ParquetReader"
+          - "Task 2: Create multiple row groups for parallel processing"
+          - "Task 3: Use DAGScheduler to distribute tasks across workers"
+          - "Task 4: Collect and verify results from distributed execution"
+          - "Experience: Complete Spark-like distributed file processing"
+        notes: "Hands-on assignment implementing the concepts from previous slides. Students build a complete distributed Parquet processing system using the sparklite framework."
+
+      - type: "text"
         title: "Real-World Performance Impact"
         bullets:
           - "Query Performance: 10-100x faster than row-based formats"
@@ -593,6 +605,28 @@ sections:
           - "No native support for transactions or atomic operations"
           - "Example: PUT/GET operations on S3-like storage"
         notes: "Visual representation of object store's key-value nature and its fundamental limitations."
+        
+      - type: "text"
+        title: "Object Store Range Reads"
+        bullets:
+          - "Problem: How to read parts of a file like footer or row groups?"
+          - "Naive approach: Download entire file to read parts"
+          - "Smart approach: HTTP Range requests for footer only"
+          - "Example: `Range: bytes=-8192` reads last 8KB"
+        notes: "Explain how object stores support efficient partial reads through HTTP Range headers, enabling fast metadata access for large files."
+
+      - type: "text"
+        title: "Assignment: Object Store Parquet Reading"
+        bullets:
+          - "File: `sparklite/src/test/java/minispark/fileformat/ObjectFileParquetReaderTest.java`"
+          - "Goal: Understand how to efficiently read partitions from object store"
+          - "Key Test: `shouldEfficientlyReadFooterFromObjectStore()`"
+          - "Task 1: Upload Parquet file to local object store server"
+          - "Task 2: Use ObjectFileParquetReader to create partitions via range reads"
+          - "Task 3: Validate metadata extraction without full file download"
+          - "Task 4: Verify range read efficiency and partition assignment"
+          - "Experience: Network-optimized distributed file processing"
+        notes: "Advanced assignment demonstrating object store optimization techniques. Students see how range reads enable efficient metadata access for distributed processing."
 
       - type: "text"
         title: "Impact on Data Storage"
@@ -626,7 +660,7 @@ sections:
         notes: "Visual comparison showing why traditional database approaches don't work on object stores."
 
       - type: "text"
-        title: "Step 1: Transaction Log Solution"
+        title: "Transaction Log Solution"
         bullets:
           - "Core idea: Log all changes as immutable JSON files"
           - "Each commit creates new numbered file: 00000000000000000001.json"
@@ -636,7 +670,7 @@ sections:
         notes: "Reference delta-module2/DeltaLog.java - shows how transaction logs are implemented in practice."
 
       - type: "text"
-        title: "Step 2: Action Types - The Building Blocks"
+        title: "Action Types - The Building Blocks"
         bullets:
           - "AddFile: Adds new data file to table"
           - "RemoveFile: Logically removes file from table"
@@ -646,7 +680,7 @@ sections:
         notes: "Reference delta-module2/actions/ package - shows concrete Action implementations students can examine."
 
       - type: "diagram"
-        title: "Step 3: Write-Ahead Log Implementation"
+        title: "Write-Ahead Log Implementation"
         diagramRef: "wal_implementation"
         bullets:
           - "Changes logged before becoming visible"
@@ -666,7 +700,7 @@ sections:
         notes: "Visual showing the JSON structure students will work with in delta-module assignments."
 
       - type: "text"
-        title: "Step 4: Snapshot-Based Reads"
+        title: "Snapshot-Based Reads"
         bullets:
           - "Snapshot = point-in-time view of table"
           - "Created by reading log up to specific version"
@@ -676,7 +710,7 @@ sections:
         notes: "Reference delta-module3/Snapshot.java - shows how point-in-time consistency is implemented."
 
       - type: "text"
-        title: "Step 5: Time Travel Queries"
+        title: "Time Travel Queries"
         bullets:
           - "Read table as it existed at version N"
           - "SQL syntax: SELECT * FROM table VERSION AS OF 42"
@@ -686,7 +720,7 @@ sections:
         notes: "Show the power of versioned transaction logs for analytical workloads."
 
       - type: "text"
-        title: "Step 6: The Concurrent Writers Challenge"
+        title: "The Concurrent Writers Challenge"
         bullets:
           - "Problem: Multiple writers, single log sequence"
           - "Traditional solution: Pessimistic locking (doesn't scale)"
@@ -696,7 +730,7 @@ sections:
         notes: "Introduce the core challenge of concurrent access and why optimistic concurrency is the right solution."
 
       - type: "diagram"
-        title: "Step 7: Optimistic Transaction Flow"
+        title: "Optimistic Transaction Flow"
         diagramRef: "atomic_commit"
         bullets:
           - "Both transactions read version V"
@@ -706,7 +740,7 @@ sections:
         notes: "Perfect use of existing atomic_commit.puml! Shows the complete optimistic concurrency control flow."
 
       - type: "text"
-        title: "Step 8: Conflict Detection and Resolution"
+        title: "Conflict Detection and Resolution"
         bullets:
           - "Read version when transaction starts"
           - "At commit: check if any new versions exist"
@@ -716,14 +750,54 @@ sections:
         notes: "Reference delta-module4/OptimisticTransaction.java - students implement the core concurrency control logic."
 
       - type: "text"
-        title: "Delta Lake Hands-On Journey"
+        title: "Assignment 1: Basic File Operations"
         bullets:
-          - "Module 1: Basic file operations and limitations"
-          - "Module 2: Transaction log and atomic commits"
-          - "Module 3: Snapshot isolation and consistent reads"
-          - "Module 4: Optimistic concurrency control"
-          - "Result: Complete understanding of ACID on object stores"
-        notes: "Summary of the progressive learning journey through the delta-module repositories."
+          - "Repository: `delta-module1/`"
+          - "Goal: Understand object store limitations through hands-on experience"
+          - "Task 1: Implement `DeltaTable.insert()` to write Parquet files"
+          - "Task 2: Implement `DeltaTable.readAll()` to read from all files"
+          - "Key Tests: `testReadAllRecords()`, `testConsecutiveInserts()`"
+          - "Challenge: How to track which files belong to which insert?"
+          - "Learning: Why simple file-based approaches don't scale"
+        notes: "Experience firsthand the problems of managing data files without transaction logs. Sets up motivation for subsequent modules."
+
+      - type: "text"
+        title: "Assignment 2: Transaction Log Implementation"
+        bullets:
+          - "Repository: `delta-module2/`"
+          - "Goal: Build atomic commits using transaction logs"
+          - "Task 1: Implement `DeltaLog.write()` for versioned JSON commits"
+          - "Task 2: Implement `DeltaTable.insert()` with AddFile actions"
+          - "Task 3: Implement version-based reads with `readRecordsAtAVersion()`"
+          - "Key Test: `testReadRecordsAtAVersion()`"
+          - "Actions: AddFile, CommitInfo, Metadata, Protocol"
+          - "Learning: How transaction logs enable atomic operations"
+        notes: "Students implement the core Delta Lake pattern: actions logged as JSON files. Introduces versioning and atomic commits."
+
+      - type: "text"
+        title: "Assignment 3: Snapshot Isolation"
+        bullets:
+          - "Repository: `delta-module3/`"
+          - "Goal: Implement consistent reads via snapshots"
+          - "Task 1: Implement `OptimisticTransaction.commit()` method"
+          - "Task 2: Write concurrent transaction test"
+          - "Task 3: Verify only one transaction succeeds per version"
+          - "Key Concept: Point-in-time consistent views"
+          - "Challenge: Handle concurrent writers safely"
+          - "Learning: How optimistic concurrency control works"
+        notes: "Students implement the heart of multi-writer safety: optimistic transactions with conflict detection."
+
+      - type: "text"
+        title: "Assignment 4: Delta-lake with Object Store"
+        bullets:
+          - "Repository: `delta-module4/`"
+          - "Goal: Complete Delta Lake implementation with object store"
+          - "Task 1: Implement `DeltaLog.write()` with object store backend"
+          - "Task 2: Implement `DeltaTable.insert()` with Parquet + object store"
+          - "Task 3: Implement `OptimisticTransaction.commit()` with conflict resolution"
+          - "Key Tests: `testConcurrentTransactionsWithConflict()`"
+          - "Learning: Production-ready ACID transactions on object stores"
+        notes: "Final assignment brings together all concepts with real object store backend. Students build complete Delta Lake-like system."
 
       - type: "text"
         title: "Real-World Delta Lake Benefits"
@@ -738,12 +812,12 @@ sections:
   - title: "Summary"
     slides:
       - type: "text"
-        title: "Journey Completed: From KB to PB"
+        title: "Journey From KB to PB"
         bullets:
           - "Started: Single-machine file access with B+Trees"
           - "Learned: Distributed processing fundamentals"
-          - "Mastered: Parquet + Spark optimization techniques"
-          - "Result: Can now handle petabyte-scale analytical workloads"
+          - "Learned: Parquet + Spark optimization techniques"
+          - "Learned: Delta Lake with Object Store"
         notes: "Summarize the complete journey from traditional database concepts to modern big data processing."
 
       - type: "text"
