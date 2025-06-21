@@ -139,7 +139,7 @@ sections:
 
       - type: "diagram"
         title: "Distributed Query Execution Flow"
-        diagramRef: "parquet_distributed_query"
+        diagramRef: "spark_parquet_execution"
         bullets:
           - "1. DAG Scheduler analyzes query and creates stages"
           - "2. Task Scheduler assigns row group tasks to workers"
