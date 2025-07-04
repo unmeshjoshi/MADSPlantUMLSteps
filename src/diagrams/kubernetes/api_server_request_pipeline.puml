@@ -1,0 +1,112 @@
+@startuml
+!include ../../style.puml
+
+title API Server Request Processing Pipeline
+
+' [step1 {"name":"Request Components"}]
+participant "Client\n(kubectl/Controller)" as client
+participant "API Server" as api
+participant "Authentication" as auth
+participant "Authorization\n(RBAC)" as authz
+participant "Admission Controller" as admission
+participant "Validation" as validation
+participant "etcd" as etcd
+' [/step1]
+
+' [step2 {"name":"Client Request"}]
+group #LightBlue "Incoming Request"
+client -> api: HTTP Request\n(POST /api/v1/pods)
+note right of client
+  Request includes:
+  - Client certificates
+  - Bearer token
+  - Pod specification
+end note
+' [/step2]
+
+' [step3 {"name":"Authentication Phase"}]
+group #LightGreen "Authentication"
+api -> auth: Verify identity
+auth -> auth: Check certificates/tokens
+alt Authentication successful
+    auth --> api: Identity confirmed
+else Authentication failed
+    auth --> api: 401 Unauthorized
+    api --> client: Authentication failed
+end
+' [/step3]
+
+' [step4 {"name":"Authorization Phase", "newPage":"true"}]
+group #LightYellow "Authorization (RBAC)"
+api -> authz: Check permissions
+authz -> authz: Evaluate RBAC policies
+note right of authz
+  Check if user can:
+  - Perform action (create)
+  - On resource type (pods)
+  - In namespace
+end note
+alt Authorization successful
+    authz --> api: Permission granted
+else Authorization failed
+    authz --> api: 403 Forbidden
+    api --> client: Access denied
+end
+' [/step4]
+
+' [step5 {"name":"Admission Control", "newPage":"true"}]
+group #LightPink "Admission Control"
+api -> admission: Validate and mutate
+admission -> admission: Run admission controllers
+note right of admission
+  Examples:
+  - ResourceQuota enforcement
+  - PodSecurityPolicy
+  - DefaultStorageClass
+  - Image policy webhook
+end note
+alt Admission successful
+    admission --> api: Request approved\n(possibly modified)
+else Admission rejected
+    admission --> api: 400 Bad Request
+    api --> client: Admission rejected
+end
+' [/step5]
+
+' [step6 {"name":"Schema Validation"}]
+group #LightCoral "Schema Validation"
+api -> validation: Validate object schema
+validation -> validation: Check against OpenAPI spec
+alt Validation successful
+    validation --> api: Object valid
+else Validation failed
+    validation --> api: 400 Bad Request
+    api --> client: Invalid object
+end
+' [/step6]
+
+' [step7 {"name":"Storage Operation", "newPage":"true"}]
+group #LightGray "Storage to etcd"
+api -> etcd: Store object
+etcd -> etcd: Generate resource version
+etcd -> etcd: Atomic write with optimistic locking
+alt Storage successful
+    etcd --> api: Object stored\n(resource version: 12345)
+    api --> client: 201 Created\n+ Object metadata
+else Storage failed (conflict)
+    etcd --> api: 409 Conflict
+    api --> client: Resource version conflict
+end
+' [/step7]
+
+' [step8 {"name":"Event Notification"}]
+group #LightBlue "Event Propagation"
+etcd -> etcd: Trigger watch events
+note right of etcd
+  All watching clients
+  receive ADDED event
+  for new object
+end note
+' [/step8]
+
+@enduml 

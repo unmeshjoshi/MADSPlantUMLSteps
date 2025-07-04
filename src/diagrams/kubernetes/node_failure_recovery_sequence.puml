@@ -1,0 +1,153 @@
+@startuml
+!include ../../style.puml
+
+title Node Failure Detection and Recovery Process
+
+' [step1 {"name":"Recovery Components"}]
+participant "Node-1\n(Failing)" as node1
+participant "Node-2\n(Healthy)" as node2
+participant "API Server" as api
+participant "Node Controller" as nodecontroller
+participant "Scheduler" as sched
+participant "Kubelet-2" as kubelet2
+participant "etcd" as etcd
+' [/step1]
+
+' [step2 {"name":"Normal Operation"}]
+group #LightBlue "Normal Operation"
+node1 -> api: Heartbeat (node status)
+node2 -> api: Heartbeat (node status)
+api -> etcd: Store node status
+nodecontroller -> api: Watch node updates
+note right of nodecontroller
+  All nodes healthy:
+  - node-1: Ready
+  - node-2: Ready
+  Both accepting pods
+end note
+' [/step2]
+
+' [step3 {"name":"Failure Detection"}]
+group #LightGreen "Node Failure Detection"
+node1 -[#red]X api: Network failure / Node crash
+note over node1: Node-1 stops sending heartbeats
+
+loop Node Controller monitoring
+    nodecontroller -> nodecontroller: Check last heartbeat time
+    note right of nodecontroller
+      node-1 last seen: 45 seconds ago
+      Threshold: 40 seconds
+    end note
+end
+
+nodecontroller -> api: Update node-1 condition (Unknown)
+api -> etcd: Store node condition update
+' [/step3]
+
+' [step4 {"name":"Grace Period", "newPage":"true"}]
+group #LightYellow "Grace Period Wait"
+nodecontroller -> nodecontroller: Start 5-minute grace period
+note right of nodecontroller
+  Grace period allows for:
+  - Temporary network issues
+  - Node reboots
+  - Kubelet restarts
+  - Brief maintenance
+end note
+
+loop Grace period monitoring
+    nodecontroller -> nodecontroller: Check if node recovered
+    note right of nodecontroller
+      Still no heartbeat after 5 minutes
+      Node presumed failed
+    end note
+end
+' [/step4]
+
+' [step5 {"name":"Node Marked NotReady"}]
+group #LightPink "Mark Node NotReady"
+nodecontroller -> api: Update node-1 condition (NotReady)
+api -> etcd: Store node condition
+nodecontroller -> nodecontroller: Begin pod eviction process
+note right of nodecontroller
+  Node-1 marked NotReady:
+  - No new pods scheduled
+  - Existing pods marked for eviction
+  - Start pod termination
+end note
+' [/step5]
+
+' [step6 {"name":"Pod Eviction Process", "newPage":"true"}]
+group #LightCoral "Pod Eviction and Rescheduling"
+nodecontroller -> api: List pods on node-1
+api -> etcd: Get pods with spec.nodeName=node-1
+etcd --> api: [pod-a, pod-b, pod-c]
+api --> nodecontroller: Pods to evict
+
+loop For each pod
+    nodecontroller -> api: Delete pod-a (grace period: 30s)
+    api -> etcd: Set deletionTimestamp
+    
+    ' Pod is evicted since kubelet can't respond
+    nodecontroller -> nodecontroller: Force delete after timeout
+    nodecontroller -> api: Force delete pod-a
+    api -> etcd: Remove pod-a
+end
+' [/step6]
+
+' [step7 {"name":"Controller Recreation"}]
+group #LightGray "Workload Recreation"
+' Assuming pod-a was part of a ReplicaSet
+participant "ReplicaSet Controller" as rc
+rc -> api: Watch pod deletion events  
+api -> rc: DELETED: pod-a
+rc -> rc: Desired replicas: 3, Current: 2
+rc -> api: Create replacement pod-a'
+api -> etcd: Store new pod (status: Pending)
+' [/step7]
+
+' [step8 {"name":"Rescheduling", "newPage":"true"}]
+group #LightBlue "Pod Rescheduling"
+sched -> api: Watch for unscheduled pods
+api -> sched: New pod-a' (needs scheduling)
+sched -> sched: Filter available nodes\n(node-1 excluded: NotReady)
+sched -> api: Bind pod-a' to node-2
+api -> etcd: Update pod-a'.spec.nodeName=node-2
+
+kubelet2 -> api: Watch assigned pods
+api -> kubelet2: New pod-a' assigned
+kubelet2 -> kubelet2: Start pod-a' container
+kubelet2 -> api: Update pod-a' status (Running)
+' [/step8]
+
+' [step9 {"name":"Node Recovery"}]
+group #LightGreen "Node Recovery (Optional)"
+note over node1: Node-1 comes back online
+node1 -> api: Send heartbeat (node healthy)
+api -> etcd: Update node-1 status
+nodecontroller -> nodecontroller: Detect node recovery
+nodecontroller -> api: Update node-1 condition (Ready)
+note right of nodecontroller
+  Node-1 healthy again:
+  - Can accept new pods
+  - Existing pods already evicted
+  - Normal scheduling resumes
+end note
+' [/step9]
+
+' [step10 {"name":"Recovery Summary"}]
+note over node1, etcd
+  **Node Failure Recovery Summary:**
+  
+  1. **Detection**: 40s timeout → Unknown state
+  2. **Grace Period**: 5 minutes for recovery
+  3. **Eviction**: NotReady → Force delete pods
+  4. **Recreation**: Controllers create new pods
+  5. **Rescheduling**: Scheduler places on healthy nodes
+  6. **Recovery**: Node can rejoin when healthy
+  
+  **Result**: Workloads continue running despite node failure
+end note
+' [/step10]
+
+@enduml 

@@ -1,0 +1,127 @@
+@startuml
+!include ../../style.puml
+
+title Generic Controller Reconciliation Loop
+
+' [step1 {"name":"Controller Components"}]
+participant "API Server" as api
+participant "ListWatch" as lw
+participant "Work Queue" as queue
+participant "Worker Goroutine" as worker
+participant "Controller Logic" as controller
+participant "etcd" as etcd
+' [/step1]
+
+' [step2 {"name":"Watch Setup"}]
+group #LightBlue "Initialization"
+controller -> lw: Start ListWatch(resourceType)
+lw -> api: WATCH /api/v1/pods
+api -> etcd: Establish watch stream
+etcd --> api: Watch stream ready
+api --> lw: Events stream established
+note right of lw
+  ListWatch maintains
+  connection and handles
+  reconnection automatically
+end note
+' [/step2]
+
+' [step3 {"name":"Event Detection"}]
+group #LightGreen "Event Processing"
+etcd -> api: ADDED/MODIFIED/DELETED event
+api -> lw: Forward event
+lw -> queue: Add item to work queue
+note right of queue
+  Work queue contains:
+  - Resource key (namespace/name)
+  - Not the full object
+  - Deduplication logic
+end note
+' [/step3]
+
+' [step4 {"name":"Worker Processing", "newPage":"true"}]
+group #LightYellow "Worker Loop"
+loop Worker processing
+    worker -> queue: Get next item
+    queue --> worker: Resource key (e.g., "default/my-pod")
+    worker -> controller: Reconcile(key)
+    activate controller
+end
+' [/step4]
+
+' [step5 {"name":"Reconciliation Logic"}]
+group #LightPink "Reconcile Function"
+controller -> api: Get current object state
+api -> etcd: Fetch current object
+etcd --> api: Current object
+api --> controller: Current object + metadata
+
+controller -> controller: Compare current vs desired state
+note right of controller
+  Reconcile logic:
+  1. Get current state
+  2. Compare with desired state
+  3. Calculate differences
+  4. Take corrective actions
+end note
+' [/step5]
+
+' [step6 {"name":"Corrective Actions", "newPage":"true"}]
+group #LightCoral "State Correction"
+alt Current < Desired (scale up)
+    controller -> api: Create missing resources
+    api -> etcd: Store new resources
+    etcd -> api: ADDED events
+    note right of controller: Created missing pods
+else Current > Desired (scale down)
+    controller -> api: Delete excess resources
+    api -> etcd: Delete resources
+    etcd -> api: DELETED events
+    note right of controller: Deleted excess pods
+else Current = Desired
+    note right of controller: No action needed
+end
+' [/step6]
+
+' [step7 {"name":"Status Update"}]
+group #LightGray "Status Update"
+controller -> api: Update resource status
+api -> etcd: Store status update
+etcd -> api: MODIFIED event (status)
+note right of controller
+  Status reflects reality:
+  - Actual replica count
+  - Conditions
+  - Observed generation
+end note
+deactivate controller
+' [/step7]
+
+' [step8 {"name":"Queue Management"}]
+group #LightBlue "Queue Completion"
+worker -> queue: Mark item done
+alt Processing successful
+    queue -> queue: Remove from queue
+else Processing failed
+    queue -> queue: Re-queue with backoff
+    note right of queue
+      Exponential backoff:
+      1s, 2s, 4s, 8s, 16s...
+      up to maximum delay
+    end note
+end
+' [/step8]
+
+' [step9 {"name":"Continuous Operation"}]
+group #LightGreen "Ongoing Operation"
+note over api, etcd
+  Controller loop continues:
+  - Watch for new events
+  - Process work queue items
+  - Reconcile state differences
+  - Handle failures with retry
+  - Maintain desired state continuously
+end note
+' [/step9]
+
+@enduml 

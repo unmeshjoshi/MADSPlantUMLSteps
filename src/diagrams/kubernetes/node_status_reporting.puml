@@ -1,0 +1,141 @@
+@startuml
+!include ../../style.puml
+
+title Node Status Reporting and Health Management
+
+' [step1 {"name":"Node Components"}]
+participant "Kubelet" as kubelet
+participant "Node Status Manager" as status
+participant "API Server" as api
+participant "Node Controller" as controller
+participant "etcd" as etcd
+' [/step1]
+
+' [step2 {"name":"Node Registration"}]
+group #LightBlue "Node Registration"
+kubelet -> kubelet: Start up and gather node info
+kubelet -> api: POST /api/v1/nodes (node registration)
+note right of kubelet
+  Node information includes:
+  - Node name and IP
+  - Capacity (CPU, memory, pods)
+  - Operating system info
+  - Container runtime version
+end note
+api -> etcd: Store node object
+' [/step2]
+
+' [step3 {"name":"Status Collection"}]
+group #LightGreen "Status Information Gathering"
+status -> status: Collect system metrics
+note right of status
+  Status includes:
+  - CPU/Memory usage
+  - Disk pressure
+  - PID pressure  
+  - Network availability
+  - Running pods count
+end note
+
+status -> status: Check node conditions
+note right of status
+  Node conditions:
+  - Ready (can accept pods)
+  - MemoryPressure
+  - DiskPressure  
+  - PIDPressure
+  - NetworkUnavailable
+end note
+' [/step3]
+
+' [step4 {"name":"Status Updates", "newPage":"true"}]
+group #LightYellow "Periodic Status Updates"
+loop Every 10 seconds
+    status -> api: PATCH /api/v1/nodes/{node-name}/status
+    note right of status
+      Status update includes:
+      - Node conditions
+      - Capacity and allocatable resources
+      - Node info (kernel version, etc.)
+      - Current timestamp
+    end note
+    
+    api -> etcd: Update node status
+    etcd -> api: Success (resourceVersion++)
+    api --> status: 200 OK
+end
+' [/step4]
+
+' [step5 {"name":"Controller Monitoring"}]
+group #LightPink "Node Controller Monitoring"
+controller -> api: Watch node status changes
+api -> controller: Node status update event
+
+controller -> controller: Check node health
+note right of controller
+  Health check logic:
+  - Last heartbeat < 40s: Healthy
+  - Last heartbeat 40s-5m: Unknown
+  - Last heartbeat > 5m: NotReady
+end note
+' [/step5]
+
+' [step6 {"name":"Failure Detection", "newPage":"true"}]
+group #LightCoral "Node Failure Scenarios"
+alt Kubelet stops sending updates
+    note over status, api: No heartbeat for 40 seconds
+    controller -> controller: Mark node as Unknown
+    controller -> api: Update node condition (Unknown)
+    
+    note over controller: Wait 5 minutes for recovery
+    
+    alt Still no heartbeat after 5 minutes
+        controller -> controller: Mark node as NotReady
+        controller -> api: Update node condition (NotReady)
+        controller -> controller: Start pod eviction process
+    end
+    
+else Network partition
+    note over status, api: Network connection lost
+    status -[#red]X api: Connection failed
+    controller -> controller: Detect missing heartbeats
+    controller -> api: Mark node as Unknown
+    
+else Disk pressure detected
+    status -> status: Disk usage > 85%
+    status -> api: Update condition (DiskPressure=True)
+    controller -> controller: Prevent new pod scheduling
+end
+' [/step6]
+
+' [step7 {"name":"Recovery Process"}]
+group #LightGray "Node Recovery"
+note over kubelet, api: Network/node issues resolved
+kubelet -> status: Resume status collection
+status -> api: Send status update (node healthy)
+api -> etcd: Update node conditions
+controller -> controller: Detect node recovery
+controller -> api: Update condition (Ready=True)
+note right of controller
+  Node back online:
+  - Accept new pods
+  - Resume normal scheduling
+  - Cancel pending evictions
+end note
+' [/step7]
+
+' [step8 {"name":"Status Architecture"}]
+note over kubelet, etcd
+  **Node Status Architecture:**
+  
+  • **Kubelet**: Collects local node metrics and conditions
+  • **Status Manager**: Aggregates and reports status periodically  
+  • **API Server**: Receives and stores status updates
+  • **Node Controller**: Monitors health and takes corrective actions
+  • **etcd**: Persists node state for cluster-wide visibility
+  
+  **Failure Detection**: 40s timeout → Unknown → 5m timeout → NotReady
+end note
+' [/step8]
+
+@enduml 

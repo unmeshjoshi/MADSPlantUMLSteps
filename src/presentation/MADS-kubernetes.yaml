@@ -1,5 +1,5 @@
 title: "Understanding Kubernetes Architecture and Components"
-description: "Understand Kubernetes controller patterns and scheduling mechanisms. Learn how the control plane manages workloads and resource allocation."
+description: "Deep dive into Kubernetes architecture, control plane components, and distributed system patterns. Learn how controllers, schedulers, and the API server work together to manage containerized workloads."
 icon: "fas fa-dharmachakra"
 category: "Container Orchestration"
 sections:
@@ -8,42 +8,192 @@ sections:
       - type: "text"
         title: "Introduction to Kubernetes Architecture"
         bullets:
-          - "Kubernetes is a container orchestration platform"
+          - "Kubernetes is a distributed container orchestration platform"
           - "Key components include Control Plane and Worker Nodes"
-          - "Control Plane manages the cluster state and scheduling decisions"
+          - "Control Plane manages cluster state and scheduling decisions"
+          - "Built on proven distributed systems patterns"
         notes: "Emphasize that Kubernetes is a distributed system that needs to maintain consistency across its components."
       
       - type: "text"
-        title: "Core Components"
+        title: "Core Components Overview"
         bullets:
           - "API Server: The front-end for the Kubernetes control plane"
-          - "Scheduler: Assigns pods to nodes"
-          - "Controller Manager: Manages various controllers"
-          - "etcd: Distributed key-value store for cluster state"
+          - "Scheduler: Assigns pods to nodes based on resource requirements"
+          - "Controller Manager: Manages various controllers implementing control loops"
+          - "etcd: Distributed key-value store for cluster state and configuration"
+          - "Kubelet: Node agent that manages containers and communicates with API server"
+        notes: "Each component has specific responsibilities that work together to provide the orchestration capabilities."
 
-  - title: "Controllers in Kubernetes"
+  - title: "API Server Deep Dive"
+    slides:
+      - type: "text"
+        title: "API Server Architecture"
+        bullets:
+          - "Central hub for all cluster communication"
+          - "RESTful API for all Kubernetes operations (GET, POST, PUT, DELETE)"
+          - "Authentication, authorization, and admission control"
+          - "Stateless design - all state stored in etcd"
+          - "Horizontal scaling through multiple API server instances"
+        notes: "The API server is the only component that directly talks to etcd, providing a clean abstraction layer."
+
+      - type: "text"
+        title: "Request Processing Pipeline"
+        bullets:
+          - "1. Authentication: Verify identity using certificates or tokens"
+          - "2. Authorization: Check permissions using RBAC policies"
+          - "3. Admission Control: Validate and mutate requests"
+          - "4. Validation: Ensure object schema compliance"
+          - "5. Storage: Persist to etcd with optimistic concurrency"
+        notes: "Each stage can reject the request, providing multiple layers of security and validation."
+
+      - type: "diagram"
+        title: "API Request Processing Flow"
+        diagramRef: "api_server_request_pipeline"
+        bullets:
+          - "Client sends authenticated request to API server"
+          - "Request passes through authentication, authorization, and admission control"
+          - "Validated request is stored in etcd with resource versioning"
+          - "Response sent back to client with operation result"
+        notes: "Shows the complete request processing pipeline with all security and validation stages."
+
+      - type: "text"
+        title: "API Versioning and Backwards Compatibility"
+        bullets:
+          - "Multiple API versions supported simultaneously (v1, v1beta1, etc.)"
+          - "Graceful deprecation policies for breaking changes"
+          - "Storage version abstraction separates API from persistence"
+          - "Custom Resource Definitions (CRDs) extend the API dynamically"
+        notes: "API versioning enables rolling upgrades and long-term stability for users."
+
+  - title: "ListWatch Pattern - The Heart of Kubernetes"
+    slides:
+      - type: "text"
+        title: "What is the ListWatch Pattern?"
+        bullets:
+          - "Core pattern enabling real-time cluster state synchronization"
+          - "List: Get current state of resources (initial synchronization)"
+          - "Watch: Subscribe to incremental changes (ongoing updates)"
+          - "Enables efficient event-driven architecture throughout Kubernetes"
+        notes: "This pattern is fundamental to how Kubernetes achieves eventual consistency across all components."
+
+      - type: "text"
+        title: "ListWatch Implementation Details"
+        bullets:
+          - "etcd watch API provides atomic, ordered event streams"
+          - "Automatic reconnection with exponential backoff on failures"
+          - "Resource version tracking prevents missed events during reconnection"
+          - "Event types: ADDED, MODIFIED, DELETED, ERROR"
+          - "Client-side caching reduces API server load"
+        notes: "The robust implementation handles network partitions and ensures no events are lost during failures."
+
+      - type: "diagram"
+        title: "ListWatch Pattern Implementation"
+        diagramRef: "listwatch_pattern_flow"
+        bullets:
+          - "Client performs initial LIST to get current state and resource version"
+          - "Client starts WATCH from that resource version for incremental updates"
+          - "etcd sends ordered stream of change events to client"
+          - "Automatic reconnection with backoff handles network failures"
+        notes: "Demonstrates how ListWatch ensures no events are missed even during network partitions."
+
+      - type: "text"
+        title: "ListWatch in Practice"
+        bullets:
+          - "Controllers use ListWatch to monitor resource changes"
+          - "kubectl uses ListWatch for real-time status updates"
+          - "Scheduler watches for unscheduled pods"
+          - "Kubelet watches for pods assigned to its node"
+          - "Reduces polling, enables sub-second response times"
+        notes: "This pattern enables the reactive nature of Kubernetes where changes propagate quickly throughout the system."
+
+      - type: "diagram"
+        title: "ListWatch Usage Across Components"
+        diagramRef: "listwatch_component_usage"
+        bullets:
+          - "Multiple components watch different resource types simultaneously"
+          - "API Server fans out etcd events to all interested watchers"
+          - "Each component maintains its own view of relevant resources"
+          - "Events trigger immediate reconciliation actions"
+        notes: "Shows how ListWatch enables real-time coordination across all Kubernetes components."
+
+  - title: "Controllers - The Reconciliation Engine"
     slides:
       - type: "text"
         title: "Understanding Controllers"
         bullets:
-          - "Controllers implement control loops"
-          - "Watch the current state and work to achieve desired state"
-          - "Handle reconciliation and error recovery"
-        notes: "Controllers are the backbone of Kubernetes' self-healing capabilities."
+          - "Controllers implement control loops monitoring actual vs desired state"
+          - "Each controller is responsible for one resource type"
+          - "Continuously reconcile desired state specified in specs"
+          - "Handle reconciliation and error recovery automatically"
+          - "Level-triggered (not edge-triggered) for reliability"
+        notes: "Controllers are the backbone of Kubernetes' self-healing capabilities and declarative model."
 
       - type: "diagram"
         title: "Controller Flow"
         diagramRef: "kubernetes_controller_flow"
         notes: "Illustrates how controllers maintain desired state through continuous reconciliation."
 
+      - type: "text"
+        title: "Controller Implementation Pattern"
+        bullets:
+          - "Watch relevant resources using ListWatch pattern"
+          - "Work queue processes events asynchronously"
+          - "Reconcile function implements business logic"
+          - "Compare current state vs desired state"
+          - "Take actions to converge to desired state"
+          - "Update status to reflect current reality"
+        notes: "This pattern is used consistently across all built-in and custom controllers."
+
+      - type: "diagram"
+        title: "Generic Controller Reconciliation Loop"
+        diagramRef: "controller_reconciliation_loop"
+        bullets:
+          - "ListWatch detects changes and adds items to work queue"
+          - "Worker goroutines process queue items by calling Reconcile()"
+          - "Reconcile() compares current vs desired state and takes actions"
+          - "Status updates reflect the new current state"
+        notes: "Shows the generic pattern used by all Kubernetes controllers for reliable state management."
+
+      - type: "text"
+        title: "ReplicaSet Controller Example"
+        bullets:
+          - "Watches ReplicaSet objects for changes in replica count"
+          - "Lists all pods and filters those owned by ReplicaSet"
+          - "Creates pods when current count < desired count"
+          - "Deletes pods when current count > desired count"
+          - "Updates ReplicaSet status with actual replica counts"
+        notes: "Demonstrates how the declarative model works - you specify what you want, controllers make it happen."
+
+      - type: "diagram"
+        title: "ReplicaSet Controller Detailed Flow"
+        diagramRef: "replicaset_controller_sequence"
+        bullets:
+          - "Controller watches ReplicaSet changes via ListWatch"
+          - "For each ReplicaSet, lists pods and filters by ownership"
+          - "Creates missing pods or deletes excess pods as needed"
+          - "Updates ReplicaSet status with current replica counts"
+        notes: "Detailed sequence showing how ReplicaSet controller maintains desired pod count."
+
+      - type: "text"
+        title: "Controller Best Practices"
+        bullets:
+          - "Idempotent operations - safe to retry"
+          - "Use owner references for garbage collection"
+          - "Separate concerns - one controller per resource type"
+          - "Rate limiting and backoff for error handling"
+          - "Metrics and observability for debugging"
+        notes: "These patterns ensure controllers are reliable and maintainable in production environments."
+
   - title: "Scheduling in Kubernetes"
     slides:
       - type: "text"
         title: "Kubernetes Scheduler Overview"
         bullets:
-          - "Scheduler is responsible for pod placement decisions"
-          - "Uses filtering and scoring to find the best node"
+          - "Responsible for pod placement decisions across the cluster"
+          - "Two-phase process: Filtering (predicates) and Scoring (priorities)"
           - "Considers resource requirements, affinity rules, and constraints"
+          - "Pluggable architecture allows custom scheduling algorithms"
+          - "Watches for unscheduled pods and assigns them to nodes"
         notes: "The scheduler is crucial for efficient resource utilization and workload distribution."
 
       - type: "diagram"
@@ -51,20 +201,233 @@ sections:
         diagramRef: "kubernetes_scheduler"
         notes: "Shows how the scheduler interacts with the API server and makes scheduling decisions."
 
-  - title: "State Management"
+      - type: "diagram"
+        title: "Scheduling Algorithm Step-by-Step"
+        diagramRef: "scheduler_algorithm_sequence"
+        bullets:
+          - "Scheduler watches for unscheduled pods via ListWatch"
+          - "For each pod, gets list of all available nodes"
+          - "Filtering phase eliminates nodes that don't meet requirements"
+          - "Scoring phase ranks remaining nodes and selects the best"
+          - "Binding operation assigns pod to chosen node"
+        notes: "Detailed breakdown of the two-phase scheduling algorithm with filtering and scoring."
+
+      - type: "text"
+        title: "Advanced Scheduling Features"
+        bullets:
+          - "Node Affinity: Specify preferred or required node characteristics"
+          - "Pod Affinity/Anti-affinity: Co-locate or separate pods"
+          - "Taints and Tolerations: Node-level pod admission control"
+          - "Resource Requests/Limits: Ensure adequate resources"
+          - "Custom Schedulers: Implement domain-specific logic"
+        notes: "These features provide fine-grained control over workload placement for various use cases."
+
+  - title: "Storage and State Management"
     slides:
+      - type: "text"
+        title: "etcd - Kubernetes' Database"
+        bullets:
+          - "Distributed key-value store providing strong consistency"
+          - "RAFT consensus algorithm ensures data durability"
+          - "All Kubernetes state stored as JSON objects in etcd"
+          - "Watch API enables efficient change notifications"
+          - "Backup and disaster recovery critical for cluster health"
+        notes: "etcd is the single source of truth for all cluster state. Its reliability determines cluster reliability."
+
+      - type: "text"
+        title: "Storage Architecture Patterns"
+        bullets:
+          - "Storage interface abstracts etcd operations (Create, Get, Update, Delete, List)"
+          - "Object encoding/decoding handles serialization to JSON"
+          - "Resource versioning prevents lost updates with optimistic concurrency"
+          - "Prefix-based organization enables efficient listing and watching"
+          - "Registry pattern provides typed access to resources"
+        notes: "These abstractions make it easier to work with etcd and enable testing with mock storage."
+
+      - type: "diagram"
+        title: "Storage Layer Architecture"
+        diagramRef: "storage_layer_architecture"
+        bullets:
+          - "API Server abstracts storage operations through Storage interface"
+          - "Registry pattern provides typed, resource-specific operations"
+          - "etcd client handles low-level key-value operations"
+          - "Resource versioning enables optimistic concurrency control"
+        notes: "Shows the layered architecture from API operations down to etcd storage."
+
       - type: "text"
         title: "Cluster State Management"
         bullets:
-          - "etcd stores all cluster state"
+          - "All cluster state stored in etcd"
           - "Components watch for changes via API server"
-          - "Optimistic concurrency for state updates"
-        notes: "Maintaining consistent cluster state is crucial for reliable operations."
+          - "Optimistic concurrency control for state updates"
+          - "Resource versions track object changes"
+          - "Conflict resolution through retry with latest version"
+        notes: "Maintaining consistent cluster state is crucial for reliable operations across distributed components."
+
+      - type: "diagram"
+        title: "State Update with Optimistic Concurrency"
+        diagramRef: "optimistic_concurrency_flow"
+        bullets:
+          - "Client reads object with current resource version"
+          - "Client modifies object and attempts update with original version"
+          - "etcd rejects update if resource version has changed"
+          - "Client retries with latest version (read-modify-write loop)"
+        notes: "Demonstrates how Kubernetes prevents lost updates in a distributed environment."
+
+  - title: "Node Management and Kubelet"
+    slides:
+      - type: "text"
+        title: "Kubelet - The Node Agent"
+        bullets:
+          - "Primary node agent responsible for pod lifecycle"
+          - "Watches API server for pods assigned to its node"
+          - "Manages container runtime (Docker, containerd, CRI-O)"
+          - "Reports node and pod status back to API server"
+          - "Implements health checks and resource monitoring"
+        notes: "Kubelet is the bridge between the control plane and the actual container runtime."
 
       - type: "text"
-        title: "Handling Failures"
+        title: "Pod Lifecycle Management"
         bullets:
-          - "Node failures are detected through heartbeats"
-          - "Pod eviction on node failures"
-          - "Controller reconciliation for recovery"
-        notes: "Kubernetes provides robust failure handling mechanisms."
+          - "Pod Phases: Pending → Running → Succeeded/Failed"
+          - "Container states: Waiting → Running → Terminated"
+          - "Health checks: Liveness, Readiness, Startup probes"
+          - "Resource management: CPU/memory limits and requests"
+          - "Volume mounting and secret/configmap injection"
+        notes: "Kubelet translates high-level pod specifications into low-level container operations."
+
+      - type: "diagram"
+        title: "Pod Lifecycle Management Flow"
+        diagramRef: "pod_lifecycle_management"
+        bullets:
+          - "Kubelet watches for pods assigned to its node"
+          - "Creates containers according to pod specification"
+          - "Manages container lifecycle and health checking"
+          - "Reports pod status updates back to API server"
+        notes: "Shows how kubelet manages the complete pod lifecycle from creation to termination."
+
+      - type: "text"
+        title: "Node Status Reporting"
+        bullets:
+          - "Periodic heartbeats to API server (node lease renewal)"
+          - "Node conditions: Ready, MemoryPressure, DiskPressure"
+          - "Resource capacity and allocatable amounts"
+          - "Pod status updates: Phase, conditions, container states"
+          - "Node failure detection and pod eviction"
+        notes: "Status reporting enables the control plane to make informed scheduling and management decisions."
+
+      - type: "diagram"
+        title: "Node Heartbeat and Status Reporting"
+        diagramRef: "node_status_reporting"
+        bullets:
+          - "Kubelet periodically sends heartbeats to API server"
+          - "Reports node conditions and resource availability"
+          - "Updates pod statuses for all pods on the node"
+          - "Control plane detects failures when heartbeats stop"
+        notes: "Illustrates how the control plane maintains awareness of node and pod health."
+
+  - title: "Failure Handling and Reliability"
+    slides:
+      - type: "text"
+        title: "Distributed System Challenges"
+        bullets:
+          - "Network partitions can isolate components"
+          - "Node failures require pod rescheduling"
+          - "Control plane component failures need graceful handling"
+          - "Split-brain scenarios must be prevented"
+          - "Eventual consistency vs strong consistency trade-offs"
+        notes: "Kubernetes must handle all the classic distributed systems problems while maintaining user experience."
+
+      - type: "text"
+        title: "Kubernetes Failure Handling"
+        bullets:
+          - "Node failures detected through heartbeat timeouts"
+          - "Pod eviction and rescheduling on healthy nodes"
+          - "Controller reconciliation loops provide self-healing"
+          - "Leader election prevents multiple active controllers"
+          - "Graceful degradation when components are unavailable"
+        notes: "Kubernetes provides robust failure handling mechanisms designed for production environments."
+
+      - type: "diagram"
+        title: "Node Failure Detection and Recovery"
+        diagramRef: "node_failure_recovery_sequence"
+        bullets:
+          - "Node stops sending heartbeats to API server"
+          - "Control plane marks node as NotReady after timeout"
+          - "Pods are evicted and marked for rescheduling"
+          - "Scheduler assigns evicted pods to healthy nodes"
+        notes: "Shows the complete failure detection and recovery process when a node fails."
+
+      - type: "text"
+        title: "Observability and Debugging"
+        bullets:
+          - "Structured logging with consistent format"
+          - "Metrics exported in Prometheus format"
+          - "Event objects record important cluster activities"
+          - "Health check endpoints for monitoring"
+          - "Distributed tracing for request flow analysis"
+        notes: "Good observability is essential for operating distributed systems effectively in production."
+
+  - title: "Advanced Topics"
+    slides:
+      - type: "text"
+        title: "Custom Resources and Operators"
+        bullets:
+          - "Custom Resource Definitions (CRDs) extend Kubernetes API"
+          - "Operators are controllers for custom resources"
+          - "Implement domain-specific knowledge as code"
+          - "Examples: Database operators, monitoring operators"
+          - "Kubernetes becomes a platform for building platforms"
+        notes: "The operator pattern allows encoding operational knowledge and automating complex applications."
+
+      - type: "diagram"
+        title: "Custom Controller and CRD Interaction"
+        diagramRef: "custom_controller_crd_flow"
+        bullets:
+          - "CRD extends API server with new resource types"
+          - "Custom controller watches CRD instances via ListWatch"
+          - "Controller reconciles custom resource desired state"
+          - "Manages underlying Kubernetes resources automatically"
+        notes: "Demonstrates how operators extend Kubernetes with domain-specific automation."
+
+      - type: "text"
+        title: "Performance and Scalability"
+        bullets:
+          - "API server horizontal scaling and load balancing"
+          - "etcd cluster sizing and performance tuning"
+          - "Controller work queue management and rate limiting"
+          - "Informer caching reduces API server load"
+          - "Resource quotas prevent resource exhaustion"
+        notes: "Understanding performance characteristics is crucial for operating large Kubernetes clusters."
+
+      - type: "text"
+        title: "Security Architecture"
+        bullets:
+          - "Role-Based Access Control (RBAC) for fine-grained permissions"
+          - "Pod Security Standards for workload security"
+          - "Network policies for traffic isolation"
+          - "Secrets management and encryption at rest"
+          - "Supply chain security with image scanning"
+        notes: "Security must be built into every layer of the Kubernetes architecture."
+
+  - title: "Summary"
+    slides:
+      - type: "text"
+        title: "Key Architectural Patterns"
+        bullets:
+          - "ListWatch pattern enables event-driven architecture"
+          - "Controller pattern provides declarative management"
+          - "Registry pattern abstracts storage operations"
+          - "Leader election ensures single active controllers"
+          - "Resource versioning prevents lost updates"
+        notes: "These patterns are fundamental to how Kubernetes achieves reliability and consistency."
+        
+      - type: "text"
+        title: "Lessons for Distributed Systems"
+        bullets:
+          - "Eventual consistency is often sufficient for management systems"
+          - "Watch-based architectures scale better than polling"
+          - "Idempotent operations simplify error handling"
+          - "Good abstractions enable testing and flexibility"
+          - "Observability is not optional in distributed systems"
+        notes: "The patterns used in Kubernetes are applicable to many other distributed systems challenges."

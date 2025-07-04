@@ -1,0 +1,204 @@
+@startuml
+!include ../../style.puml
+
+title ReplicaSet Controller Detailed Flow
+
+' [step1 {"name":"Controller Components"}]
+participant "ReplicaSet Controller" as controller
+participant "API Server" as api
+participant "ListWatch" as lw
+participant "Work Queue" as queue
+participant "etcd" as etcd
+' [/step1]
+
+' [step2 {"name":"Watch Setup"}]
+group #LightBlue "Controller Initialization"
+controller -> lw: Start ListWatch(/apis/apps/v1/replicasets)
+lw -> api: WATCH ReplicaSets
+api -> etcd: Establish watch stream
+etcd --> api: Watch stream ready
+api --> lw: Events stream established
+note right of controller
+  Controller watches for:
+  - ReplicaSet creation
+  - ReplicaSet updates (spec changes)
+  - ReplicaSet deletion
+end note
+' [/step2]
+
+' [step3 {"name":"ReplicaSet Creation"}]
+group #LightGreen "ReplicaSet Change Detection"
+actor "User" as user
+user -> api: kubectl create replicaset nginx --replicas=3
+api -> etcd: Store ReplicaSet object
+etcd -> api: ADDED event (ReplicaSet nginx)
+api -> lw: Forward ReplicaSet event
+lw -> queue: Add "default/nginx" to work queue
+note right of queue
+  Work queue contains:
+  - Resource key: "namespace/name"
+  - Deduplication logic
+  - Rate limiting capability
+end note
+' [/step3]
+
+' [step4 {"name":"Worker Processing", "newPage":"true"}]
+group #LightYellow "Worker Reconciliation"
+controller -> queue: Get next work item
+queue --> controller: "default/nginx"
+controller -> controller: Reconcile("default/nginx")
+activate controller
+
+controller -> api: GET /apis/apps/v1/namespaces/default/replicasets/nginx
+api -> etcd: Fetch ReplicaSet object
+etcd --> api: ReplicaSet object
+api --> controller: ReplicaSet (spec.replicas: 3)
+' [/step4]
+
+' [step5 {"name":"Pod Discovery"}]
+group #LightPink "Current State Discovery"
+controller -> api: LIST /api/v1/namespaces/default/pods
+api -> etcd: Get all pods in namespace
+etcd --> api: All pods in namespace
+api --> controller: Pod list
+
+controller -> controller: Filter pods by ownership
+note right of controller
+  Filter criteria:
+  - metadata.ownerReferences[].uid == ReplicaSet.uid
+  - metadata.ownerReferences[].kind == "ReplicaSet"
+  
+  Found pods owned by ReplicaSet:
+  - Current count: 0
+  - Desired count: 3
+  - Need to create: 3 pods
+end note
+' [/step5]
+
+' [step6 {"name":"Pod Creation", "newPage":"true"}]
+group #LightCoral "Pod Creation Phase"
+loop Create missing pods (3 times)
+    controller -> controller: Generate pod from ReplicaSet template
+    note right of controller
+      Pod template includes:
+      - spec.containers from ReplicaSet
+      - metadata.labels
+      - ownerReferences pointing to ReplicaSet
+      - generateName: nginx-
+    end note
+    
+    controller -> api: POST /api/v1/namespaces/default/pods
+    api -> etcd: Store pod object
+    etcd --> api: Pod created with UID
+    api --> controller: Pod creation success
+end
+
+note right of controller
+  Created pods:
+  - nginx-abc123 (status: Pending)
+  - nginx-def456 (status: Pending)  
+  - nginx-ghi789 (status: Pending)
+end note
+' [/step6]
+
+' [step7 {"name":"Status Update"}]
+group #LightGray "Status Update"
+controller -> api: PATCH ReplicaSet status
+note right of controller
+  Status update:
+  - status.replicas: 3 (total pods)
+  - status.readyReplicas: 0 (pods ready)
+  - status.availableReplicas: 0 (pods available)
+  - status.observedGeneration: 1
+end note
+
+api -> etcd: Update ReplicaSet status
+etcd -> api: Status updated
+api --> controller: Status update success
+deactivate controller
+' [/step7]
+
+' [step8 {"name":"Pod Status Monitoring", "newPage":"true"}]
+group #LightBlue "Ongoing Pod Monitoring"
+note over controller, etcd: As pods start running...
+
+etcd -> api: MODIFIED event (pod status change)
+api -> lw: Pod status changed
+lw -> queue: Add "default/nginx" to work queue (due to owner reference)
+
+controller -> queue: Get work item
+controller -> controller: Reconcile("default/nginx")
+controller -> api: Get current ReplicaSet
+controller -> api: List owned pods
+controller -> controller: Count ready pods
+
+alt All pods running
+    controller -> api: Update status.readyReplicas: 3
+    note right of controller: ReplicaSet fully operational
+else Some pods failed
+    controller -> controller: Calculate needed replacements
+    controller -> api: Create replacement pods
+    note right of controller: Self-healing - replace failed pods
+end
+' [/step8]
+
+' [step9 {"name":"Scale Operation", "newPage":"true"}]
+group #LightGreen "Scale Operation Example"
+user -> api: kubectl scale replicaset nginx --replicas=5
+api -> etcd: Update ReplicaSet spec.replicas
+etcd -> api: MODIFIED event (ReplicaSet)
+api -> lw: ReplicaSet spec changed
+lw -> queue: Add "default/nginx" to work queue
+
+controller -> controller: Reconcile("default/nginx")
+controller -> api: Get updated ReplicaSet (spec.replicas: 5)
+controller -> api: List current pods (count: 3)
+controller -> controller: Need to create 2 more pods
+
+loop Create additional pods (2 times)
+    controller -> api: Create pod
+    api -> etcd: Store new pod
+end
+
+controller -> api: Update status (replicas: 5, readyReplicas: 3)
+' [/step9]
+
+' [step10 {"name":"Deletion Scenario"}]
+group #LightYellow "Scale Down Scenario"
+user -> api: kubectl scale replicaset nginx --replicas=2
+api -> etcd: Update ReplicaSet spec
+etcd -> api: MODIFIED event
+api -> lw: ReplicaSet changed
+lw -> queue: Add to work queue
+
+controller -> controller: Reconcile("default/nginx")
+controller -> api: Get ReplicaSet (spec.replicas: 2)
+controller -> api: List current pods (count: 5)
+controller -> controller: Need to delete 3 pods
+
+controller -> controller: Select pods for deletion (oldest first)
+loop Delete excess pods (3 times)
+    controller -> api: DELETE pod
+    api -> etcd: Delete pod object
+    etcd -> api: DELETED event
+end
+
+controller -> api: Update status (replicas: 2)
+' [/step10]
+
+' [step11 {"name":"Controller Summary"}]
+note over controller, etcd
+  **ReplicaSet Controller Pattern:**
+  
+  1. **Watch**: Monitor ReplicaSet changes via ListWatch
+  2. **Discover**: List and filter pods by ownership
+  3. **Reconcile**: Compare current vs desired state
+  4. **Act**: Create missing pods or delete excess pods
+  5. **Status**: Update ReplicaSet status with reality
+  6. **Repeat**: Continuously ensure desired state
+  
+  **Key Features**: Self-healing, Declarative, Event-driven, Idempotent
+end note
+' [/step11]
+
+@enduml 

@@ -1,0 +1,120 @@
+@startuml
+!include ../../style.puml
+
+title State Update with Optimistic Concurrency Control
+
+' [step1 {"name":"Concurrent Clients"}]
+participant "Client A\n(Controller)" as clientA
+participant "Client B\n(kubectl)" as clientB
+participant "API Server" as api
+participant "etcd" as etcd
+' [/step1]
+
+' [step2 {"name":"Initial State"}]
+group #LightBlue "Initial Object State"
+clientA -> api: GET /api/v1/pods/nginx-pod
+api -> etcd: Get pod object
+etcd --> api: Pod object (resourceVersion: 100)
+api --> clientA: Pod object (resourceVersion: 100)
+
+clientB -> api: GET /api/v1/pods/nginx-pod  
+api -> etcd: Get pod object
+etcd --> api: Pod object (resourceVersion: 100)
+api --> clientB: Pod object (resourceVersion: 100)
+
+note over clientA, clientB
+  Both clients have the same
+  object with resourceVersion: 100
+end note
+' [/step2]
+
+' [step3 {"name":"Concurrent Modifications", "newPage":"true"}]
+group #LightGreen "Concurrent Updates"
+clientA -> clientA: Modify pod.spec.containers[0].image = "nginx:1.20"
+clientB -> clientB: Modify pod.metadata.labels["version"] = "v2"
+
+note over clientA, clientB
+  Both clients prepare updates
+  based on resourceVersion: 100
+end note
+' [/step3]
+
+' [step4 {"name":"First Update Wins"}]
+group #LightYellow "Client A Updates First"
+clientA -> api: PUT /api/v1/pods/nginx-pod\n(resourceVersion: 100)
+api -> etcd: Compare-and-swap\n(expected: 100, new: 101)
+etcd -> etcd: Version matches, update successful
+etcd --> api: Success (new resourceVersion: 101)
+api --> clientA: 200 OK (resourceVersion: 101)
+
+note right of api
+  First update succeeds:
+  - Expected version (100) matches
+  - Object updated to version 101
+  - Changes committed
+end note
+' [/step4]
+
+' [step5 {"name":"Second Update Conflicts", "newPage":"true"}]
+group #LightPink "Client B Conflicts"
+clientB -> api: PUT /api/v1/pods/nginx-pod\n(resourceVersion: 100)
+api -> etcd: Compare-and-swap\n(expected: 100, new: 102)
+etcd -> etcd: Version mismatch!\nCurrent: 101, Expected: 100
+etcd --> api: Conflict error
+api --> clientB: 409 Conflict\n"resource version conflict"
+
+note right of api
+  Second update fails:
+  - Expected version (100) ≠ current (101)
+  - Object was modified by another client
+  - Update rejected to prevent lost changes
+end note
+' [/step5]
+
+' [step6 {"name":"Retry with Latest Version", "newPage":"true"}]
+group #LightCoral "Client B Retries"
+clientB -> api: GET /api/v1/pods/nginx-pod
+api -> etcd: Get current pod object
+etcd --> api: Pod object (resourceVersion: 101)
+api --> clientB: Latest pod object (resourceVersion: 101)
+
+clientB -> clientB: Merge changes with latest version
+note right of clientB
+  Client B now sees:
+  - Client A's image change (nginx:1.20)
+  - Can apply its label change safely
+end note
+
+clientB -> api: PUT /api/v1/pods/nginx-pod\n(resourceVersion: 101)
+api -> etcd: Compare-and-swap\n(expected: 101, new: 102)
+etcd -> etcd: Version matches, update successful
+etcd --> api: Success (new resourceVersion: 102)
+api --> clientB: 200 OK (resourceVersion: 102)
+' [/step6]
+
+' [step7 {"name":"Final State"}]
+group #LightGray "Successful Resolution"
+note over clientA, etcd
+  Final object state (resourceVersion: 102):
+  - Image: nginx:1.20 (from Client A)
+  - Label version: v2 (from Client B)
+  - No lost updates!
+  - Both changes preserved
+end note
+' [/step7]
+
+' [step8 {"name":"Concurrency Benefits"}]
+note over clientA, etcd
+  **Optimistic Concurrency Benefits:**
+  
+  ✓ **No Lost Updates**: Resource versioning prevents overwrites
+  ✓ **High Performance**: No locks, multiple readers/writers
+  ✓ **Conflict Detection**: Automatic detection of concurrent changes
+  ✓ **Retry Mechanism**: Clients can retry with latest version
+  ✓ **Distributed Safe**: Works across multiple API server instances
+  
+  **Trade-off**: Clients must handle conflicts and retry logic
+end note
+' [/step8]
+
+@enduml 

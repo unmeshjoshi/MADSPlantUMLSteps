@@ -1,0 +1,115 @@
+@startuml
+!include ../../style.puml
+
+title ListWatch Usage Across Kubernetes Components
+
+' [step1 {"name":"All Components"}]
+participant "ReplicaSet\nController" as rc
+participant "Deployment\nController" as dc
+participant "Scheduler" as sched
+participant "Kubelet\n(Node-A)" as kubelet
+participant "API Server" as api
+participant "etcd" as etcd
+' [/step1]
+
+' [step2 {"name":"Component Watch Setup"}]
+group #LightBlue "Initial Watch Setup"
+rc -> api: WATCH /api/v1/replicasets
+dc -> api: WATCH /apis/apps/v1/deployments
+sched -> api: WATCH /api/v1/pods?fieldSelector=spec.nodeName=""
+kubelet -> api: WATCH /api/v1/pods?fieldSelector=spec.nodeName=node-a
+note right of api
+  API Server maintains
+  separate watch streams
+  for each component
+end note
+' [/step2]
+
+' [step3 {"name":"Event Fan-out", "newPage":"true"}]
+group #LightGreen "Event Processing"
+actor "User" as user
+user -> api: kubectl create deployment nginx --replicas=3
+api -> etcd: Store Deployment object
+etcd -> api: ADDED event (Deployment)
+
+' Fan out to interested components
+api -> dc: ADDED: Deployment nginx
+note right of dc
+  Deployment Controller
+  reacts to new deployment
+end note
+' [/step3]
+
+' [step4 {"name":"Controller Cascade"}]
+group #LightYellow "Controller Reaction Chain"
+dc -> api: Create ReplicaSet (owner: deployment)
+api -> etcd: Store ReplicaSet object
+etcd -> api: ADDED event (ReplicaSet)
+
+api -> rc: ADDED: ReplicaSet nginx-abc123
+note right of rc
+  ReplicaSet Controller
+  reacts to new ReplicaSet
+end note
+' [/step4]
+
+' [step5 {"name":"Pod Creation", "newPage":"true"}]
+group #LightPink "Pod Creation"
+rc -> api: Create Pod 1 (owner: replicaset)
+rc -> api: Create Pod 2 (owner: replicaset)  
+rc -> api: Create Pod 3 (owner: replicaset)
+api -> etcd: Store Pod objects
+etcd -> api: ADDED events (3 Pods)
+
+' Scheduler receives unscheduled pods
+api -> sched: ADDED: Pod nginx-abc123-1 (unscheduled)
+api -> sched: ADDED: Pod nginx-abc123-2 (unscheduled)
+api -> sched: ADDED: Pod nginx-abc123-3 (unscheduled)
+' [/step5]
+
+' [step6 {"name":"Scheduling Decision"}]
+group #LightCoral "Scheduling"
+sched -> api: Update Pod 1 (spec.nodeName=node-a)
+sched -> api: Update Pod 2 (spec.nodeName=node-b)
+sched -> api: Update Pod 3 (spec.nodeName=node-a)
+api -> etcd: Update Pod objects
+etcd -> api: MODIFIED events (3 Pods)
+
+' Kubelet receives pods assigned to its node
+api -> kubelet: MODIFIED: Pod nginx-abc123-1 (assigned to node-a)
+api -> kubelet: MODIFIED: Pod nginx-abc123-3 (assigned to node-a)
+note right of kubelet
+  Kubelet only receives
+  pods assigned to its node
+  (filtered by fieldSelector)
+end note
+' [/step6]
+
+' [step7 {"name":"Pod Execution", "newPage":"true"}]
+group #LightGray "Pod Lifecycle"
+kubelet -> kubelet: Start Pod nginx-abc123-1
+kubelet -> kubelet: Start Pod nginx-abc123-3
+kubelet -> api: Update Pod 1 status (Running)
+kubelet -> api: Update Pod 3 status (Running)
+api -> etcd: Update Pod status
+etcd -> api: MODIFIED events (Pod status)
+
+' Status updates propagate to controllers
+api -> rc: MODIFIED: Pod nginx-abc123-1 (status: Running)
+api -> rc: MODIFIED: Pod nginx-abc123-3 (status: Running)
+api -> dc: MODIFIED: ReplicaSet nginx-abc123 (2/3 ready)
+' [/step7]
+
+' [step8 {"name":"Continuous Monitoring"}]
+group #LightBlue "Ongoing Coordination"
+note over rc, kubelet
+  All components continue watching:
+  - Controllers: Reconcile desired state
+  - Scheduler: Process new unscheduled pods  
+  - Kubelet: Manage assigned pods
+  - Events flow efficiently to interested parties
+  - No polling - immediate response to changes
+end note
+' [/step8]
+
+@enduml 

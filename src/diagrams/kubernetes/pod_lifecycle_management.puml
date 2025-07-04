@@ -1,0 +1,139 @@
+@startuml
+!include ../../style.puml
+
+title Complete Pod Lifecycle Management
+
+' [step1 {"name":"Lifecycle Components"}]
+participant "User" as user
+participant "API Server" as api
+participant "Scheduler" as sched
+participant "Kubelet" as kubelet
+participant "Container Runtime" as runtime
+participant "etcd" as etcd
+' [/step1]
+
+' [step2 {"name":"Pod Creation"}]
+group #LightBlue "Pod Creation Phase"
+user -> api: kubectl run nginx --image=nginx
+api -> etcd: Store Pod (status: Pending)
+api -> sched: New unscheduled pod
+sched -> api: Bind pod to node-1
+api -> etcd: Update pod.spec.nodeName
+' [/step2]
+
+' [step3 {"name":"Pod Scheduling"}]
+group #LightGreen "Scheduling & Assignment"
+kubelet -> api: Watch assigned pods
+api -> kubelet: MODIFIED: nginx-pod (assigned to node-1)
+kubelet -> kubelet: Add pod to work queue
+note right of kubelet
+  Pod status: Pending
+  Reason: PodScheduled
+end note
+' [/step3]
+
+' [step4 {"name":"Image Pulling", "newPage":"true"}]
+group #LightYellow "Image Pull Phase"
+kubelet -> runtime: Pull image nginx:latest
+runtime -> runtime: Download layers
+alt Image pull successful
+    runtime --> kubelet: Image ready
+    kubelet -> api: Update status (PodInitializing)
+else Image pull failed
+    runtime --> kubelet: Pull error
+    kubelet -> api: Update status (ImagePullBackOff)
+    note right of kubelet: Will retry with exponential backoff
+end
+' [/step4]
+
+' [step5 {"name":"Container Creation"}]
+group #LightPink "Container Creation Phase"
+kubelet -> runtime: Create container
+runtime -> runtime: Setup networking\nMount volumes\nApply security context
+runtime --> kubelet: Container created (ID: abc123)
+kubelet -> api: Update status (ContainerCreating)
+' [/step5]
+
+' [step6 {"name":"Container Startup", "newPage":"true"}]
+group #LightCoral "Container Startup"
+kubelet -> runtime: Start container
+runtime -> runtime: Execute entrypoint
+runtime --> kubelet: Container started
+
+kubelet -> kubelet: Setup liveness/readiness probes
+kubelet -> api: Update status (Running)
+note right of kubelet
+  Pod phase: Running
+  Container state: Running
+  Ready: true
+end note
+' [/step6]
+
+' [step7 {"name":"Health Monitoring"}]
+group #LightGray "Health Monitoring Phase"
+loop Continuous health checks
+    kubelet -> runtime: Execute liveness probe
+    runtime --> kubelet: HTTP 200 OK
+    
+    kubelet -> runtime: Execute readiness probe
+    runtime --> kubelet: HTTP 200 OK
+    
+    note right of kubelet
+      Probes running every 10s
+      - Liveness: restart if failed
+      - Readiness: remove from service
+    end note
+end
+' [/step7]
+
+' [step8 {"name":"Pod Termination", "newPage":"true"}]
+group #LightBlue "Termination Initiated"
+user -> api: kubectl delete pod nginx-pod
+api -> etcd: Set deletionTimestamp
+api -> kubelet: MODIFIED: pod (deletionTimestamp set)
+kubelet -> kubelet: Start graceful termination
+kubelet -> api: Update status (Terminating)
+' [/step8]
+
+' [step9 {"name":"Graceful Shutdown"}]
+group #LightGreen "Graceful Shutdown"
+kubelet -> runtime: Send SIGTERM to container
+runtime -> runtime: Application cleanup (30s grace period)
+
+alt Container exits gracefully
+    runtime --> kubelet: Container exited (0)
+else Grace period exceeded
+    kubelet -> runtime: Send SIGKILL
+    runtime --> kubelet: Container killed
+end
+
+kubelet -> api: Update status (Succeeded/Failed)
+' [/step9]
+
+' [step10 {"name":"Cleanup"}]
+group #LightYellow "Resource Cleanup"
+kubelet -> runtime: Remove container
+kubelet -> kubelet: Cleanup volumes\nCleanup network
+kubelet -> api: Update status (container terminated)
+api -> etcd: Store final status
+note right of kubelet
+  Pod cleanup complete
+  Resources released
+end note
+' [/step10]
+
+' [step11 {"name":"Lifecycle Summary"}]
+note over user, etcd
+  **Pod Lifecycle States:**
+  
+  • **Pending**: Scheduled but not started
+  • **Running**: At least one container is running
+  • **Succeeded**: All containers terminated successfully
+  • **Failed**: At least one container failed
+  • **Unknown**: Pod status cannot be determined
+  
+  **Key Transitions:** Pending → Running → Terminated
+end note
+' [/step11]
+
+@enduml 

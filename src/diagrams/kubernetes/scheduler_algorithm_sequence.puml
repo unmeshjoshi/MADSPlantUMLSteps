@@ -1,0 +1,144 @@
+@startuml
+!include ../../style.puml
+
+title Kubernetes Scheduler Algorithm Step-by-Step
+
+' [step1 {"name":"Scheduler Components"}]
+participant "Scheduler" as sched
+participant "API Server" as api
+participant "ListWatch" as lw
+participant "Filter Plugins" as filter
+participant "Score Plugins" as score
+participant "etcd" as etcd
+' [/step1]
+
+' [step2 {"name":"Pod Detection"}]
+group #LightBlue "Unscheduled Pod Detection"
+etcd -> api: ADDED event (new pod)
+api -> lw: Forward pod event
+lw -> sched: Unscheduled pod: nginx-pod
+note right of sched
+  Pod has spec.nodeName=""
+  indicating it needs scheduling
+end note
+' [/step2]
+
+' [step3 {"name":"Node List Retrieval"}]
+group #LightGreen "Get Available Nodes"
+sched -> api: List all nodes
+api -> etcd: Get all node objects
+etcd --> api: Nodes list
+api --> sched: [node-1, node-2, node-3, node-4]
+note right of sched
+  Got 4 candidate nodes
+  for scheduling consideration
+end note
+' [/step3]
+
+' [step4 {"name":"Filtering Phase", "newPage":"true"}]
+group #LightYellow "Phase 1: Filtering (Predicates)"
+sched -> filter: Filter nodes for pod nginx-pod
+activate filter
+
+loop For each node
+    filter -> filter: NodeResourcesFit\n(CPU: 2 cores, Memory: 4Gi)
+    note right of filter
+      node-1: ✓ (4 cores, 8Gi available)
+      node-2: ✗ (1 core, 2Gi available)  
+      node-3: ✓ (8 cores, 16Gi available)
+      node-4: ✓ (2 cores, 4Gi available)
+    end note
+    
+    filter -> filter: NodeAffinity\n(zone=us-west)
+    note right of filter
+      node-1: ✓ (zone=us-west)
+      node-3: ✓ (zone=us-west)
+      node-4: ✗ (zone=us-east)
+    end note
+    
+    filter -> filter: PodAntiAffinity\n(avoid other nginx pods)
+    note right of filter
+      node-1: ✗ (has nginx-pod-1)
+      node-3: ✓ (no conflicting pods)
+    end note
+end
+
+filter --> sched: Feasible nodes: [node-3]
+deactivate filter
+' [/step4]
+
+' [step5 {"name":"Scoring Phase", "newPage":"true"}]
+group #LightPink "Phase 2: Scoring (Priorities)"
+sched -> score: Score feasible nodes
+activate score
+
+loop For each feasible node
+    score -> score: NodeResourcesFit Score\n(prefer nodes with more available resources)
+    note right of score
+      node-3: 50/100
+      (50% resources available)
+    end note
+    
+    score -> score: ImageLocality Score\n(prefer nodes with container image cached)
+    note right of score
+      node-3: 90/100
+      (nginx image already present)
+    end note
+    
+    score -> score: InterPodAffinity Score\n(prefer spreading across zones)
+    note right of score
+      node-3: 70/100
+      (good spread with existing pods)
+    end note
+    
+    score -> score: Calculate final score\n(weighted average)
+    note right of score
+      node-3: (50×0.3 + 90×0.4 + 70×0.3) = 72/100
+    end note
+end
+
+score --> sched: Scored nodes: [node-3: 72]
+deactivate score
+' [/step5]
+
+' [step6 {"name":"Node Selection"}]
+group #LightCoral "Best Node Selection"
+sched -> sched: Select highest scoring node
+note right of sched
+  Selected: node-3 (score: 72)
+  This node best meets all
+  requirements and preferences
+end note
+' [/step6]
+
+' [step7 {"name":"Pod Binding", "newPage":"true"}]
+group #LightGray "Pod Binding"
+sched -> api: Bind pod to node-3\n(update spec.nodeName)
+api -> etcd: Update pod object
+etcd -> api: MODIFIED event (pod bound)
+
+note right of sched
+  Pod nginx-pod now has:
+  spec.nodeName: "node-3"
+  Ready for kubelet pickup
+end note
+
+api -> api: Send events
+note right of api
+  Event: "Scheduled pod nginx-pod to node-3"
+end note
+' [/step7]
+
+' [step8 {"name":"Scheduling Complete"}]
+group #LightBlue "Completion"
+etcd -> api: Pod update propagation
+note over sched, etcd
+  Scheduling complete!
+  - Filtering eliminated unsuitable nodes
+  - Scoring ranked remaining options
+  - Best node selected and bound
+  - Kubelet will start the pod
+end note
+' [/step8]
+
+@enduml 

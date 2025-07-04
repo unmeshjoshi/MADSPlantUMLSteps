@@ -1,0 +1,163 @@
+@startuml
+!include ../../style.puml
+
+title Custom Controller with CRD Implementation
+
+' [step1 {"name":"CRD Components"}]
+participant "Developer" as dev
+participant "API Server" as api
+participant "Custom Controller" as controller
+participant "Admission Webhook" as webhook
+participant "Custom Resource" as cr
+participant "etcd" as etcd
+' [/step1]
+
+' [step2 {"name":"CRD Installation"}]
+group #LightBlue "CRD Registration"
+dev -> api: kubectl apply -f database-crd.yaml
+note right of dev
+  CustomResourceDefinition:
+  - apiVersion: apiextensions.k8s.io/v1
+  - kind: CustomResourceDefinition
+  - spec.names.kind: Database
+  - spec.group: example.com
+end note
+
+api -> etcd: Store CRD definition
+api -> api: Register new API endpoint\n/apis/example.com/v1/databases
+' [/step2]
+
+' [step3 {"name":"Webhook Registration"}]
+group #LightGreen "Webhook Setup"
+dev -> api: Register admission webhook
+note right of dev
+  AdmissionWebhook:
+  - Validates Database specs
+  - Mutates default values
+  - Enforces business rules
+end note
+
+api -> etcd: Store webhook configuration
+' [/step3]
+
+' [step4 {"name":"Controller Deployment", "newPage":"true"}]
+group #LightYellow "Controller Deployment"
+dev -> api: Deploy custom controller
+api -> etcd: Store controller pod
+controller -> api: Start watching Database resources
+note right of controller
+  Controller logic:
+  - Watch Database CRs
+  - Reconcile desired state
+  - Manage StatefulSets/Services
+  - Update status
+end note
+' [/step4]
+
+' [step5 {"name":"Custom Resource Creation"}]
+group #LightPink "Create Custom Resource"
+dev -> api: kubectl apply -f my-database.yaml
+note right of dev
+  Database CR:
+  - kind: Database
+  - spec.replicas: 3
+  - spec.version: "13.4"
+  - spec.storage: "100Gi"
+end note
+
+api -> webhook: Validate Database CR
+webhook -> webhook: Check business rules
+webhook --> api: Validation passed (with defaults)
+api -> etcd: Store Database CR
+' [/step5]
+
+' [step6 {"name":"Controller Reaction", "newPage":"true"}]
+group #LightCoral "Controller Reconciliation"
+etcd -> api: ADDED event (Database CR)
+api -> controller: New Database: my-postgres
+controller -> controller: Reconcile(my-postgres)
+activate controller
+
+controller -> api: Create StatefulSet
+note right of controller
+  StatefulSet for PostgreSQL:
+  - Replicas: 3
+  - Image: postgres:13.4
+  - Storage: 100Gi PVC per pod
+end note
+
+controller -> api: Create Service
+controller -> api: Create ConfigMap
+' [/step6]
+
+' [step7 {"name":"Status Updates"}]
+group #LightGray "Status Reporting"
+controller -> api: Update Database status
+note right of controller
+  Status update:
+  - phase: "Creating"
+  - replicas: 0
+  - readyReplicas: 0
+  - conditions: []
+end note
+
+api -> etcd: Store status update
+deactivate controller
+
+' Monitor StatefulSet progress
+loop Status monitoring
+    controller -> api: Watch StatefulSet status
+    api -> controller: StatefulSet status changed
+    controller -> api: Update Database status
+    note right of controller
+      Updated status:
+      - phase: "Ready"  
+      - replicas: 3
+      - readyReplicas: 3
+    end note
+end
+' [/step7]
+
+' [step8 {"name":"Lifecycle Management", "newPage":"true"}]
+group #LightBlue "Lifecycle Operations"
+dev -> api: Update Database (scale to 5 replicas)
+api -> webhook: Validate update
+webhook --> api: Approved
+api -> etcd: Store updated Database CR
+
+etcd -> api: MODIFIED event
+api -> controller: Database my-postgres updated
+controller -> controller: Reconcile(my-postgres)
+controller -> api: Scale StatefulSet to 5 replicas
+controller -> api: Update status (scaling)
+' [/step8]
+
+' [step9 {"name":"Custom Resource Deletion"}]
+group #LightGreen "Resource Cleanup"
+dev -> api: kubectl delete database my-postgres
+api -> etcd: Set deletionTimestamp
+api -> controller: Database deletion event
+
+controller -> controller: Cleanup finalizer logic
+controller -> api: Delete StatefulSet
+controller -> api: Delete Services
+controller -> api: Delete ConfigMaps
+controller -> api: Remove finalizer from Database
+api -> etcd: Delete Database CR
+' [/step9]
+
+' [step10 {"name":"CRD Architecture"}]
+note over dev, etcd
+  **Custom Controller Pattern:**
+  
+  • **CRD**: Extends Kubernetes API with custom resources
+  • **Admission Webhooks**: Validate and mutate custom resources
+  • **Custom Controller**: Implements business logic and reconciliation
+  • **Built-in Resources**: Controller manages standard K8s objects
+  • **Status Reporting**: Controller updates CR status with current state
+  
+  **Benefits**: Declarative APIs, Kubernetes-native patterns, Reusable components
+end note
+' [/step10]
+
+@enduml 

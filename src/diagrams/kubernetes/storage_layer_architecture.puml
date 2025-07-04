@@ -1,0 +1,136 @@
+@startuml
+!include ../../style.puml
+
+title Storage Layer Architecture
+
+' [step1 {"name":"Architecture Layers"}]
+participant "Client\n(kubectl/Controller)" as client
+participant "API Server\nHTTP Handler" as handler
+participant "Storage Interface" as storage
+participant "Registry\n(Typed Access)" as registry
+participant "etcd Client" as etcdclient
+participant "etcd Cluster" as etcd
+' [/step1]
+
+' [step2 {"name":"API Request"}]
+group #LightBlue "Client Request"
+client -> handler: POST /api/v1/pods\n(Pod object)
+handler -> handler: Parse JSON\nValidate schema
+note right of handler
+  HTTP layer handles:
+  - JSON serialization
+  - HTTP headers/status
+  - Content negotiation
+end note
+' [/step2]
+
+' [step3 {"name":"Storage Interface"}]
+group #LightGreen "Storage Abstraction"
+handler -> storage: Create(key, obj)
+note right of storage
+  Storage interface provides:
+  - Create(key, obj)
+  - Get(key, obj)
+  - Update(key, obj)
+  - Delete(key)
+  - List(prefix, list)
+  - Watch(prefix)
+end note
+' [/step3]
+
+' [step4 {"name":"Registry Layer", "newPage":"true"}]
+group #LightYellow "Registry Pattern"
+storage -> registry: PodRegistry.Create(pod)
+registry -> registry: Generate metadata
+note right of registry
+  Registry adds:
+  - Namespace handling
+  - Resource versioning
+  - UID generation
+  - Creation timestamp
+  - Owner references
+end note
+
+registry -> registry: Construct etcd key
+note right of registry
+  Key format:
+  /registry/pods/{namespace}/{name}
+  
+  Example:
+  /registry/pods/default/nginx-pod
+end note
+' [/step4]
+
+' [step5 {"name":"Object Encoding"}]
+group #LightPink "Serialization"
+registry -> registry: Encode to JSON
+note right of registry
+  Object serialization:
+  - Convert Go struct to JSON
+  - Add apiVersion and kind
+  - Preserve field ordering
+  - Handle custom fields
+end note
+
+registry -> etcdclient: Put(key, jsonData)
+' [/step5]
+
+' [step6 {"name":"etcd Operations", "newPage":"true"}]
+group #LightCoral "etcd Client Layer"
+etcdclient -> etcdclient: Prepare transaction
+note right of etcdclient
+  etcd client handles:
+  - Connection management
+  - Request retries
+  - Load balancing
+  - TLS encryption
+end note
+
+etcdclient -> etcd: gRPC Put request
+etcd -> etcd: RAFT consensus
+etcd -> etcd: Apply to state machine
+etcd --> etcdclient: Response (revision: 12345)
+' [/step6]
+
+' [step7 {"name":"Response Propagation"}]
+group #LightGray "Response Path"
+etcdclient --> registry: Success + revision
+registry -> registry: Update resource version
+registry --> storage: Created object
+storage --> handler: Success response
+handler -> handler: Format HTTP response
+handler --> client: 201 Created\n+ Object metadata
+' [/step7]
+
+' [step8 {"name":"Watch Events", "newPage":"true"}]
+group #LightBlue "Event Propagation"
+etcd -> etcd: Generate watch event
+etcd -> etcdclient: Watch event (ADDED)
+etcdclient -> registry: Raw event
+registry -> registry: Decode event
+registry -> storage: Typed event
+storage -> handler: Event notification
+handler -> handler: Fan out to watchers
+
+note over client, etcd
+  Watch events flow through same layers
+  but in reverse direction, enabling
+  real-time state synchronization
+end note
+' [/step8]
+
+' [step9 {"name":"Layer Benefits"}]
+note over client, etcd
+  **Layered Architecture Benefits:**
+  
+  • **API Server**: Protocol abstraction (HTTP ↔ gRPC)
+  • **Storage Interface**: Pluggable storage backends
+  • **Registry**: Type-safe resource operations
+  • **etcd Client**: Connection reliability & clustering
+  • **etcd**: Distributed consensus & durability
+  
+  Each layer has single responsibility and can be tested independently
+end note
+' [/step9]
+
+@enduml 

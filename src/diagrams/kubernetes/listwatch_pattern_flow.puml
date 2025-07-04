@@ -1,0 +1,104 @@
+@startuml
+!include ../../style.puml
+
+title ListWatch Pattern Implementation
+
+' [step1 {"name":"Components"}]
+participant "Client\n(Controller)" as client
+participant "API Server" as api
+participant "etcd" as etcd
+participant "Watch Connection" as watch
+' [/step1]
+
+' [step2 {"name":"Initial List Operation"}]
+group #LightBlue "Initial List Operation"
+client -> api: LIST /api/v1/pods
+api -> etcd: Get all pods
+etcd --> api: Pod list + ResourceVersion: 1000
+api --> client: Pod list + ResourceVersion: 1000
+note right of client
+  Client now has:
+  - Current state snapshot
+  - ResourceVersion baseline
+  - Local cache populated
+end note
+' [/step2]
+
+' [step3 {"name":"Start Watch Operation"}]
+group #LightGreen "Start Watch"
+client -> api: WATCH /api/v1/pods?resourceVersion=1000
+api -> etcd: Start watch from version 1000
+etcd --> api: Watch stream established
+api --> client: Watch stream ready
+activate watch
+note right of watch
+  Watch connection active
+  Waiting for changes...
+end note
+' [/step3]
+
+' [step4 {"name":"Resource Changes", "newPage":"true"}]
+group #LightYellow "Resource Modifications"
+actor "User" as user
+user -> api: kubectl create pod my-pod
+api -> etcd: Store new pod (version 1001)
+etcd -> api: ADDED event (pod, version 1001)
+api -> watch: Forward ADDED event
+watch -> client: ADDED: my-pod (version 1001)
+client -> client: Update local cache
+' [/step4]
+
+' [step5 {"name":"More Changes"}]
+user -> api: kubectl delete pod my-pod
+api -> etcd: Delete pod (version 1002)
+etcd -> api: DELETED event (pod, version 1002)
+api -> watch: Forward DELETED event
+watch -> client: DELETED: my-pod (version 1002)
+client -> client: Remove from local cache
+' [/step5]
+
+' [step6 {"name":"Network Failure", "newPage":"true"}]
+group #LightPink "Network Failure Handling"
+watch -[#red]X client: Connection lost
+deactivate watch
+note right of client
+  Connection lost!
+  Last known version: 1002
+end note
+
+client -> client: Detect connection failure
+client -> client: Start exponential backoff\n(100ms, 200ms, 400ms...)
+' [/step6]
+
+' [step7 {"name":"Reconnection"}]
+group #LightCoral "Automatic Reconnection"
+client -> api: WATCH /api/v1/pods?resourceVersion=1002
+api -> etcd: Resume watch from version 1002
+etcd --> api: Watch stream re-established
+api --> client: Watch stream ready
+activate watch
+
+note right of client
+  Reconnected successfully!
+  No events missed due to
+  resourceVersion tracking
+end note
+
+etcd -> api: MODIFIED event (pod-x, version 1003)
+api -> watch: Forward MODIFIED event
+watch -> client: MODIFIED: pod-x (version 1003)
+client -> client: Update local cache
+' [/step7]
+
+' [step8 {"name":"Continuous Operation"}]
+group #LightGray "Continuous Operation"
+note over client, etcd
+  ListWatch continues indefinitely:
+  - Efficient incremental updates
+  - Automatic failure recovery
+  - No polling overhead
+  - Strong consistency guarantees
+end note
+' [/step8]
+
+@enduml 
