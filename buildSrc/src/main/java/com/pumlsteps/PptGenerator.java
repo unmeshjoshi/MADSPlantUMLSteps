@@ -723,7 +723,7 @@ public class PptGenerator {
             XSLFTextRun titleRun = titlePara.addNewTextRun();
             titleRun.setText(title);
             titleRun.setFontFamily("Calibri Light"); // More professional font
-            titleRun.setFontSize(36.0); // Larger font size
+            titleRun.setFontSize(48.0); // Larger font size for better readability
             titleRun.setBold(true); // Make title bold
             titleRun.setFontColor(ColorScheme.PRIMARY); // Use primary color for title
             
@@ -757,9 +757,9 @@ public class PptGenerator {
                     // Note: setBulletColor not available in this version of Apache POI
                     
                     // Add more space between paragraphs, less within paragraphs
-                    para.setLineSpacing(115.0); // Add more space between lines
+                    para.setLineSpacing(140.0); // Increase spacing for improved legibility
                     if (i > 0) {
-                        para.setSpaceBefore(10.0); // Space before paragraphs
+                        para.setSpaceBefore(16.0); // More space before each bullet
                     }
                     
                     XSLFTextRun run = para.addNewTextRun();
@@ -823,15 +823,15 @@ public class PptGenerator {
      * @return The recommended font size
      */
     private double calculateIdealFontSize(int bulletCount) {
-        // Base font size for fewer bullets
+        // Increased base font sizes for better on-screen readability
         if (bulletCount <= 3) {
-            return 28.0;
+            return 55.0;
         } else if (bulletCount <= 5) {
-            return 24.0;
+            return 48.0;
         } else if (bulletCount <= 8) {
-            return 20.0;
+            return 40.0;
         } else {
-            return 18.0; // Minimum size for many bullets
+            return 32.0; // Minimum size even for many bullets
         }
     }
     
