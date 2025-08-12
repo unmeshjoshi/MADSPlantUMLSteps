@@ -1,0 +1,437 @@
+title: "Quorums and Consensus: Caveats and Foundations"
+description: "A two-hour workshop that builds quorum intuition from distributed systems foundations, shows the caveats of basic quorum, and motivates the minimal consensus machinery, ending with replicated logs and the high-water mark."
+icon: "fas fa-project-diagram"
+category: "Distributed Systems"
+sections:
+  - title: "Introduction and Workshop Overview"
+    slides:
+      - type: "text"
+        title: "Workshop Goals + Map"
+        bullets:
+          - "Why distribute: capacity and failures"
+          - "What is a quorum and why majority?"
+          - "Caveats of basic quorum: inconsistency, ambiguity"
+          - "Minimal consensus to resolve ambiguity (overlap + safe re-proposal)"
+          - "From single-value to replicated logs and high-water mark"
+        notes: "Set expectations and the storyline. Emphasize that we will focus on quorum math, pitfalls, and the minimal consensus ideas needed in practice."
+
+      - type: "text"
+        title: "Assumptions and Model"
+        bullets:
+          - "Crash-fault model (not Byzantine)"
+          - "Asynchronous network: messages can be delayed, dropped, or reordered"
+          - "Majority quorum = floor(N/2) + 1"
+          - "Safety vs Liveness: never decide conflicting values vs eventually decide"
+        notes: "Clarify the fault model and timing assumptions for the rest of the workshop."
+
+  - title: "Why Distribute? Capacity and Failures"
+    slides:
+      - type: "diagram"
+        title: "A Typical Application Architecture"
+        diagramRef: "typical_application_architecture"
+        bullets:
+          - "Multiple app servers with a single database bottleneck"
+          - "Assumptions that often break under real load"
+        notes: "Introduce the traditional scaling approach and why it strains."
+
+      - type: "diagram"
+        title: "When Architecture Breaks Under Load"
+        diagramRef: "architecture_breaks_under_load"
+        bullets:
+          - "SLA degradation at saturation"
+          - "Connection explosion at the database"
+        notes: "Show concrete failure modes under load."
+
+      - type: "diagram"
+        title: "Little's Law and Application Performance"
+        diagramRef: "littles_law_performance"
+        bullets:
+          - "L = λW: throughput and response time interplay"
+          - "Queueing effects near capacity"
+        notes: "Ground participants in queueing fundamentals."
+
+      - type: "text"
+        title: "Service Rate vs Arrival Rate: Utilization and Queuing"
+        bullets:
+          - "Service rate μ = 1/S (S = average service time); utilization ρ = λ/(mμ)."
+          - "Stability requires λ < mμ; as ρ → 1, waiting W grows sharply (queuing)."
+          - "Time in system W = Wq + S; Little's Law L = λW → concurrent users depend on μ and variability, not λ alone."
+          - "Rule of thumb: operate well below saturation (e.g., 70–80% utilization) to avoid the latency knee."
+        notes: "Connect Little's Law to service capacity and queuing dynamics; summarize key relationships from the queuing deck."
+
+      - type: "diagram"
+        title: "Arrival vs Service: Pipe Model"
+        diagramRef: "service_vs_arrival_pipe"
+        bullets:
+          - "λ flows into queue → server(s) with capacity mμ → throughput X"
+          - "Stable when λ < mμ; otherwise queues grow without bound"
+        notes: "Intuitive pipe diagram: arrivals, queue, service capacity, and output throughput."
+
+      - type: "diagram"
+        title: "Latency vs Arrival Rate Performance Curve"
+        diagramRef: "latency_vs_arrival_rate_chart"
+        bullets:
+          - "Flat at low load (≈ S); sharp rise near saturation (ρ → 1)."
+          - "Most latency increase happens in a narrow range near capacity."
+        notes: "Visualize the 'hockey stick' latency curve illustrating queuing impact."
+
+      - type: "diagram"
+        title: "Throughput vs Arrival Rate Performance Curve"
+        diagramRef: "throughput_vs_arrival_rate_chart"
+        bullets:
+          - "Linear region: X ≈ λ when ρ < 1; plateau at capacity X ≈ mμ."
+          - "Beyond saturation: overhead/queueing can reduce effective throughput."
+        notes: "Show the linear rise and plateau at service capacity; tie to stability condition λ < mμ."
+
+      - type: "text"
+        title: "Assignment: Little's Law and Utilization"
+        bullets:
+          - "Use L = λT to compute concurrent in-flight users for λ = 5,000/s and T = 200ms."
+          - "Decompose T = Wq + S: given S = 50ms and T = 180ms, find Wq."
+          - "Compute μ = 1/S and utilization ρ = λ/(mμ) for m = 4; state stability condition (λ < mμ)."
+          - "For μ = 1000/s per server and m = 3, find λ at ρ = 0.8 and ρ = 0.95; discuss expected latency knee."
+          - "Optional: Sketch/plot T vs λ up to saturation using simple queueing approximations."
+        notes: "Use T to denote total time in system (sojourn). Connect Little's Law to capacity via utilization."
+
+      - type: "diagram"
+        title: "Real Data Center Failures - Google's Experience"
+        diagramRef: "datacenter_failures_google"
+        bullets:
+          - "Failures are frequent at scale"
+          - "Design for partial failures by default"
+        notes: "Normalize failure as a constant."
+
+      - type: "diagram"
+        title: "Distributed System = Distributed State + Partial Failures"
+        diagramRef: "distributed_state_partial_failures"
+        bullets:
+          - "System must keep working despite component failures"
+          - "Stateful systems require stronger guarantees"
+        notes: "Set up the need for replication and coordination."
+
+      - type: "text"
+        title: "Exercise: Failure Probability and Capacity"
+        bullets:
+          - "Compute daily failure probability for 10,000 disks if each fails once in 1000 days."
+          - "Using Little's Law (L = λW), estimate max concurrent users for SLA=200ms at 5k RPS."
+          - "Note: L is the average number in the system (queue + service) → approximates concurrent in-flight users."
+          - "Service time S: average processing time (without waiting). Utilization ρ = λS; as ρ → 1, W rises sharply (queueing), impacting throughput and latency."
+          - "Network cap: On 1Gbps, what's the upper bound RPS for 1KB requests? For 10KB?"
+          - "Disk I/O: Time to sequentially read 1TB at 500MB/s; impact on recovery times."
+        notes: "Foundational math warm-up. Deliver answers as a one-page worksheet or a short script."
+
+  - title: "Quorum Fundamentals"
+    slides:
+      - type: "text"
+        title: "What is a Quorum?"
+        bullets:
+          - "Decision requires acknowledgments from a subset of nodes"
+          - "Majority quorums tolerate crashes while preserving overlap"
+          - "Rule of thumb: 2f+1 nodes tolerate f failures"
+        notes: "Define quorum and relate it to failure tolerance."
+
+      - type: "text"
+        title: "Majority Math Quick Primer"
+        bullets:
+          - "For N nodes, majority q = floor(N/2) + 1"
+          - "Quorum overlap size ≥ 2q − N (with majority, ≥ 1)"
+          - "Examples: N=3→q=2, N=5→q=3, N=7→q=4"
+        notes: "Provide a quick mathematical foundation for quorum overlap."
+
+      - type: "diagram"
+        title: "Quorum Intersection Property"
+        diagramRef: "quorum_intersection"
+        bullets:
+          - "Any two majorities must share at least one node"
+          - "Overlap preserves information across decisions"
+        notes: "Show the core safety intuition behind quorums."
+
+      - type: "text"
+        title: "Exercise: Quorum Math and Overlap"
+        bullets:
+          - "Write a function q(N) = floor(N/2)+1. Tabulate q and overlap 2q−N for N ∈ {3,5,7,9}."
+          - "For N=5, show why any two quorums of size 3 must intersect. Give explicit sets."
+          - "Challenge: What happens if you pick q=2 for N=5? Construct a counterexample."
+        notes: "Short coding or whiteboard exercise to internalize quorum overlap."
+
+  - title: "Quorum in Practice and Caveats"
+    slides:
+      - type: "diagram"
+        title: "Quorum Write Example"
+        diagramRef: "quorum_write_example"
+        bullets:
+          - "Write returns success after majority acks"
+          - "Some replicas may still be stale"
+        notes: "A concrete write path with failures."
+
+      - type: "diagram"
+        title: "Quorum Read Example"
+        diagramRef: "quorum_read_example"
+        bullets:
+          - "Read consults multiple replicas"
+          - "Majority responses may hide inconsistency"
+        notes: "A concrete read path with partial failures."
+
+      - type: "text"
+        title: "Quorum Performance Impact"
+        bullets:
+          - "Failure tolerance vs throughput trade-off"
+          - "3 nodes: tolerate 1 failure, ~82% of single-node throughput"
+          - "5 nodes: tolerate 2 failures, ~48% of single-node throughput"
+        notes: "Discuss performance overheads of majority quorums."
+
+      - type: "diagram"
+        title: "Incomplete Writes Problem"
+        diagramRef: "incomplete_writes"
+        bullets:
+          - "Network failures leave replicas diverged"
+          - "Quorum may succeed despite a stale replica"
+        notes: "Illustrate partial replication hazards."
+
+      - type: "diagram"
+        title: "Inconsistent Reads Scenario"
+        diagramRef: "inconsistent_reads"
+        bullets:
+          - "Different clients can see different values"
+          - "External consistency violations possible"
+        notes: "Demonstrate user-visible inconsistencies."
+
+      - type: "diagram"
+        title: "Read Repair - Synchronous"
+        diagramRef: "read_repair_synchronous"
+        bullets:
+          - "Repair replicas before responding"
+          - "Higher latency, stronger consistency"
+        notes: "Show corrective mechanisms."
+
+      - type: "diagram"
+        title: "Read Repair - Asynchronous"
+        diagramRef: "read_repair_asynchronous"
+        bullets:
+          - "Respond fast, repair later"
+          - "Eventual consistency model"
+        notes: "Contrast with synchronous repair."
+
+      - type: "diagram"
+        title: "Selecting Latest Value with Timestamps"
+        diagramRef: "selecting_latest_value"
+        bullets:
+          - "Use version/timestamp to reconcile"
+          - "Relies on monotonic time assumption"
+        notes: "Introduce version-based reconciliation."
+
+      - type: "diagram"
+        title: "Clock Skew and Timestamp Issues"
+        diagramRef: "clock_skew_timestamp_issues"
+        bullets:
+          - "Physical clocks drift and can reorder events"
+          - "Timestamp-based reconciliation can misorder writes"
+        notes: "Highlight pitfalls of relying on physical time."
+
+      - type: "text"
+        title: "Issues with Basic Quorum"
+        bullets:
+          - "Different clients may read different values"
+          - "Later reads can return older values (external consistency)"
+          - "Nodes expose values without global knowledge of acceptance"
+          - "We need stronger, disciplined protocols for safety"
+        notes: "Summarize why quorum alone does not guarantee strong consistency."
+
+      - type: "text"
+        title: "Assignment: Quorum KV with Read/Write Quorums (TickLoom)"
+        bullets:
+          - "Build a 3-node KV store with write quorum W=2 and read quorum R=2 using TickLoom replicas."
+          - "Simulate: write K→V1, drop one replication; perform two reads from different nodes; observe inconsistency."
+          - "Add synchronous read-repair: ensure read latency impact; verify consistency post-read."
+          - "Add asynchronous read-repair: measure staleness window under load."
+          - "Bonus: Use naive physical timestamps per node to reconcile; demonstrate clock-skew anomaly."
+        notes: "Use TickLoom Cluster testkit to inject message loss/partition and control tick-based time."
+
+  - title: "Why Quorum Alone Isn't Enough (Consensus Lite)"
+    slides:
+      - type: "diagram"
+        title: "Why Immediate Request Execution Does not Work"
+        diagramRef: "single_phase_execution"
+        bullets:
+          - "Execute-first leads to divergence on failures"
+          - "Responses can be sent before global agreement"
+        notes: "Motivate the need for a pre-agreement step."
+
+      - type: "diagram"
+        title: "Commit Requests Can Get Lost"
+        diagramRef: "two_phase_lost_commits"
+        bullets:
+          - "Majority accept but commit messages lost"
+          - "Leader crash leaves system ambiguous"
+        notes: "Ambiguity after partial success."
+
+      - type: "diagram"
+        title: "Accept Requests Can Get Lost"
+        diagramRef: "two_phase_missed_accepts"
+        bullets:
+          - "Some replicas never receive accept"
+          - "Leader proceeds with a different majority"
+        notes: "Another path to ambiguity."
+
+      - type: "text"
+        title: "Ambiguity Precisely"
+        bullets:
+          - "With only majority responses, leader cannot know if a value was already committed"
+          - "Safety requires assuming 'it might have been committed'"
+          - "Conservative action: re-propose the safest value"
+        notes: "Define the core ambiguity and the conservative resolution principle."
+
+      - type: "diagram"
+        title: "Recovery Phase: Checking for Existing Accepted Requests"
+        diagramRef: "recovery_phase_check"
+        bullets:
+          - "Leader queries a majority for prior accepted values"
+          - "Responses may be incomplete or conflicting"
+        notes: "Show the recovery check step."
+
+      - type: "diagram"
+        title: "Recovery Ambiguity: The Scenario"
+        diagramRef: "recovery_ambiguity_dilemma"
+        bullets:
+          - "Some nodes report a prior value, others are silent"
+          - "Leader cannot distinguish committed vs uncommitted"
+        notes: "Illustrate the impossible decision."
+
+      - type: "diagram"
+        title: "Recovery Dilemma: Multiple Conflicting Accepted Requests"
+        diagramRef: "recovery_multiple_accepted_requests"
+        bullets:
+          - "Different prior values discovered across the majority"
+          - "Leader must choose safely using a rule"
+        notes: "Set up the highest-generation rule."
+
+      - type: "text"
+        title: "The Safety Recipe"
+        bullets:
+          - "Establish authority (generation/term) before proposing"
+          - "Choose the highest-generation previously accepted value, if any"
+          - "Get majority agreement before execution"
+          - "Rely on quorum overlap to preserve prior commitments"
+        notes: "Minimal consensus steps to regain safety in face of ambiguity."
+
+      - type: "text"
+        title: "Assignment: Minimal Consensus with Recovery (TickLoom)"
+        bullets:
+          - "Implement Prepare/Promise and Accept/Accepted between 3 replicas with generation numbers."
+          - "Scenario A: Lose some Accept messages; show ambiguous state after leader crash."
+          - "Implement recovery: query majority for previously accepted values; choose highest-generation; re-propose."
+          - "Prove via test that if any value was committed, it is never lost across a leadership change."
+          - "Measure message count vs success; compare to naive execute-first."
+        notes: "Model messages as records; use TickLoom's simulated network to drop/Delay packets deterministically."
+
+  - title: "From Single Value to Replicated Logs and Execution"
+    slides:
+      - type: "text"
+        title: "Limitation: Accepted Requests Never Forgotten"
+        bullets:
+          - "If a value might have been committed, it must not be lost"
+          - "Accepted values cannot be forgotten safely"
+          - "Single slot cannot be reused arbitrarily"
+        notes: "Explain the safety constraint that limits single-value consensus."
+
+      - type: "diagram"
+        title: "Why Accepted Requests Cannot Be Forgotten"
+        diagramRef: "why_accepted_values_cannot_be_forgotten"
+        bullets:
+          - "Forgetting accepted values can violate safety"
+          - "Highest-generation rule preserves at-risk values"
+        notes: "Show the failure mode when accepted values are dropped."
+
+      - type: "diagram"
+        title: "Single-Value Consensus Limitation"
+        diagramRef: "single_value_limitation"
+        bullets:
+          - "One slot means only one value ever"
+          - "Impractical for real systems"
+        notes: "Motivate the need for multiple slots."
+
+      - type: "text"
+        title: "Solution: Replicated Log of Requests"
+        bullets:
+          - "Maintain ordered slots; run consensus per slot"
+          - "Execute requests in log order for consistency"
+          - "Enables continuous operation over time"
+        notes: "Introduce replicated logs as the practical extension."
+
+      - type: "diagram"
+        title: "Replicated Log Concept"
+        diagramRef: "replicated_log_concept"
+        bullets:
+          - "All nodes converge on the same ordered log"
+          - "Each slot holds at most one committed request"
+        notes: "Visualize the replicated log idea."
+
+      - type: "diagram"
+        title: "Multi-Slot Consensus in Action"
+        diagramRef: "multi_slot_consensus"
+        bullets:
+          - "Leader assigns next available slot"
+          - "Conflicts resolved by committing earlier slots first"
+        notes: "Show multi-slot operation with recovery."
+
+      - type: "text"
+        title: "Execution Challenge: The High-Water Mark"
+        bullets:
+          - "Log can have gaps: some slots committed, others not"
+          - "Execute only up to the highest fully-committed contiguous index"
+          - "Prevents out-of-order execution"
+        notes: "Define high-water mark to preserve ordering."
+
+      - type: "diagram"
+        title: "High-Water Mark Execution"
+        diagramRef: "high_water_mark_execution"
+        bullets:
+          - "Commit gaps block later execution"
+          - "High-water mark advances as gaps fill"
+        notes: "Demonstrate safe execution discipline."
+
+      - type: "text"
+        title: "Assignment: Replicated Log and High-Water Mark (TickLoom)"
+        bullets:
+          - "Extend minimal consensus to a per-slot replicated log; commit by majority per slot."
+          - "Implement high-water mark: execute only up to highest fully-committed contiguous index."
+          - "Test: commit slots 1 and 3 with slot 2 pending; assert slot 3 is not executed until 2 commits."
+          - "Inject failures and recovery; verify no lost or reordered execution."
+          - "Bonus: Record commit latency distribution under varying message delays."
+        notes: "Use TickLoom's tick-based timeouts to drive retries and recoveries; collect metrics during tests."
+
+  - title: "Operations and Recap"
+    slides:
+      - type: "text"
+        title: "Quorum Production Monitoring"
+        bullets:
+          - "Quorum achievement rate and failure ratios"
+          - "Read-repair frequency and latency"
+          - "Clock skew detection between replicas"
+          - "Inconsistency detection and resolution rate"
+          - "Partition frequency and duration"
+        notes: "Operational metrics to keep quorum-based systems healthy."
+
+      - type: "text"
+        title: "Assignment: Instrumentation and SLOs (TickLoom)"
+        bullets:
+          - "Instrument quorum success rate, commit latency (P50/P95/P99), and staleness windows."
+          - "Run load with simulated partitions; produce a brief ops report and suggested SLOs."
+        notes: "Use the Cluster testkit to sweep network delay/packet loss and capture metrics across ticks."
+
+      - type: "text"
+        title: "Key Takeaways"
+        bullets:
+          - "Majority quorums provide overlap but not full consistency on their own"
+          - "Ambiguity is inevitable with partial information; act conservatively"
+          - "Minimal consensus = authority + highest-generation choice + majority agreement"
+          - "Replicated logs and high-water mark make the system practical"
+        notes: "Summarize the mental model participants should leave with."
+
+      - type: "text"
+        title: "Q&A"
+        bullets:
+          - "Questions and discussion"
+        notes: "Open the floor for clarifications and deeper dives."
+
+

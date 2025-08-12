@@ -4,29 +4,32 @@ skinparam shadowing false
 
 package "Multiple Smaller Machines" {
   node "App Server" as AS_small
+  node "App Server" as AS_beefy1
+  node "App Server" as AS_beefy2
+  node "App Server" as AS_beefy3
+  node "App Server" as AS_beefy4
+  node "App Server" as AS_beefy5
+}
+  
+
+package "One Beefy Machine" {
+ database "DB" as DB #FFE6E6 
 }
 
 package "One Beefy Machine" {
-  node "App Server" as AS_beefy1
-  node "App Server" as AS_beefy2
+ database "DB Read Replica" as DBR #FFE6E6
 }
-
-database "DB" as DB #FFE6E6
-database "DB Read Replica" as DBR #FFE6E6
 
 AS_small --> DB
 AS_small --> DBR
-AS_beefy1 --> DB
-AS_beefy1 --> DBR
-AS_beefy2 --> DB
-AS_beefy2 --> DBR
+
 
 note top of AS_small #FFCCCC
 **ASSUMPTIONS BREAK!**
 Response Time SLA: >500ms ⚠️
 end note
 
-note right of DBR #FFCCCC
+note bottom of DBR #FFCCCC
 DB Read Replica: >100ms ⚠️
 Performance degradation
 end note

@@ -1,0 +1,28 @@
+@startuml service_vs_arrival_pipe
+skinparam shadowing false
+skinparam ArrowThickness 2
+left to right direction
+
+title Arrival (λ) → Queue → Service Pipe (capacity mμ) → Throughput (X)
+
+cloud "Clients" as SRC #E6F7FF
+database "Queue\n(waiting Wq)" as Q #FFF9E6
+rectangle "Service Pipe\nCapacity mμ (μ per server)\nμ = 1/S" as PIPE #E6FFE6
+cloud "Responses" as SINK #E6F7FF
+
+SRC -> Q : λ (arrivals/sec)
+Q -> PIPE : enqueued tasks
+PIPE -> SINK : X (throughput/sec)
+
+note right of PIPE
+S = average service time per request (excludes waiting), units: s/req\n
+μ = 1/S (service rate, req/s)\n
+Utilization ρ = λ / (mμ); Stable if λ < mμ; As ρ → 1, Wq grows sharply
+end note
+
+legend right
+λ: arrival rate  | mμ: total service capacity | X: output throughput
+end legend
+
+@enduml
+
