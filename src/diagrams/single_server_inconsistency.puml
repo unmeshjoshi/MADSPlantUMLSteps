@@ -1,0 +1,44 @@
+@startuml
+!include ../style.puml
+
+title Why a Single Server Isn't Enough (Read-Your-Own-Writes)
+
+' [step1 {"name":"Actors"}]
+actor "Client" as C
+participant "Server 1" as S1
+participant "Server 2" as S2
+participant "Server 3" as S3
+' [/step1]
+
+' [step2 {"name":"Write to Server 1"}]
+C -> S1: Write K → V
+S1 -> S1: Persist K → V (local state only)
+S1 --> C: 200 OK
+note right of C
+  Goal: Read-your-own-writes
+  After successful write,
+  the next read of K should
+  return value V
+end note
+' [/step2]
+
+' [step3 {"name":"Replication Pending"}]
+note over S1, S2
+  Replication not yet completed.
+  Server 2 and Server 3 do not
+  have the latest value V for K.
+end note
+' [/step3]
+
+' [step4 {"name":"Read from Another Server", "newPage":"true"}]
+C -> S2: Read K
+S2 -> S2: Lookup K (stale: no V)
+S2 --> C: Old value (stale)
+note right of C
+  Violation: Read-your-own-writes
+  The read went to a server that
+  hasn't received the update yet.
+end note
+' [/step4]
+
+@enduml

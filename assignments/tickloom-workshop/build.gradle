@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.example.tickloomworkshop'
+version = '0.1.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'io.github.unmeshjoshi:tickloom:0.1.0-alpha.4'
+    testImplementation 'io.github.unmeshjoshi:tickloom-testkit:0.1.0-alpha.4'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+

@@ -82,16 +82,65 @@ sections:
           - "Linear region: X ≈ λ when ρ < 1; plateau at capacity X ≈ mμ."
           - "Beyond saturation: overhead/queueing can reduce effective throughput."
         notes: "Show the linear rise and plateau at service capacity; tie to stability condition λ < mμ."
+      
+      - type: "text"
+        title: "Little's Law — Step 1: One Server"
+        bullets:
+          - "Define what we need: μ = 1/S (service rate), ρ = λ/(mμ) (utilization). Convert ms → s."
+          - "Set m = 1 and S = 50 ms ⇒ S = 0.05 s ⇒ μ = 1/0.05 = 20 req/s."
+          - "Saturation point: at λ = 20 req/s ⇒ ρ = 20/(1×20) = 1.0 ⇒ 100% utilized (saturated)."
+          - "Optional checkpoint: at λ = 15 req/s ⇒ ρ = 15/(1×20) = 0.75 (not saturated)."
+          - "As ρ climbs toward 1, the system is at full load and delays grow (qualitative)."
+        notes: "Keep focus on utilization only. No W or Wq here. Use clean numbers and emphasize unit conversion."
+       
+      - type: "text"
+        title: "Little's Law — Step 2: Two Servers"
+        bullets:
+          - "Add capacity: set m = 2 ⇒ total capacity mμ = 2 × 20 = 40 req/s."
+          - "Same workload comparison: for λ = 20 req/s ⇒ ρ = λ/(mμ) = 20/40 = 0.5 (half utilized)."
+          - "Higher workload example: for λ = 30 req/s ⇒ ρ = 30/40 = 0.75 (still not saturated)."
+          - "More servers lower ρ for the same λ; as ρ rises toward 1, latency increases non-linearly."
+        notes: "Highlight the contrast with Step 1: same λ but lower ρ due to higher m. Keep it qualitative about latency." 
+      
+      - type: "text"
+        title: "Mini-Exercise: One vs Two Servers"
+        bullets:
+          - "A) Compute μ for S = 50 ms."
+          - "B) Confirm the saturation point for m = 1 by solving λ = mμ."
+          - "C) For m = 2, compute ρ at λ = 20 req/s and λ = 30 req/s using ρ = λ/(mμ)."
+          - "D) In one sentence, describe what happens qualitatively as ρ → 1."
+        notes: "Expected: μ = 20 req/s; saturation for m=1 at λ=20 req/s; with m=2, ρ(20)=0.5 and ρ(30)=0.75; as ρ→1 the system is fully utilized and response times rise."
+      
+      - type: "text"
+        title: "Saturation In Practice. The Fundamental Resources with Physical Limits"
+        bullets:
+          - "CPU - Processing power has upper bounds"
+          - "Memory - RAM limitations affect data handling"
+          - "Network - Bandwidth and latency constraints"
+          - "Disks - I/O throughput and storage capacity limits"
+          - "Physical limits constrain request processing capacity"
+        notes: "Establish that all computing resources have hard physical limits that create bottlenecks."
+    
+      - type: "text"
+        title: "Network - Bandwidth and Latency Reality"
+        bullets:
+          - "1 Gbps line can transmit 125M Bytes per second"
+          - "For 1KB requests: maximum 125,000 requests per second"
+          - "Network becomes the bottleneck for high-throughput systems"
+          - "Latency vs throughput trade-offs"
+        notes: "Provide concrete numbers to help participants understand network limitations."
 
       - type: "text"
-        title: "Assignment: Little's Law and Utilization"
+        title: "Disks and Data Transfer Reality"
         bullets:
-          - "Use L = λT to compute concurrent in-flight users for λ = 5,000/s and T = 200ms."
-          - "Decompose T = Wq + S: given S = 50ms and T = 180ms, find Wq."
-          - "Compute μ = 1/S and utilization ρ = λ/(mμ) for m = 4; state stability condition (λ < mμ)."
-          - "For μ = 1000/s per server and m = 3, find λ at ρ = 0.8 and ρ = 0.95; discuss expected latency knee."
-          - "Optional: Sketch/plot T vs λ up to saturation using simple queueing approximations."
-        notes: "Use T to denote total time in system (sojourn). Connect Little's Law to capacity via utilization."
+          - "Database = Files on Disks + Data structures (B+/LSM Tree) + Query Processing"
+          - "Raw disk transfer rates:"
+          - "  • 1TB with 2GBps: 500 seconds"
+          - "  • 10TB with 500MBps: 5.5 hours"
+          - "Even on cloud: application capacity limited by CPU, Network, Storage, Memory"
+          - "There is no free lunch in distributed systems"
+        notes: "Ground participants in the reality of data transfer times and storage limitations."
+
 
       - type: "diagram"
         title: "Real Data Center Failures - Google's Experience"
@@ -101,6 +150,13 @@ sections:
           - "Design for partial failures by default"
         notes: "Normalize failure as a constant."
 
+      - type: "text"
+        title: "Exercise: Failure Probability"
+        bullets:
+          - "Compute daily failure probability for 10,000 disks if each fails once in 1000 days."
+        notes: "Foundational math warm-up. Deliver answers as a one-page worksheet or a short script."
+    
+
       - type: "diagram"
         title: "Distributed System = Distributed State + Partial Failures"
         diagramRef: "distributed_state_partial_failures"
@@ -109,16 +165,17 @@ sections:
           - "Stateful systems require stronger guarantees"
         notes: "Set up the need for replication and coordination."
 
-      - type: "text"
-        title: "Exercise: Failure Probability and Capacity"
+      - type: "diagram"
+        title: "Why a Single Server Isn't Enough (Read-Your-Own-Writes)"
+        diagramRef: "single_server_inconsistency"
         bullets:
-          - "Compute daily failure probability for 10,000 disks if each fails once in 1000 days."
-          - "Using Little's Law (L = λW), estimate max concurrent users for SLA=200ms at 5k RPS."
-          - "Note: L is the average number in the system (queue + service) → approximates concurrent in-flight users."
-          - "Service time S: average processing time (without waiting). Utilization ρ = λS; as ρ → 1, W rises sharply (queueing), impacting throughput and latency."
-          - "Network cap: On 1Gbps, what's the upper bound RPS for 1KB requests? For 10KB?"
-          - "Disk I/O: Time to sequentially read 1TB at 500MB/s; impact on recovery times."
-        notes: "Foundational math warm-up. Deliver answers as a one-page worksheet or a short script."
+          - "Goal: After a successful write, the next read of the same key should return the value just written (read-your-own-writes)."
+          - "Scenario: Client writes K→V to Server A and receives 200 OK."
+          - "Load balancer or failover sends the next read of K to Server B, which hasn’t seen the write yet → returns old value."
+          - "Even with sticky sessions, a restart/crash of A can lose unsynced state; the next read may still be stale."
+          - "Therefore, single-server reads/writes do not guarantee read-your-own-writes in a distributed system."
+          - "Fix (intuition): Use quorums so reads overlap with writes (e.g., W=majority, R=majority so R+W>N). The overlap ensures at least one replica in the read set has the latest value; select/repair from that."
+        notes: "Walk the timeline: (1) write to A → OK; (2) read hits B → stale; (3) explain R+W>N majority overlap. Emphasize: quorum reads after a quorum write recover read-your-own-writes without relying on stickiness."
 
   - title: "Quorum Fundamentals"
     slides:
@@ -130,30 +187,7 @@ sections:
           - "Rule of thumb: 2f+1 nodes tolerate f failures"
         notes: "Define quorum and relate it to failure tolerance."
 
-      - type: "text"
-        title: "Majority Math Quick Primer"
-        bullets:
-          - "For N nodes, majority q = floor(N/2) + 1"
-          - "Quorum overlap size ≥ 2q − N (with majority, ≥ 1)"
-          - "Examples: N=3→q=2, N=5→q=3, N=7→q=4"
-        notes: "Provide a quick mathematical foundation for quorum overlap."
-
-      - type: "diagram"
-        title: "Quorum Intersection Property"
-        diagramRef: "quorum_intersection"
-        bullets:
-          - "Any two majorities must share at least one node"
-          - "Overlap preserves information across decisions"
-        notes: "Show the core safety intuition behind quorums."
-
-      - type: "text"
-        title: "Exercise: Quorum Math and Overlap"
-        bullets:
-          - "Write a function q(N) = floor(N/2)+1. Tabulate q and overlap 2q−N for N ∈ {3,5,7,9}."
-          - "For N=5, show why any two quorums of size 3 must intersect. Give explicit sets."
-          - "Challenge: What happens if you pick q=2 for N=5? Construct a counterexample."
-        notes: "Short coding or whiteboard exercise to internalize quorum overlap."
-
+     
   - title: "Quorum in Practice and Caveats"
     slides:
       - type: "diagram"
