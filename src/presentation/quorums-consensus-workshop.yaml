@@ -20,7 +20,7 @@ sections:
         bullets:
           - "Crash-fault model (not Byzantine)"
           - "Asynchronous network: messages can be delayed, dropped, or reordered"
-          - "Majority quorum = floor(N/2) + 1"
+          - "Majority quorum = N/2 + 1"
           - "Safety vs Liveness: never decide conflicting values vs eventually decide"
         notes: "Clarify the fault model and timing assumptions for the rest of the workshop."
 
@@ -170,11 +170,6 @@ sections:
         diagramRef: "single_server_inconsistency"
         bullets:
           - "Goal: After a successful write, the next read of the same key should return the value just written (read-your-own-writes)."
-          - "Scenario: Client writes K→V to Server A and receives 200 OK."
-          - "Load balancer or failover sends the next read of K to Server B, which hasn’t seen the write yet → returns old value."
-          - "Even with sticky sessions, a restart/crash of A can lose unsynced state; the next read may still be stale."
-          - "Therefore, single-server reads/writes do not guarantee read-your-own-writes in a distributed system."
-          - "Fix (intuition): Use quorums so reads overlap with writes (e.g., W=majority, R=majority so R+W>N). The overlap ensures at least one replica in the read set has the latest value; select/repair from that."
         notes: "Walk the timeline: (1) write to A → OK; (2) read hits B → stale; (3) explain R+W>N majority overlap. Emphasize: quorum reads after a quorum write recover read-your-own-writes without relying on stickiness."
 
   - title: "Quorum Fundamentals"
@@ -213,22 +208,6 @@ sections:
           - "3 nodes: tolerate 1 failure, ~82% of single-node throughput"
           - "5 nodes: tolerate 2 failures, ~48% of single-node throughput"
         notes: "Discuss performance overheads of majority quorums."
-
-      - type: "diagram"
-        title: "Incomplete Writes Problem"
-        diagramRef: "incomplete_writes"
-        bullets:
-          - "Network failures leave replicas diverged"
-          - "Quorum may succeed despite a stale replica"
-        notes: "Illustrate partial replication hazards."
-
-      - type: "diagram"
-        title: "Inconsistent Reads Scenario"
-        diagramRef: "inconsistent_reads"
-        bullets:
-          - "Different clients can see different values"
-          - "External consistency violations possible"
-        notes: "Demonstrate user-visible inconsistencies."
 
       - type: "diagram"
         title: "Read Repair - Synchronous"
