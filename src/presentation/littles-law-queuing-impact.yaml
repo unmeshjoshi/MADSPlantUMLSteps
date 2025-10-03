@@ -27,6 +27,124 @@ sections:
   - title: "Mathematical Foundations"
     slides:
       - type: "text"
+        title: "Understanding System Performance: The Intuitive Story"
+        bullets:
+          - "Requests arrive at the system (λ). The system takes some time (W) to process and then responds"
+          - "While requests are being processed, they are 'in the system'"
+          - "Total number 'in the system' = Number of requests arriving × Time taken by system to process"
+          - "Number of completed responses the system gives is X (throughput)"
+          - "Time it takes to process a request is S (service time)"
+          - "If more requests arrive than X (system can respond within unit time), they need to wait"
+          - "Number of requests in system = Those being processed + Those waiting"
+        notes: "Provide the intuitive foundation for understanding how systems handle requests and why queuing occurs."
+
+      - type: "text"
+        title: "What Happens When Load Increases"
+        bullets:
+          - "Even if X (service rate) and S (service time) are constant, time in system can grow"
+          - "This happens because requests are queued and queue length grows"
+          - "With steady arrival rate greater than service rate, queue and system requests both grow"
+          - "In real systems, increased queue length impacts service time S"
+          - "Secondary effects: contention, cache effects, GC, paging, I/O congestion"
+          - "These secondary effects also impact throughput X"
+        notes: "Explain how increasing load affects system behavior and why real systems behave worse than ideal models."
+
+      - type: "text"
+        title: "The Performance Curves: Hockey Stick Effect"
+        bullets:
+          - "When we plot performance graphs, we often see 'hockey-stick' shapes"
+          - "Latency increases sharply beyond a certain point"
+          - "Throughput flattens or even decreases at high load"
+          - "That critical point is when the system reaches 'saturation'"
+          - "Saturation is often discussed in terms of system utilization"
+          - "The hockey stick curve explains why performance problems seem sudden"
+        notes: "Introduce the characteristic performance curves that all systems exhibit and why they have this shape."
+
+      - type: "text"
+        title: "Understanding Utilization: The Busy Time Concept"
+        bullets:
+          - "Focus on requests for which responses are returned (completions)"
+          - "And the time taken by system to process each request"
+          - "This gives us the amount of time the system was busy"
+          - "Over observation period: Utilization = Total busy time ÷ Total time observed"
+          - "We can think of it as: (Completions ÷ Elapsed time) × (Busy time ÷ Completions)"
+          - "Which equals: Throughput × Service time"
+        notes: "Explain the intuitive concept of utilization as the fraction of time the system is busy processing requests."
+
+      - type: "text"
+        title: "The Utilization Constraint and Its Consequences"
+        bullets:
+          - "Utilization value cannot exceed 1 for a single server (100% busy)"
+          - "As utilization approaches 1, system is busy 100% of the time"
+          - "More requests arrive → queues grow → total latency dominated by queueing time"
+          - "Once request is picked from queue, per-request service can still be similar"
+          - "But in real systems, heavy load degrades throughput due to contention and resource limits"
+          - "This creates the fundamental trade-off between efficiency and performance"
+        notes: "Explain the utilization constraint and its implications for system behavior under load."
+
+      - type: "text"
+        title: "Real Systems: Why Theory and Practice Differ"
+        bullets:
+          - "In practice, throughput can drop under heavy load due to contention/thrashing"
+          - "Even though the ideal ceiling is 1/S (theoretical maximum)"
+          - "Real systems see rising latency and falling throughput due to secondary effects"
+          - "Examples: lock contention, cache coherency costs, garbage collection"
+          - "Additional effects: paging, I/O congestion, network retransmits"
+          - "This explains why observed throughput curves first rise, then flatten, then decline"
+          - "The theoretical maximum 1/S is rarely achieved in practice"
+        notes: "Bridge the gap between theoretical models and real system behavior, explaining why real systems perform worse than ideal models."
+
+      - type: "text"
+        title: "The Core Performance Engineering Laws"
+        bullets:
+          - "Little's Law: L = λ × W (Number in system = Arrival rate × Time spent)"
+          - "Utilization Law: U = X × S (Utilization = Throughput × Service time)"
+          - "Service Time: S = Busy time ÷ Completions"
+          - "Response Time: R = Wq + S (Wait time + Service time)"
+          - "Maximum Throughput: X_max = 1/S (for single server)"
+        notes: "Present the fundamental laws that govern all queuing systems. These are the building blocks for understanding performance behavior."
+
+      - type: "text"
+        title: "Little's Law: The Foundation"
+        bullets:
+          - "L = λ × W: Number of items in system equals arrival rate times time in system"
+          - "Alternative form: L = X × R, where X = throughput, R = response time"
+          - "Applies to any stable system regardless of arrival patterns or service distributions"
+          - "Key insight: If you know any two variables, you can calculate the third"
+          - "Example: 100 requests/sec arriving, 0.5 seconds average time in system → 50 requests in system"
+        notes: "Explain Little's Law as the fundamental relationship that governs all queuing systems, emphasizing its universal applicability."
+
+      - type: "text"
+        title: "Utilization Law: The Constraint"
+        bullets:
+          - "U = X × S: Utilization equals throughput times service time"
+          - "U = (Completions ÷ Elapsed time) × (Busy time ÷ Completions)"
+          - "U = Busy time ÷ Elapsed time (fraction of time server was busy)"
+          - "For single server: U ≤ 1 (cannot be busy more than 100%)"
+          - "This constraint creates the fundamental trade-off between throughput and service time"
+        notes: "Introduce the utilization law as the constraint that limits system performance and creates the throughput-service time trade-off."
+
+      - type: "text"
+        title: "Service Time: The Performance Multiplier"
+        bullets:
+          - "Service time = Total busy time ÷ Number of completions"
+          - "If server is 100% busy: S = Elapsed time ÷ Completions"
+          - "Service time can be very small (1 ms) or very large (200 s)"
+          - "No constraint on service time itself - the real constraint is utilization"
+          - "Service time determines maximum possible throughput: X_max = 1/S"
+        notes: "Explain service time as the key variable that determines system capacity and performance characteristics."
+
+      - type: "text"
+        title: "The Throughput-Service Time Trade-off"
+        bullets:
+          - "Constraint: U = X × S ≤ 1 for one server"
+          - "If S is large, X must be very small to satisfy this constraint"
+          - "If S is small, X can be very large"
+          - "Rule of thumb: Maximum throughput = 1 ÷ Service time (X_max = 1/S)"
+          - "This creates a hyperbolic trade-off curve between throughput and service time"
+        notes: "Explain the fundamental trade-off between throughput and service time, showing how they are inversely related under the utilization constraint."
+
+      - type: "text"
         title: "Key Queuing Theory Formulas"
         bullets:
           - "Little's Law: L = λ × W (Average items in system = Arrival rate × Average time in system)"
@@ -121,6 +239,120 @@ sections:
           - "Mathematical formula creates this characteristic curve shape"
         notes: "Demonstrate how the queue length formula translates into the exponential curve. This helps explain why queue length is such a good early warning indicator."
 
+  - title: "Real-World Performance Examples"
+    slides:
+      - type: "text"
+        title: "CPU Performance Analysis"
+        bullets:
+          - "Scenario: 3,000 requests over 60 seconds, average service time S=9ms, run-queue wait W=3ms"
+          - "Throughput X = 3000 ÷ 60 = 50 req/s"
+          - "Response time R = 0.003 + 0.009 = 0.012s (12ms)"
+          - "Busy time = 3000 × 0.009 = 27 seconds"
+          - "Utilization U = 27 ÷ 60 = 45%"
+          - "Tool output: mpstat shows 40% usr + 5% sys = 45% total CPU usage"
+        notes: "Demonstrate how to apply performance laws to real CPU metrics, showing the relationship between service time, throughput, and utilization."
+
+      - type: "text"
+        title: "Disk/Storage Performance Analysis"
+        bullets:
+          - "Scenario: 24,000 I/Os over 120 seconds, S=3.25ms, W=1.5ms"
+          - "Throughput X = 24000 ÷ 120 = 200 IOPS"
+          - "Response time R = 0.0015 + 0.00325 = 0.00475s (4.75ms)"
+          - "Busy time = 24000 × 0.00325 = 78 seconds"
+          - "Utilization U = 78 ÷ 120 = 65%"
+          - "Tool output: iostat shows 65% utilization with 3.25ms service time"
+        notes: "Show how storage performance metrics align with queuing theory, using real iostat output to validate calculations."
+
+      - type: "text"
+        title: "Memory/Paging Performance Analysis"
+        bullets:
+          - "Scenario: 18,000 page faults over 60 seconds, S=0.1ms, W=0.5ms"
+          - "Throughput X = 18000 ÷ 60 = 300 faults/s"
+          - "Response time R = 0.0001 + 0.0005 = 0.0006s (0.6ms)"
+          - "Busy time = 18000 × 0.0001 = 1.8 seconds"
+          - "Utilization (time-based) ≈ 1.8 ÷ 60 = 3%"
+          - "Tool output: vmstat and sar show 300 faults/s with minimal system impact"
+        notes: "Illustrate how memory paging performance follows the same laws, even for very fast operations with low utilization."
+
+      - type: "text"
+        title: "Network Performance Analysis"
+        bullets:
+          - "Scenario: 6M packets in 60 seconds, S=0.05ms, W=0.1ms"
+          - "Throughput X = 6000000 ÷ 60 = 100,000 pps"
+          - "Response time R = 0.00005 + 0.0001 = 0.00015s (0.15ms)"
+          - "Busy time = 100000 × 0.00005 × 60 = 300 seconds"
+          - "Utilization >1 shows queueing/saturation (impossible for single server)"
+          - "Tool output: sar shows 25% interface utilization instead of calculated value"
+        notes: "Explain network performance analysis where utilization can exceed 1 due to queuing, and how to interpret interface utilization metrics."
+
+      - type: "text"
+        title: "Real Systems: Secondary Effects"
+        bullets:
+          - "In practice, throughput can drop under heavy load due to contention"
+          - "Examples: lock contention, cache coherency costs, garbage collection"
+          - "Additional effects: paging, I/O congestion, network retransmits"
+          - "These increase service time (S) with load, reducing effective throughput"
+          - "Result: Observed throughput curves rise, flatten, then decline"
+          - "Theoretical maximum 1/S is rarely achieved in real systems"
+        notes: "Explain why real systems often perform worse than theoretical models due to secondary effects that increase service time under load."
+
+      - type: "text"
+        title: "AWS Disk Performance: EBS SSD Examples"
+        bullets:
+          - "Formula: X_max = 1/S (single service path)"
+          - "Cloud disks: provisioned IOPS and throughput often cap before microservice S does"
+          - "gp3 @ 16k IOPS: S ≈ 1/16,000 ≈ 62.5 µs per I/O"
+          - "With 16 KiB I/O: 16,000 × 16 KiB ≈ 256 MiB/s (throughput cap NOT binding)"
+          - "With 256 KiB I/O: throughput cap 1,000 MiB/s ⇒ IOPS limited to ≈ 4,000 IOPS"
+          - "io2 Block Express @ 256k IOPS: S ≈ 1/256,000 ≈ 3.9 µs per I/O"
+          - "With 32 KiB I/O: 256k × 32 KiB ≈ 8,192 MiB/s but capped at 4,000 MiB/s"
+        notes: "Demonstrate how AWS EBS performance limits work in practice, showing the interaction between IOPS caps and throughput caps."
+
+      - type: "text"
+        title: "Network Performance: Per-Packet vs Line Rate Limits"
+        bullets:
+          - "Two ceilings: (1) packet-processing S (driver/stack/NIC queue), (2) link serialization"
+          - "Per-packet S bound: S = 20 µs ⇒ X_max ≈ 50,000 pps (single queue)"
+          - "Need m ≥ target_pps / X_max queues to scale"
+          - "10 Gb/s, 1500 B frames: S_ser = (1500 × 8) / 10e9 ≈ 1.2 µs ⇒ X_max ≈ 833,333 pps"
+          - "25 Gb/s, 64 B frames: S_ser ≈ (64 × 8) / 25e9 ≈ 20.5 ns ⇒ wire-rate ≈ 48.8 Mpps"
+          - "Per-packet S (software) often binds before wire-rate pps (hardware)"
+        notes: "Explain the dual constraints in network performance: software packet processing vs hardware line rate limits."
+
+      - type: "text"
+        title: "Memory Performance: Page Faults and Allocations"
+        bullets:
+          - "Major page faults as a service: S = 1.5 ms ⇒ X_max ≈ 667 faults/s"
+          - "S = 2.0 ms ⇒ X_max ≈ 500 faults/s"
+          - "If observed faults/s approaches these limits, expect sharp response time increases"
+          - "Allocator operations (single-threaded): S = 5 µs ⇒ X_max ≈ 200,000 allocs/s"
+          - "With 8 threads (perfect scaling): ≈ 1.6 Mops/s"
+          - "Memory allocation contention can significantly impact service time"
+        notes: "Show how memory operations follow the same performance laws, with page faults and allocations as measurable services."
+
+      - type: "text"
+        title: "CPU Performance: Single Core vs Multi-Core Scaling"
+        bullets:
+          - "Single core/service path: X_max = 1/S"
+          - "S = 2 ms/request ⇒ X_max = 500 req/s per core"
+          - "At U = 0.8 cap, target X ≈ 400 req/s/core"
+          - "m-core scaling: X_max_total ≈ m/S (ideal)"
+          - "For m = 8, S = 2 ms: 8/0.002 = 4,000 req/s at U=100%"
+          - "At U=80%: 3,200 req/s"
+          - "Highlight U targets (60–80%) to keep queueing low under bursty load"
+        notes: "Demonstrate CPU performance scaling from single-core to multi-core, emphasizing the importance of utilization targets."
+
+      - type: "text"
+        title: "Performance Monitoring Tools by Resource"
+        bullets:
+          - "Disk: iostat -x (await/svctm, %util), CloudWatch (VolumeReadOps/WriteOps)"
+          - "Network: sar -n DEV, ethtool -S, ifstat, pktgen for load testing"
+          - "Memory: sar -B (faults/s), perf (page-faults), vmstat"
+          - "CPU: perf (on-CPU), pidstat -w (run-queue wait), mpstat (%usr+%sys)"
+          - "Advanced: eBPF histograms (biolatency), tracepoints for detailed analysis"
+          - "Always reconcile against instance/attachment limits: EC2 EBS bandwidth/IOPS per instance"
+        notes: "Provide a comprehensive toolkit for monitoring different resource types, from basic tools to advanced eBPF-based analysis."
+
   - title: "Performance Metrics Under Load"
     slides:
       - type: "text"
@@ -159,6 +391,50 @@ sections:
           - "High utilization is not always desirable - leave headroom for variability"
         notes: "Explain why 100% utilization is often a warning sign rather than a goal, and the importance of maintaining operational headroom."
 
+  - title: "Overload and Saturation Analysis"
+    slides:
+      - type: "text"
+        title: "What Happens When Arrival Rate > Service Rate"
+        bullets:
+          - "If arrival rate > X_max, system becomes unstable"
+          - "Queues grow without bound (theoretically infinite)"
+          - "In practice: queues are capped, requests are dropped, or system crashes"
+          - "Response times shoot up dramatically (hockey-stick curve)"
+          - "System enters the 'beyond saturation' zone"
+        notes: "Explain what happens when the system is overloaded and why this leads to instability and poor performance."
+
+      - type: "text"
+        title: "The Saturation Point: U → 1"
+        bullets:
+          - "At saturation (U → 1), response times increase exponentially"
+          - "The 'hockey stick' or 'knee' curve becomes visible"
+          - "Small increases in load cause dramatic latency spikes"
+          - "System becomes unpredictable and unstable"
+          - "Operating near saturation is dangerous even with average load below capacity"
+        notes: "Detail the characteristics of the saturation point and why it's dangerous to approach."
+
+      - type: "text"
+        title: "Real Systems: Why Throughput Drops Under Load"
+        bullets:
+          - "Heavy load increases service time due to resource contention"
+          - "Lock contention: More threads competing for shared resources"
+          - "Cache effects: Cache misses increase with higher concurrency"
+          - "Garbage collection: More frequent GC pauses under load"
+          - "I/O congestion: Disk and network become bottlenecks"
+          - "Result: Effective throughput decreases even though arrival rate increases"
+        notes: "Explain the secondary effects that cause real systems to perform worse than theoretical models under heavy load."
+
+      - type: "text"
+        title: "The Performance Cliff: Why Problems Seem Sudden"
+        bullets:
+          - "Performance degradation is non-linear near saturation"
+          - "Small load increases cause exponential latency increases"
+          - "The 'knee' of the curve occurs in a narrow utilization range"
+          - "Most latency increase happens very close to ρ = 1"
+          - "This explains why performance problems appear suddenly"
+          - "Prevention is much easier than recovery from overload"
+        notes: "Help the audience understand why performance problems can seem to appear suddenly and be difficult to resolve."
+
   - title: "Critical Performance Insights"
     slides:
       - type: "text"
@@ -187,6 +463,69 @@ sections:
           - "Variable service times amplify queuing effects"
           - "Systems must be designed for peak load, not average load"
         notes: "Introduce the critical concept that variability, not just average load, determines system performance."
+
+  - title: "Performance Engineering Cheat Sheet"
+    slides:
+      - type: "text"
+        title: "The Five Fundamental Laws"
+        bullets:
+          - "1) Little's Law: L = λ × W (Number in system = Arrival rate × Time spent)"
+          - "2) Utilization Law: U = X × S (Utilization = Throughput × Service time)"
+          - "3) Service Time: S = Busy time ÷ Completions"
+          - "4) Constraint: U = X × S ≤ 1 (for single server)"
+          - "5) Maximum Throughput: X_max = 1/S"
+        notes: "Present the five fundamental laws that govern all queuing systems. These are the essential tools for performance analysis."
+
+      - type: "text"
+        title: "Key Relationships and Formulas"
+        bullets:
+          - "Response Time: R = Wq + S (Wait time + Service time)"
+          - "System Utilization: ρ = λ / μ (Arrival rate / Service rate)"
+          - "Queue Length (M/M/1): Lq = ρ² / (1 - ρ)"
+          - "Waiting Time (M/M/1): Wq = ρ / (μ - λ)"
+          - "Time in System: W = Wq + Ts"
+          - "Alternative Little's Law: L = X × R"
+        notes: "Provide the key formulas that connect all the performance variables together."
+
+      - type: "text"
+        title: "Performance Analysis Workflow"
+        bullets:
+          - "1) Measure: Collect arrival rate (λ), service time (S), and response time (R)"
+          - "2) Calculate: Throughput X = λ, Utilization U = X × S"
+          - "3) Validate: Check if U ≤ 1 (system is stable)"
+          - "4) Predict: Use Lq = ρ² / (1 - ρ) to estimate queue length"
+          - "5) Optimize: Identify bottlenecks and apply appropriate fixes"
+        notes: "Provide a step-by-step workflow for analyzing system performance using the fundamental laws."
+
+      - type: "text"
+        title: "Common Performance Scenarios"
+        bullets:
+          - "High Utilization (U > 0.8): System near saturation, expect queuing"
+          - "Low Service Time (S < 1ms): Can handle high throughput"
+          - "High Service Time (S > 100ms): Limited throughput capacity"
+          - "Arrival Rate > X_max: System unstable, queues grow"
+          - "Response Time >> Service Time: Significant queuing delays"
+        notes: "Help practitioners quickly identify common performance scenarios and their implications."
+
+      - type: "text"
+        title: "Red Flags and Warning Signs"
+        bullets:
+          - "Utilization approaching 100%: System near saturation"
+          - "Queue length growing: Early warning of performance problems"
+          - "Response time >> Service time: Significant queuing delays"
+          - "Throughput flattening while load increases: System at capacity"
+          - "Latency increasing exponentially: Approaching saturation point"
+        notes: "Provide clear warning signs that indicate performance problems and the need for intervention."
+
+      - type: "text"
+        title: "Quick Diagnostic Questions"
+        bullets:
+          - "What is the current utilization? (U = X × S)"
+          - "Is the system stable? (U ≤ 1)"
+          - "What is the maximum possible throughput? (X_max = 1/S)"
+          - "How much queuing is occurring? (R - S = Wq)"
+          - "Is arrival rate sustainable? (λ ≤ X_max)"
+        notes: "Provide a quick checklist of diagnostic questions to assess system performance health."
 
   - title: "Practical Implications and Guidelines"
     slides:
