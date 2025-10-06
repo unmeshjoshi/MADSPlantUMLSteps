@@ -1,0 +1,63 @@
+@startuml
+skinparam shadowing false
+
+title Real Systems: Secondary Effects Degrade Performance
+
+rectangle "**Theoretical System**" as Theory #E6F3FF {
+  note as TheoryNote
+  **Assumptions:**
+  • Service time (S) constant
+  • Throughput (X) constant
+  • Only queueing affects latency
+  
+  **Theoretical Maximum:**
+  X_max = 1/S
+  end note
+}
+
+rectangle "**Real System Under Load**" as Real #FFE6E6 {
+  rectangle "Lock Contention" as Locks #FFFFCC {
+    note as LocksNote
+    More threads → more contention
+    Increases service time (S)
+    end note
+  }
+  
+  rectangle "Cache Effects" as Cache #FFFFCC {
+    note as CacheNote
+    More concurrency → cache misses
+    CPU stalls waiting for data
+    end note
+  }
+  
+  rectangle "Garbage Collection" as GC #FFFFCC {
+    note as GCNote
+    More load → more GC pauses
+    All threads stop (stop-the-world)
+    end note
+  }
+  
+  rectangle "I/O Congestion" as IO #FFFFCC {
+    note as IONote
+    Queue saturation → disk/network delays
+    Retransmits and timeouts
+    end note
+  }
+}
+
+Theory -down-> Real : **Under Heavy Load**
+
+note bottom #E6FFE6
+**Result: Performance Curves Differ from Theory**
+
+**Theoretical:** Rise → Plateau at X_max
+**Real Systems:** Rise → Plateau → **Decline**
+
+Effective throughput **drops** even though
+theoretical ceiling is 1/S because S itself
+increases with load!
+end note
+
+@enduml
+
+

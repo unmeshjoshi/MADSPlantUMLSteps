@@ -1,0 +1,52 @@
+@startuml
+skinparam shadowing false
+
+title System Queuing Model: The Core Concepts
+
+rectangle "**Requests Arrive**" as Arrival #E6F3FF {
+  note as ArrivalNote
+  **Arrival Rate (λ)**
+  Requests/second entering system
+  end note
+}
+
+rectangle "**System Processing**" as System #FFFFCC {
+  queue "Queue (Wait)" as Queue #FFE6E6
+  rectangle "Server (Processing)" as Server #E6FFE6
+  
+  Queue -right-> Server
+  
+  note bottom of Queue
+  **Wait Time (Wq)**
+  Time spent waiting
+  end note
+  
+  note bottom of Server
+  **Service Time (S)**
+  Time to process one request
+  end note
+}
+
+rectangle "**Requests Complete**" as Complete #E6F3FF {
+  note as CompleteNote
+  **Throughput (X)**
+  Completions/second
+  end note
+}
+
+Arrival --> Queue
+Server --> Complete
+
+note as Formula #F0F8FF
+**Key Relationships:**
+• **L** = Requests in system (waiting + processing)
+• **W** = Total time in system (Wq + S)
+• **Little's Law**: L = λ × W
+• **In system** = Those waiting + Those being processed
+end note
+
+Formula .up. System
+
+@enduml
+
+

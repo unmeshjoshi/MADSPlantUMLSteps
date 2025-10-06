@@ -1,0 +1,48 @@
+@startuml
+skinparam shadowing false
+
+title The Utilization Constraint: Why U ≤ 1
+
+rectangle "**Utilization Formula**" as Formula #E6F3FF {
+  rectangle "**U = X × S**" as Eq1 #FFFFCC
+  rectangle "**U = Throughput × Service Time**" as Eq2 #F0F8FF
+}
+
+rectangle "**Physical Meaning**" as Meaning #E6FFE6 {
+  note as MeaningNote
+  **Utilization = Busy Time ÷ Total Time**
+  
+  U = (Completions ÷ Elapsed) × (Busy ÷ Completions)
+  U = Busy Time ÷ Elapsed Time
+  
+  **Cannot exceed 1.0 (100% busy)**
+  end note
+}
+
+rectangle "**The Constraint**" as Constraint #FFE6E6 {
+  note as ConstraintNote
+  **For single server: U = X × S ≤ 1**
+  
+  This creates the fundamental trade-off:
+  • If S is large → X must be small
+  • If S is small → X can be large
+  
+  **Maximum Throughput: X_max = 1/S**
+  end note
+}
+
+Formula --> Meaning
+Meaning --> Constraint
+
+note bottom #FFFFCC
+**Example:**
+Service time S = 2ms = 0.002s
+X_max = 1/0.002 = 500 requests/sec
+
+At X = 400 req/s:
+U = 400 × 0.002 = 0.80 (80% utilized)
+end note
+
+@enduml
+
+
