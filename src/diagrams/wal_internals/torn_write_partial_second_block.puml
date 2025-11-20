@@ -1,0 +1,67 @@
+@startuml
+!include ../../style.puml
+
+title Torn Write When Record Spans One Full Block + Partial Second Block
+
+participant Application as App
+box "OS Layer" #LightBlue
+participant "VFS / FileSystem" as FS
+participant "OS Page Cache\n(4KB pages)" as Cache
+end box
+box "Block Storage Layer" #LightGray
+participant "Block Layer\n(I/O Scheduler)" as Block
+participant "Block Device\n(SSD/HDD/NVMe)" as Dev
+database "Stable Media" as Media
+end box
+
+'[step1 {"name":"Intent (6KB record)"}]
+== Intent (6KB record) ==
+App -> FS: write(fd, record[6KB])
+'[/step1]
+' [step2 {"name":"Copy to Page Cache"}]
+FS -> Cache: copy to pages P0(4KB), P1(2KB dirty of 4KB)\nmark DIRTY
+'[/step2]
+' [step3 {"name":"Flush"}]
+FS --> App: return (success)
+note over Cache
+  Example:\n- Logical block size = 4KB\n- Record size = 6KB → spans B0 (4KB) + half of B1 (2KB of 4KB)
+end note
+'[/step3]
+' [step4 {"name":"Flush", "newPage":"true"}]
+== Flush ==
+App -> FS: fsync(fd)
+'[/step4]
+' [step5 {"name":"Flush"}]
+FS -> Cache: select P0,P1
+'[/step5]
+' [step6 {"name":"Block Device write"}]
+Cache -> Block: submit B0 (4KB), B1 (4KB)
+Block -> Dev: write B0 fully, then write B1
+'[/step6]
+' [step7 {"name":"Failure", "newPage":"true"}]
+== Failure ==
+Dev -> Media: persist B0 fully
+Dev -> Media: write B1 partially (mixed old/new)\n<-- Power Loss -->
+note over Dev,Media #FFEEEE
+  Torn write on B1: only part of the block reflects the new record.\nDisk now has B0(new), B1(mixed old/new).
+end note
+'[/step7]
+' [step8 {"name":"After Restart (Recovery)", "newPage":"true"}]
+== After Restart (Recovery) ==
+App -> FS: open and recover
+FS -> Cache: read WAL tail
+Cache -> Dev: read record headers/trailers across B0,B1
+Dev --> Cache: return bytes (B1 mismatch)
+note over Cache
+  Checksum/length mismatch on record spanning B0+B1.\nTail considered ambiguous → truncate before B1.
+end note
+
+Cache -> FS: truncate to last good LSN\nreplay intents idempotently
+FS --> App: recovery complete
+
+note over FS,Dev
+  Guardrails:\n- Frame records with length + checksum\n- Align commit/fsync boundaries\n- Prefer truncate on mismatch over trusting torn blocks
+end note
+'[/step8]
+@enduml
+

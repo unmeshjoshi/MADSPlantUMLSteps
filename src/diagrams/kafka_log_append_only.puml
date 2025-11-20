@@ -1,0 +1,249 @@
+@startuml   
+!include ../style.puml
+
+title Kafka Log: Append-Only File with Offset Index
+
+' [step1 {"name":"Initial Log State"}]
+participant Producer
+participant "Log\n(FileChannel)" as Log
+database "Log File\n/var/kafka/logs/topic-0.log" as LogFile
+database "OffsetIndex\nMap<Offset, FilePosition>" as OffsetIndex
+
+note over LogFile #E6F3FF
+**Physical File Layout:**
+File Position 0: key="Order-001" (24 bytes)
+File Position 24: key="Order-002" (32 bytes)
+File Position 56: key="Order-003" (28 bytes)
+File Position 84: key="Order-004" (36 bytes)
+---
+Current Position: 120 bytes
+end note
+
+note over OffsetIndex #E6F3FF
+**Offset → File Position Mapping:**
+Offset 1 → Position 0
+Offset 2 → Position 24
+Offset 3 → Position 56
+Offset 4 → Position 84
+end note
+' [/step1]
+
+' [step2 {"name":"Append Message 1: Order-005", "newPage":"true"}]
+Producer -> Log : append(key="Order-005", value="...")
+activate Log
+' [/step2]
+
+' [step3 {"name":"Get current file position"}]
+Log -> Log : Get current file position
+note right of Log #FFFFCC
+**Current Position:**
+File position = 120 bytes
+Next offset = 5
+end note
+' [/step3]
+
+' [step4 {"name":"Write message to log file"}]
+Log -> LogFile : Write at position 120
+activate LogFile
+note right of LogFile #FFE6E6
+**Append Operation:**
+• Write message size (4 bytes)
+• Write key size + key (4 + K bytes)
+• Write value size + value (4 + V bytes)
+• Variable length = 28 bytes
+• Total written: 28 bytes
+end note
+LogFile --> Log : Written 28 bytes
+deactivate LogFile
+' [/step4]  
+
+' [step5 {"name":"Increment next offset"}]
+Log -> Log : Increment nextOffset to 6
+' [/step5]
+
+' [step6 {"name":"Confirm message to producer"}]
+Log --> Producer : Offset 5 confirmed
+deactivate Log
+' [/step6]
+
+' [step7 {"name":"Store mapping: Offset 5 → Position 120"}]
+Log -> OffsetIndex : Store mapping: Offset 5 → Position 120
+activate OffsetIndex
+note right of OffsetIndex #E6FFE6
+**Index Update:**
+Offset 5 → Position 120
+(New entry added)
+end note
+OffsetIndex --> Log : Mapping stored
+deactivate OffsetIndex
+' [/step7]
+
+' [step8 {"name":"Append Message 2: Order-006"}]
+Log -> Log : Increment nextOffset to 6
+deactivate Log
+' [/step8]
+
+' [step9 {"name":"Append Message 2: Order-006", "newPage":"true"}]
+Producer -> Log : append(key="Order-006", value="...")
+activate Log
+
+Log -> Log : Get current file position
+note right of Log #FFFFCC
+**Current Position:**
+File position = 148 bytes
+Next offset = 6
+end note
+' [/step9]
+
+' [step10 {"name":"Write message to log file"}]
+Log -> LogFile : Write at position 148
+activate LogFile
+note right of LogFile #FFE6E6
+**Append Operation:**
+• Variable length = 32 bytes
+• Total written: 32 bytes
+end note
+LogFile --> Log : Written 32 bytes
+deactivate LogFile
+' [/step10]
+
+' [step11 {"name":"Store mapping: Offset 6 → Position 148"}]    
+Log -> OffsetIndex : Store mapping: Offset 6 → Position 148
+activate OffsetIndex
+note right of OffsetIndex #E6FFE6
+**Index Update:**
+Offset 6 → Position 148
+(New entry added)
+end note
+OffsetIndex --> Log : Mapping stored
+deactivate OffsetIndex
+' [/step11]
+
+' [step12 {"name":"Increment next offset"}] 
+Log -> Log : Increment nextOffset to 7
+
+Log --> Producer : Offset 6 confirmed
+deactivate Log
+' [/step12]
+
+' [step13 {"name":"Append Message 3: Order-007", "newPage":"true"}]
+Producer -> Log : append(key="Order-007", value="...")
+activate Log
+
+Log -> Log : Get current file position
+note right of Log #FFFFCC
+**Current Position:**
+File position = 180 bytes
+Next offset = 7
+end note
+' [/step13]
+
+' [step14 {"name":"Write message to log file"}]
+Log -> LogFile : Write at position 180
+activate LogFile
+note right of LogFile #FFE6E6
+**Append Operation:**
+• Variable length = 24 bytes
+• Total written: 24 bytes
+end note
+LogFile --> Log : Written 24 bytes
+deactivate LogFile
+' [/step14]
+
+' [step15 {"name":"Store mapping: Offset 7 → Position 180"}]
+Log -> OffsetIndex : Store mapping: Offset 7 → Position 180
+activate OffsetIndex
+note right of OffsetIndex #E6FFE6
+**Index Update:**
+Offset 7 → Position 180
+(New entry added)
+end note
+OffsetIndex --> Log : Mapping stored
+deactivate OffsetIndex
+
+Log -> Log : Increment nextOffset to 8
+
+Log --> Producer : Offset 7 confirmed
+deactivate Log
+' [/step15]
+
+' [step16 {"name":"Updated Log State", "newPage":"true"}]
+note over LogFile #E6FFE6
+**Updated Physical File Layout:**
+File Position 0: key="Order-001" (24 bytes)
+File Position 24: key="Order-002" (32 bytes)
+File Position 56: key="Order-003" (28 bytes)
+File Position 84: key="Order-004" (36 bytes)
+File Position 120: key="Order-005" (28 bytes) ← NEW
+File Position 148: key="Order-006" (32 bytes) ← NEW
+File Position 180: key="Order-007" (24 bytes) ← NEW
+---
+Current Position: 204 bytes
+end note
+
+note over OffsetIndex #E6FFE6
+**Updated Offset → File Position Mapping:**
+Offset 1 → Position 0
+Offset 2 → Position 24
+Offset 3 → Position 56
+Offset 4 → Position 84
+Offset 5 → Position 120 ← NEW
+Offset 6 → Position 148 ← NEW
+Offset 7 → Position 180 ← NEW
+end note
+' [/step16]
+
+' [step17 {"name":"Read Message by Offset", "newPage":"true"}]
+Producer -> Log : readSingleMessage(offset=3)
+activate Log
+
+Log -> OffsetIndex : Lookup FilePosition for Offset 3
+activate OffsetIndex
+OffsetIndex --> Log : FilePosition = 56
+deactivate OffsetIndex
+
+note right of Log #FFFFCC
+**Lookup Result:**
+Offset 3 → File Position 56
+end note
+
+Log -> LogFile : Read message size at position 56
+activate LogFile
+LogFile --> Log : Message size = 28 bytes
+deactivate LogFile
+
+Log -> LogFile : Read message at position 56 (28 bytes)
+activate LogFile
+LogFile --> Log : Message data (key + value)
+deactivate LogFile
+
+Log -> Log : Parse message (extract key, value)
+Log --> Producer : Message(key="Order-003", value="...")
+deactivate Log
+' [/step17]
+
+' [step18 {"name":"Why Offset Index is Needed", "newPage":"true"}]
+note over LogFile, OffsetIndex #E6F3FF
+**Key Points:**
+
+**1. Append-Only File:**
+• Messages written sequentially to end of file
+• No modifications or deletions
+• File position grows continuously
+
+**2. Variable-Length Messages:**
+• Each message has different size
+• Cannot calculate position: offset × fixed_size
+• Need mapping: Offset → File Position
+
+**3. Offset Index Purpose:**
+• Fast lookup: Offset → File Position
+• Enables random access by offset
+• Required for variable-length messages
+
+**4. Binary Format:**
+[4 bytes: msg size][4 bytes: key size][key bytes][4 bytes: value size][value bytes]
+end note
+' [/step18]
+
+@enduml

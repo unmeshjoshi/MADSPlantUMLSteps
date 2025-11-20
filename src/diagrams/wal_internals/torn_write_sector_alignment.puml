@@ -1,0 +1,88 @@
+@startuml
+!include ../../style.puml
+
+title Unaligned Flush vs Sector-Aligned Padding (Preventing Corruption, not Perf)
+
+actor Application as App
+box "OS Layer" #LightBlue
+participant "VFS / FileSystem" as FS
+participant "OS Page Cache" as Cache
+end box
+box "Block Storage Layer" #LightGray
+participant "Block Layer\n(I/O Scheduler)" as Block
+participant "Block Device\n(512B sectors)" as Dev
+database "Stable Media" as Media
+end box
+
+== Scenario A: Unaligned Flushes (risk of corruption) ==
+note over Dev
+  Sector size = 512B
+  Record bytes ranges in this example:
+  - First flush: [0..415]  (fits within sector 0)
+  - Second flush: [415..600] (overlaps sector 0 and sector 1)
+end note
+
+App -> FS: write(fd, bytes[0..415])
+FS -> Cache: buffer [0..415]
+App -> FS: fsync(fd)
+FS -> Cache: prepare flush
+Cache -> Block: submit write [0..415]
+Block -> Dev: sync sector 0
+Dev -> Media: persist sector 0
+Dev --> Block: ack
+Block --> Cache: ack
+Cache --> FS: ack
+FS --> App: fsync returns
+
+... later ...
+
+App -> FS: write(fd, bytes[415..600])
+FS -> Cache: buffer [415..600]
+App -> FS: fsync(fd)
+FS -> Cache: prepare flush
+Cache -> Block: submit write [415..600]
+Block -> Dev: will sync sector 0 and sector 1
+Dev -> Media: begin updating sectors 0 and 1
+note over Dev,Media #FFEEEE
+  Crash during second flush.
+  Sector 0 may be partially overwritten by the overlapping write,
+  corrupting data from the first flush.
+end note
+
+== Scenario B: Sector-Aligned Padding (mitigation) ==
+note over FS
+  Intent: Prevent corruption (not for performance).
+  Strategy: Pad each flush to sector boundaries.
+  - First flush writes [0..512] (aligned to sector 0)
+  - Second flush writes [512..] (aligned to sector 1 onwards)
+  Device layout is not fully known; this is best-effort padding.
+end note
+
+App -> FS: write(fd, bytes[0..415])
+FS -> Cache: buffer [0..415]
+FS -> Cache: pad to 512B boundary → [0..512]
+App -> FS: fsync(fd)
+Cache -> Block: submit write [0..512]
+Block -> Dev: sync sector 0
+Dev -> Media: persist sector 0
+Dev --> Block: ack
+Block --> Cache: ack
+Cache --> FS: ack
+FS --> App: fsync returns
+
+... later ...
+
+App -> FS: write(fd, bytes[415..600])
+FS -> Cache: buffer [415..600]
+FS -> Cache: align start to 512 → write [512..1024) window
+App -> FS: fsync(fd)
+Cache -> Block: submit write [512..]
+Block -> Dev: sync sector 1 (and beyond)
+Dev -> Media: persist sector 1
+Dev --> Block: ack
+Block --> Cache: ack
+Cache --> FS: ack
+FS --> App: fsync returns
+
+@enduml
+

@@ -1,0 +1,1194 @@
+title: "Google - Understanding Consensus"
+description: "Learn about consensus algorithms, two-phase protocols, and distributed agreement mechanisms. Covers single server problems, clustering, and fault tolerance strategies."
+icon: "fas fa-handshake"
+category: "Consensus Algorithms"
+sections:
+  - title: "Introduction and Basic Challenges"
+    slides:
+      - type: "text"
+        title: "Introduction to Consensus"
+        bullets:
+          - "Distributed systems require nodes to agree on shared state"
+          - "We will use the term 'agreement to execute a request' and not 'agreement on a value'"
+          - "A request can be 'register a lease', 'increment a counter', 'hold a lock' or simply 'write a value' etc."
+          - "Network failures and node crashes make agreement challenging" 
+          - "Simple replication approaches lead to inconsistent states"
+        notes: "Emphasize that consensus is not just about getting and setting key-value pairs, but about maintaining consistency in the face of failures. This sets up the motivation for the following diagrams."
+      
+      - type: "diagram"
+        title: "Single Server Lacks Fault Tolerance"
+        diagramRef: "single_server_problem"
+        bullets:
+          - "When server is healthy, all requests are processed"
+          - "Single point of failure: When the only server fails, all clients are affected"
+        notes: "Point out how a single point of failure affects availability. This motivates the need for clustering, which we'll see in the next slides."
+
+      - type: "diagram"
+        title: "Consensus: Ensuring Consistency in Clustered Environments"
+        diagramRef: "cluster_as_single_node"
+        bullets:
+          - "The cluster appears as a single entity to clients"
+          - "Even with node failures, the cluster continues to function"
+          - "But how do we ensure internal consistency?"
+        notes: "Introduce the concept that clustering solves availability but creates new challenges around consistency."
+
+      - type: "text"
+        title: "How to size a cluster for dynamic failures"
+        bullets:
+          - "When sizing a cluster, the worst case is not static failure (f nodes down forever)"
+          - "The true worst case is 'dynamic failure' or a 'sliding window' of failure"
+          - "The set of failed nodes can change completely between operations"
+        notes: "This is the core problem we must solve. We aren't just tolerating 'f' failures, we are tolerating 'any f' failures, at any time."
+
+      - type: "diagram"
+        title: "The Safety Requirement: Quorum Intersection"
+        diagramRef: "quorum_intersection"
+        bullets:
+          - "Let N = Total Nodes, W = Write Quorum, R = Read Quorum"
+          - "Safety demands that any Read Quorum MUST intersect with any Write Quorum"
+          - "This ensures a read always sees the latest committed write"
+          - "The Rule: W + R > N"
+        notes: "This is the fundamental safety guarantee. Use a Venn diagram to show two overlapping circles (W and R) inside a box (N). The overlap is the 'witness' node."
+
+      - type: "text"
+        title: "The Liveness Requirement: Tolerating 'f' Failures"
+        bullets:
+          - "To stay available, the system must tolerate up to 'f' failures"
+          - "A Write must succeed even if 'f' nodes are down"
+          - "A Read must also succeed even if 'f' nodes are down"
+        notes: "These are the rules for liveness. We must be able to form a quorum from the N-f surviving nodes."
+
+      - type: "text"
+        title: "Deriving the Minimum Cluster Size"
+        bullets:
+          - "We must satisfy both rules at the same time, even in the worst case"
+          - "1. Safety Rule: W + R > N"
+          - "2. Liveness Rule: Use the maximum size for W and R to tolerate 'f' failures"
+          - "Substitute Liveness (N-f) into Safety: (N - f) + (N - f) > N"
+          - "2N - 2f > N  =>  N > 2f"
+        notes: "This is the 'Aha!' moment. We combine safety and liveness to find that N must be strictly greater than 2f."
+
+      - type: "text"
+        title: "The Solution: N = 2f + 1"
+        bullets:
+          - "Since N must be an integer, the minimal cluster size is N = 2f + 1"
+          - "This is the familiar 'Majority Quorum' rule"
+          - "Why it works: It guarantees at least one 'witness' node overlaps between any write and any read"
+        notes: "This is the famous answer. N=3 for f=1. N=5 for f=2. This is why we use odd numbers."
+
+  - title: "Implementing Consensus: Why It's Hard"
+    slides:
+      - type: "text"
+        title: "The Coordination Challenge"
+        bullets:
+          - "We have our cluster size (N=2f+1) and safety rules."
+          - "Now we need a protocol to coordinate updates across this majority."
+          - "Why is this difficult? Why can't we just 'write to the majority'?"
+          - "Let's analyze the failure modes of simple protocols."
+        notes: "Bridge the gap between the static requirement (cluster size) and the dynamic requirement (protocol). We need to show that having the right hardware/cluster size isn't enough; the software logic matters."
+
+      - type: "text"
+        title: "Attempt 1: Immediate Execution (Ignoring Quorums)"
+        bullets:
+          - "Let's try the simplest thing: a server processes a request and tells others"
+          - "What could go wrong with this approach?"
+          - "Network delays, lost messages, or server crashes lead to inconsistent states"
+        notes: "Set up the first major challenge - why naive replication doesn't work."
+
+      - type: "diagram"
+        title: "Why Immediate Request Execution Does not Work"
+        diagramRef: "single_phase_execution"
+        bullets:
+          - "Athens executes immediately and tries to propagate"
+          - "Network issues prevent updates from reaching other nodes"
+          - "Athens crashes after responding to client"
+          - "System becomes inconsistent: different servers have different data"
+        notes: "Walk through this scenario step by step. Show how network delays, lost messages, or server crashes lead to inconsistent states."
+
+      - type: "text"
+        title: "Attempt 2: Using Majority Quorums (Two-Phase)"
+        bullets:
+          - "A majority of nodes must agree before executing any request"
+          - "Phase 1 (Accept): Get majority agreement on the request"
+          - "Phase 2 (Execute): Execute the request once majority agrees"
+          - "Two-phase approach aims to ensure consistency across nodes" 
+        notes: "Introduce the concept of two-phase execution as a solution to the immediate execution problem."
+
+      - type: "diagram"
+        title: "Why simple two phase execution is not enough"
+        diagramRef: "two_phase_execution"
+        bullets:
+          - "Phase 1 (Accept): Athens gets majority agreement on the request"
+          - "Phase 2 (Execute): Athens executes on all nodes with majority consent"
+          - "System is now consistent: all nodes have Counter = 6"
+        notes: "Visual walkthrough using the two-phase execution slides to show a successful agreement."
+
+      - type: "text"
+        title: "Challenge 3: Failures During Agreement"
+        bullets:
+          - "Servers can crash or messages can get lost during the two phases"
+          - "Failures leave the system in an ambiguous state"
+          - "Some nodes might know the result while others do not"
+          - "Network partitions can split the system during consensus"
+        notes: "Introduce the complexity that failures add to the two-phase protocol."
+
+      - type: "diagram"
+        title: "The Commit Requests Can Get Lost"
+        diagramRef: "two_phase_lost_commits"
+        bullets:
+          - "Athens gets majority agreement in Phase 1 (Accept)"
+          - "Athens executes locally and responds to client early"
+          - "Execute messages to other nodes get lost"
+          - "Athens crashes before other nodes execute"
+        notes: "Show how a server can crash after getting a majority of accepts but before notifying everyone."
+
+      - type: "diagram"
+        title: "The Accept Requests Can Get Lost as Well"
+        diagramRef: "two_phase_missed_accepts"
+        bullets:
+          - "Athens accepts request locally"
+          - "Accept request to Cyrene gets lost"
+          - "Athens proceeds with majority (self + Byzantium)"
+          - "Cyrene never received any requests"
+        notes: "Show another failure scenario where accept messages are lost."
+
+      - type: "text"
+        title: "Recap: Why Simple Approaches Fail"
+        bullets:
+          - "Immediate execution → Inconsistent states when failures occur"
+          - "Two-phase execution → Still vulnerable to crashes during commit phase"
+          - "Network failures create ambiguous states that simple protocols can't handle"
+          - "We need a more robust approach that can recover from these scenarios"
+        notes: "Breather slide to consolidate the key insights from the failure scenarios before moving to recovery concepts."
+
+      - type: "text"
+        title: "The Ambiguity of Quorum Systems"
+        bullets:
+          - "This is a subtle problem with quorum systems"
+          - "When a reader observes data (X) on only a subset of nodes (quorum)"
+          - "The system CANNOT distinguish between a successful, committed write and a failed, partial write"
+        notes: "This is the core operational limitation of quorum systems. Minority views are inherently ambiguous."
+
+      - type: "text"
+        title: "The Dilemma: Indistinguishable Histories"
+        bullets:
+          - "From a quorum viewpoint, two possibilities look identical:"
+          - "History 1 (Failed Write): Writer crashed after writing to only this node. Data is partially written can be discarded."
+          - "History 2 (Hidden Success): Write reached a quorum on currently offline nodes. Data is committed truth."
+        notes: "Explain that without talking to a majority, you literally cannot know which history is real."
+
+      - type: "text"
+        title: "The Resolution: Erring on the Side of Safety"
+        bullets:
+          - "To avoid violating durability (History 2), we MUST assume the data could be committed"
+          - "We cannot simply discard X, even if it looks like a failed write"
+          - "The primary strategy is to execute a Recovery Protocol"
+        notes: "This explains why consensus protocols are conservative. We'd rather re-commit a failed write than lose a committed one."
+
+      - type: "text"
+        title: "The Strategy: Recovery Protocol"
+        bullets:
+          - "Force the entire cluster to re-verify the data's status"
+          - "Node with partial state must 'execute the decision with majority again'"
+          - "Guarantees that any future read will see a consistent state"
+        notes: "This sets the stage for the next section: Recovery and Leader Election."
+
+  - title: "Recovery and Leader Election"
+    slides:
+      - type: "text"
+        title: "Adding Recovery Phase"
+        bullets:
+          - "When a server wants to process a request, it can't just proceed immediately"
+          - "First, it must check with a majority: 'Are there any requests already accepted?'"
+        notes: "Introduce the concept of checking with majority as a necessary first step, and how this creates the fundamental ambiguity."
+
+      - type: "text"
+        title: "Adding Recovery Phase (Continued)"
+        bullets:
+          - "This check ensures we don't miss previously accepted requests that might have been committed"
+          - "Since we only need majority responses (for fault tolerance), ambiguity can arise" 
+          - "Only after this check can the server safely proceed with its decision"
+        notes: "Introduce the concept of checking with majority as a necessary first step, and how this creates the fundamental ambiguity."
+
+      - type: "diagram"
+        title: "Recovery Phase: Checking for Existing Accepted Requests"
+        diagramRef: "recovery_phase_check"
+        bullets:
+          - "Athens wants to process a new request"
+          - "First, Athens asks majority: 'Do you have any accepted requests?'"
+          - "Nodes respond with any previously accepted requests they have"
+          - "Only then can Athens decide how to proceed"
+        notes: "Show the recovery phase where a server checks for existing accepted requests before proceeding."
+
+      - type: "text"
+        title: "Recovery Ambiguity: The Core Dilemma"
+        bullets:
+          - "Every server must check for existing accepted requests before proceeding"
+          - "Majority queries might reveal requests accepted on some servers but others might not be reachable"
+          - "The fundamental question: Was that request committed or not?"
+          - "Majority-based decisions create unavoidable ambiguity for fault tolerance"
+        notes: "Introduce the fundamental ambiguity that arises from making decisions with only majority information for fault tolerance."
+
+      - type: "diagram"
+        title: "Recovery Ambiguity: The Scenario"
+        diagramRef: "recovery_ambiguity_dilemma"
+        bullets:
+          - "Athens wants to execute a new request and first checks for existing accepted requests"
+          - "Athens can only reach majority (Byzantium and Cyrene)"
+          - "Byzantium reports: 'I have accepted IncrementCounter'"
+          - "Cyrene could not respond or the response gets lost"
+        notes: "Show the setup of the ambiguous scenario where Athens gets conflicting information from the majority it can reach."
+
+      - type: "text"
+        title: "Recovery Ambiguity: The Impossible Decision"
+        bullets:
+          - "Athens faces the dilemma: Was IncrementCounter committed or not?"
+          - "Two possible scenarios exist, but Athens cannot distinguish between them"
+        notes: "Explain the fundamental dilemma and why Athens cannot make the decision with partial information from majority responses."
+
+      - type: "text"
+        title: "Recovery Ambiguity: The Impossible Decision (Continued)"
+        bullets:
+          - "Scenario 1: IncrementCounter WAS committed (previous leader got majority)"
+          - "Scenario 2: IncrementCounter was NOT committed (only reached one node)"
+          - "Safety requirement: If a value was ever committed, it must NEVER be lost"
+        notes: "Explain the fundamental dilemma and why Athens cannot make the decision with partial information from majority responses."
+
+      - type: "text"
+        title: "The Safe Path: When in Doubt, Re-Propose"
+        bullets:
+          - "Since it might have been committed, the only safe action is to assume it was"
+          - "Re-run both phases for that request"
+          - "This forces the system towards confirming that request is committed"
+          - "Quorum overlap ensures we don't 'forget' a previously committed value"
+        notes: "Explain why re-proposing is the safe choice and how quorum overlap provides safety."
+
+      - type: "text"
+        title: "Recovery Dilemma: Multiple Conflicting Requests"
+        bullets:
+          - "Recovery can discover TWO different accepted requests from majority servers"
+          - "Each server in the majority reports a different accepted request"
+          - "Multiple conflicting requests create a choice dilemma for the new leader"
+          - "The leader must decide which request to preserve and re-propose safely"
+        notes: "Introduce the more complex scenario where multiple conflicting accepted requests are discovered when checking with majority."
+
+      - type: "diagram"
+        title: "Recovery Dilemma: Multiple Conflicting Accepted Requests"
+        diagramRef: "recovery_multiple_accepted_requests"
+        bullets:
+          - "Athens wants to execute a new request and checks with majority"
+          - "Byzantium reports: 'I have accepted IncrementCounter'"
+          - "Cyrene reports: 'I have accepted DecrementCounter'"
+          - "Athens must choose which request to preserve"
+        notes: "Show the scenario where Athens discovers two different accepted requests from majority and must apply the highest generation rule to choose safely."
+
+      - type: "text"
+        title: "🔄 Recap: The Recovery Challenge"
+        bullets:
+          - "Recovery phase is essential but creates fundamental ambiguity"
+          - "Majority responses may be incomplete due to failures"
+          - "Multiple conflicting requests can be discovered during recovery"
+          - "The key insight: We need a systematic way to choose safely"
+        notes: "Breather slide to consolidate the recovery challenges before introducing the generation number solution."
+
+      - type: "text"
+        title: "Establishing Authority With Generation Number (Becoming the Leader)"
+        bullets:
+          - "A node that wants to initiate an agreement must first establish its authority"
+          - "It chooses a Generation Number higher than any it's seen before"
+          - "Asks a majority quorum to acknowledge this number"
+          - "If majority agrees (and haven't acknowledged a higher number), they promise not to accept lower Generation Numbers"
+          - "If nodes have previously stored requests, they report them back with their Generation Numbers"
+        notes: "Explain the first critical step: establishing leadership authority through generation numbers."
+
+      - type: "diagram"
+        title: "Leader Election Process"
+        diagramRef: "leader_election_process"
+        bullets:
+          - "Athens chooses Generation Number 1 (higher than any seen)"
+          - "Sends prepare requests to majority (self + Byzantium)"
+          - "Nodes promise not to accept requests with lower generation numbers"
+          - "Athens becomes Leader for Generation Number 1"
+        notes: "Show the step-by-step process of becoming a leader through generation number establishment."
+
+      - type: "text"
+        title: "The Leader Sends the Request"
+        bullets:
+          - "Leader sends the actual request with its Generation Number to majority quorum"
+          - "Nodes check Generation Number against their promises"
+          - "If it matches promised number (or higher), they store the request but don't execute yet"
+          - "If Generation Number is lower than promised, they reject it"
+          - "This ensures only the current leader's requests are accepted"
+        notes: "Explain how the leader propagates requests while maintaining generation number consistency."
+
+      - type: "diagram"
+        title: "Request Propagation with Generation Numbers"
+        diagramRef: "request_propagation_generation"
+        bullets:
+          - "Leader Athens sends request with Generation Number 1"
+          - "Byzantium and Cyrene check against their promises"
+          - "They store the request but don't execute yet"
+          - "System maintains consistency through generation number validation"
+        notes: "Visualize how requests are propagated and validated using generation numbers."
+
+      - type: "text"
+        title: "Choosing the Request (Recovery)"
+        bullets:
+          - "When becoming Leader, examine responses from 'Establishing Authority' step"
+          - "If nodes reported previously stored requests, choose the one with highest Generation Number"
+          - "The 'choose highest generation' helps solve the recovery ambiguity"
+          - "If every leader had first checked with majority, and chose the highest generation request, then if any request was ever committed, it would be one with the highest generation"
+        notes: "Explain the critical recovery logic that ensures safety during leadership transitions."
+
+      - type: "text"
+        title: "Choosing the Request (Recovery) (Continued)"
+        bullets:     
+          - "This ensures continuity and prevents 'lost' requests that were close to agreement"
+          - "Only if no previous requests were reported can Leader propose its own request"
+          - "This is the crucial 'highest generation rule' for safety"
+        notes: "Explain the critical recovery logic that ensures safety during leadership transitions."
+
+      - type: "text"
+        title: "Choosing Highest Generation: Why the Rule Works"
+        bullets:
+          - "If any request was ever committed, it should be the one with the highest generation"
+          - "This rule works because of a fundamental mathematical property: quorum overlap"
+        notes: "Emphasize that this is the mathematical foundation that makes consensus algorithms work. The overlap property is what transforms the highest generation rule from a heuristic into a safety guarantee. This principle applies to all quorum-based consensus systems, not just Paxos."
+
+      - type: "text"
+        title: "Choosing Highest Generation: Why the Rule Works"
+        bullets:
+          - "In a system of N nodes, any two majorities must share at least one node"
+          - "Example: With 5 nodes, any two groups of 3 must overlap by 1 node"
+          - "This overlap ensures every future leader will see evidence of past commitments"
+          - "The highest generation rule + quorum overlap = guaranteed safety"
+        
+      - type: "diagram"
+        title: "Recovery: Choosing the Highest Generation Request"
+        diagramRef: "recovery_highest_generation"
+        bullets:
+          - "New leader discovers multiple stored requests from previous attempts"
+          - "Chooses request with Generation Number 4 (highest found)"
+          - "Must re-propose this request with new, higher Generation Number 5"
+          - "Ensures no previously committed values are lost"
+        notes: "Show how the highest generation rule works during recovery scenarios."
+
+      - type: "text"
+        title: "Ensuring Majority Agreement & Execution"
+        bullets:
+          - "Even if Leader adopts a request from previous round, it must send it again with new, higher Generation Number"
+          - "Previous attempt might have failed before reaching true majority (Remember the recovery ambiguity?)"
+        notes: "Explain the final step: ensuring committed requests are executed in proper order."
+
+      - type: "text"
+        title: "Ensuring Majority Agreement & Execution (Continued)"
+        bullets:
+          - "By getting current majority to store it with new Generation Number, Leader solidifies the request's status"
+          - "Only once request is committed (agreed by majority) can nodes execute it"
+        notes: "Explain the final step: ensuring committed requests are executed in proper order."
+
+      - type: "diagram"
+        title: "From Agreement to Execution"
+        diagramRef: "agreement_to_execution"
+        bullets:
+          - "Leader gets majority agreement on request with Generation Number 5"
+          - "Request is now committed and safe to execute"
+          - "All nodes execute in the same order"
+          - "System maintains consistent state across all nodes"
+        notes: "Show the final step from consensus agreement to actual execution."
+
+      - type: "text"
+        title: "The Complete Consensus Flow"
+        bullets:
+          - "1. Establish Authority: Get majority to promise higher Generation Number"
+          - "2. Choose Request: Pick highest generation request from recovery or propose new"
+          - "3. Get Agreement: Send selected request with new Generation Number to majority"
+          - "4. Execute: Only execute committed requests in proper order"
+          - "This ensures all nodes agree on same sequence and maintain consistent state"
+        notes: "Summarize the complete four-step consensus process before revealing it's Paxos."
+
+      - type: "diagram"
+        title: "Quorum Overlap between the generation number establishment/recovery and the request proposal phases"
+        diagramRef: "quorum_overlap_foundation"
+        bullets:
+          - "Scenario: Two different consensus rounds with different majority quorums"
+          - "Round 1: Athens, Byzantium, Cyrene (majority) accept IncrementCounter"
+          - "Round 2: Cyrene, Delphi, Ephesus (majority) run recovery phase"
+          - "Cyrene is the overlap node - guarantees information transfer"
+          - "This overlap ensures no committed request can be lost"
+        notes: "Visually demonstrate how quorum overlap works in practice. Show two different majority quorums and how their overlap guarantees that information about committed requests is preserved across different consensus rounds."
+
+      - type: "text"
+        title: "🔄 Recap: The Mathematical Foundation"
+        bullets:
+          - "Generation numbers establish clear ordering and authority"
+          - "Highest generation rule ensures safety during recovery"
+          - "Quorum overlap guarantees no committed values are lost"
+          - "These three concepts together form the mathematical foundation of consensus"
+        notes: "Breather slide to consolidate the key mathematical insights before moving to practical challenges."
+
+      - type: "text"
+        title: "Challenges in Practice"
+        bullets:
+          - "Livelock occurs when competing proposers prevent progress"
+          - "Random backoff and leader election solve livelock problems"
+          - "Single request limitation makes the system impractical for real use"
+          - "Replicated logs extend consensus to handle multiple requests over time"
+        notes: "Discuss practical challenges and solutions."
+
+      - type: "diagram"
+        title: "Livelock Problem and Solutions"
+        diagramRef: "livelock_scenario"
+        bullets:
+          - "Competing proposers can interfere with each other indefinitely"
+          - "Random backoff helps break the cycle"
+          - "Stable leader election is a better long-term solution"
+        notes: "Show how livelock occurs and how to resolve it."
+
+  - title: "From Single Value to Replicated Logs"
+    slides:
+      - type: "text"
+        title: "Limitation: Accepted Requests Never Forgotten"
+        bullets:
+          - "Once a request is accepted by any node, it can NEVER be forgotten"
+          - "Safety requirement: If it might have been committed, we must preserve it"
+          - "This creates a fundamental limitation for our current approach"
+        notes: "Introduce the key limitation that leads to the need for replicated logs."
+
+      - type: "diagram"
+        title: "Why Accepted Requests Cannot Be Forgotten"
+        diagramRef: "why_accepted_values_cannot_be_forgotten"
+        bullets:
+          - "Critical safety property: Once accepted by quorum, values must be preserved"
+          - "Forgetting accepted values can lead to safety violations"
+          - "Two different values could be committed, breaking consensus"
+          - "The 'highest generation rule' prevents this by preserving accepted values"
+        notes: "Show the detailed scenario of what happens when accepted values are forgotten and why this violates safety. This is a fundamental property that makes single-value consensus limited."
+
+      - type: "text"
+        title: "The Single-Request Problem"
+        bullets:
+          - "Our current consensus can only agree on ONE request ever"
+          - "Once a request is committed, no other request can be executed"
+          - "Example: If 'IncrementCounter' is committed, 'DecrementCounter' can never be processed"
+          - "This makes the system unusable for real applications!"
+        notes: "Explain why single-value consensus is insufficient for practical systems."
+
+      - type: "diagram"
+        title: "Single-Value Consensus Limitation"
+        diagramRef: "single_value_limitation"
+        bullets:
+          - "IncrementCounter is committed and executed"
+          - "New request DecrementCounter arrives"
+          - "The nodes decide proceed immediately after 'quorum' of responses.  Thats our design choice for maintaining liveness."
+          - "The complete view of the system is not available to the nodes."
+          - "System cannot process it - consensus slot is 'used up'"
+          - "No way to handle multiple requests over time"
+        notes: "Show the fundamental limitation of single-value consensus."
+
+      - type: "text"
+        title: "Solution: Replicated Log of Requests"
+        bullets:
+          - "Instead of building consensus for only one request, maintain an ordered log of requests"
+          - "Each log slot can hold one committed request"
+          - "Run consensus separately for each slot"
+          - "Execute requests in log order to maintain consistency"
+        notes: "Introduce the concept of replicated logs as the solution."
+
+      - type: "diagram"
+        title: "Replicated Log Concept"
+        diagramRef: "replicated_log_concept"
+        bullets:
+          - "Each node maintains an ordered log of requests"
+          - "Slot 1: IncrementCounter, Slot 2: DecrementCounter, Slot 3: ..."
+          - "Consensus ensures all nodes have the same log"
+          - "Requests are executed in log order"
+        notes: "Show the basic concept of replicated logs."
+
+      - type: "text"
+        title: "Multi-Slot Consensus Process"
+        bullets:
+          - "For each new request, find the next available slot"
+          - "Run full consensus (generation number + recovery + two phases) for that slot"
+          - "If slot already has an accepted request, commit it first, then try next slot"
+          - "Continue until our request gets committed in some slot"
+        notes: "Explain how consensus works across multiple slots."
+
+      - type: "diagram"
+        title: "Multi-Slot Consensus in Action"
+        diagramRef: "multi_slot_consensus"
+        bullets:
+          - "Athens wants to commit DecrementCounter"
+          - "Slot 1 already has IncrementCounter - commit it first"
+          - "Try DecrementCounter in Slot 2"
+          - "Success! Both requests now committed in order"
+        notes: "Show how multi-slot consensus handles multiple requests."
+
+      - type: "text"
+        title: "Execution Challenge: The High-Water Mark"
+        bullets:
+          - "Problem: Log might have gaps (some slots committed, others not)"
+          - "Cannot execute immediately after commit - might break ordering"
+          - "Solution: High-water mark - index before which ALL slots are committed"
+          - "Execute requests only up to the high-water mark"
+        notes: "Introduce the execution challenge and high-water mark solution."
+
+      - type: "diagram"
+        title: "High-Water Mark Execution"
+        diagramRef: "high_water_mark_execution"
+        bullets:
+          - "Log state: Slot 1 (committed), Slot 2 (uncommitted), Slot 3 (committed)"
+          - "High-water mark = 0 (no consecutive committed slots from start)"
+          - "Cannot execute Slot 3 until Slot 2 is committed"
+          - "Ensures strict ordering of execution"
+        notes: "Show how high-water mark ensures ordered execution."
+
+      - type: "text"
+        title: "🔄 Recap: From Single Value to Practical Consensus"
+        bullets:
+          - "Single-value consensus is theoretically sound but practically limited"
+          - "Replicated logs extend consensus to handle multiple requests over time"
+          - "High-water mark ensures safe, ordered execution despite gaps"
+          - "This evolution transforms consensus from academic concept to practical system"
+        notes: "Breather slide to consolidate the transition from single-value to multi-slot consensus before introducing Multi-Paxos."
+
+      - type: "text"
+        title: "Multi-Paxos"
+        bullets:
+          - "Replicated Log with multislot consensus and high-water mark is called Multi-Paxos"
+          - "Client sends request to leader"
+          - "Leader finds next available slot"
+          - "Run consensus for that slot (with recovery)"
+          - "Update high-water mark when consecutive slots are committed"
+          - "Execute all requests up to high-water mark in order"
+        notes: "Summarize the complete Multi-Paxos process."
+
+      - type: "diagram"
+        title: "Multi-Paxos: Complete Flow"
+        diagramRef: "multi_slot_consensus_complete_flow"
+        bullets:
+          - "Multiple clients sending requests"
+          - "Leader assigns slots and runs consensus"
+          - "Handles recovery and slot conflicts"
+          - "Maintains high-water mark for safe execution"
+        notes: "Show the complete Multi-Paxos system in action."
+
+  - title: "Multi-Paxos Optimization and Production Deployment"
+    slides:
+      - type: "text"
+        title: "Multi-Paxos Optimization: Server-Level Leadership"
+        bullets:
+          - "Key insight: Leader election (prepare phase) can be executed only once at server level"
+          - "Generation number maintained at server level to detect conflicts during recovery and execution"
+          - "When triggered, server runs leader election to establish generation number"
+          - "New leader then runs recovery for all uncommitted log entries across all servers"
+        notes: "Introduce the key optimization that makes Multi-Paxos practical - separating leadership from per-slot consensus."
+
+      - type: "text"
+        title: "Multi-Paxos Recovery Process"
+        bullets:
+          - "Recovery phase: For each uncommitted slot, choose highest generation entry found"
+          - "Re-run two phases (accept and commit) with new generation number for recovered entries"
+          - "Use high-water mark mechanism to ensure safe execution order"
+          - "After recovery completes, leader can execute just accept/commit phases for new requests"
+          - "Leader knows which next slot to use - no more prepare phases needed"
+        notes: "Explain the recovery process and how it enables the optimization of skipping prepare phases for subsequent requests."
+
+      - type: "diagram"
+        title: "Multi-Paxos: Initial Leader Election"
+        diagramRef: "multi_paxos_initial_leader_election"
+        bullets:
+          - "System startup - no existing leader"
+          - "Athens triggers leader election and establishes generation number"
+          - "Athens becomes leader and starts processing client requests"
+          - "Subsequent requests use only accept/commit phases (no prepare needed)"
+          - "Demonstrates the Multi-Paxos optimization from clean state"
+        notes: "Show how Multi-Paxos works from system startup, demonstrating the initial leader election and subsequent optimization for client requests."
+
+      - type: "diagram"
+        title: "Multi-Paxos: Leader Failure and Recovery"
+        diagramRef: "multi_paxos_leader_failure_recovery"
+        bullets:
+          - "Existing leader fails or gets disconnected during operation"
+          - "New leader election triggered on another server"
+          - "New leader establishes higher generation number"
+          - "Runs recovery for all pending/uncommitted slots"
+          - "Executes client requests from next open slot onwards using only accept/commit phases"
+        notes: "Show the complete Multi-Paxos leader failure and recovery cycle, demonstrating how the optimization works in practice when leadership changes."
+
+  - title: "Heartbeat and Failure Detection"
+    slides:
+      - type: "text"
+        title: "Heartbeat Mechanism: Detecting Leader Failures"
+        bullets:
+          - "Leaders must periodically send heartbeat messages to prove they are alive"
+          - "Heartbeat intervals should exceed network round-trip time between servers"
+          - "Followers maintain timeout intervals as multiples of heartbeat intervals"
+          - "Missing heartbeats beyond the timeout threshold trigger leader election"
+          - "This mechanism enables rapid detection of leader failures"
+        notes: "Introduce the heartbeat pattern as described in Martin Fowler's Patterns of Distributed Systems. Emphasize the importance of timely failure detection for maintaining system availability."
+
+      - type: "diagram"
+        title: "Heartbeat Pattern: General Concept"
+        diagramRef: "heartbeat_general_concept"
+        bullets:
+          - "Server periodically sends heartbeat messages to indicate liveness"
+          - "Other servers maintain timeout timers"
+          - "Timeout expiry indicates server failure"
+          - "Enables timely detection of failures in distributed systems"
+        notes: "Show the basic heartbeat pattern as a general distributed systems concept before applying it to Multi-Paxos. Emphasize timing relationships and failure detection mechanism."
+
+      - type: "text"
+        title: "Heartbeat in Multi-Paxos Context"
+        bullets:
+          - "Leader sends heartbeats while processing client requests (can piggyback on regular messages)"
+          - "During idle periods, leader sends explicit heartbeat messages"
+          - "Followers reset their timeout whenever they receive any message from current leader"
+          - "Timeout expiry triggers immediate leader election with higher generation number"
+          - "Ensures rapid detection of leader failures and minimal service disruption"
+        notes: "Explain how heartbeat mechanism integrates with Multi-Paxos, including optimization opportunities like piggybacking heartbeats on regular consensus messages."
+
+      - type: "diagram"
+        title: "Multi-Paxos: Heartbeat and Failure Detection"
+        diagramRef: "multi_paxos_heartbeat_failure_detection"
+        bullets:
+          - "Leader Athens sends periodic heartbeats to followers"
+          - "Followers maintain timeout timers for leader liveness"
+          - "Athens fails and heartbeats stop arriving"
+          - "Timeout expires on followers, triggering leader election"
+          - "Demonstrates the complete failure detection and recovery cycle"
+        notes: "Show how heartbeat mechanism works in practice with Multi-Paxos, including timing relationships and the transition from heartbeat failure to leader election."
+
+  - title: "Client Retry Safety"
+    slides:
+      - type: "text"
+        title: "Client Retry Problem in Distributed Systems"
+        bullets:
+          - "When servers fail, clients don't know if their requests were processed"
+          - "Clients must retry to ensure their requests are handled"
+          - "Problem: Retries can cause duplicate execution if the original request was processed"
+          - "Example: Transfer $100 - if executed twice, transfers $200!"
+          - "Need mechanism to handle retries safely while maintaining exactly-once semantics"
+        notes: "Introduce the fundamental client retry problem that occurs in all distributed systems. This is separate from consensus but equally important for production systems."
+
+      - type: "text"
+        title: "Idempotent Receiver Pattern: Safe Request Handling"
+        bullets:
+          - "Solution: Each client assigns unique (client ID, request number) to every request"
+          - "Servers maintain deduplication table: (clientID, requestNumber) → executionResult"
+          - "Table updated after each committed request is executed"
+          - "When new request arrives: check deduplication table first"
+          - "If found: return cached result without consensus or execution"
+        notes: "Explain the Idempotent Receiver pattern using a separate deduplication table that's maintained as derived state from the consensus log."
+
+      - type: "diagram"
+        title: "Idempotent Receiver Pattern in Action"
+        diagramRef: "idempotent_receiver_pattern"
+        bullets:
+          - "Client sends request with unique ID"
+          - "Server processes request and caches response"
+          - "Server crashes before responding to client"
+          - "Client retries with same request ID"
+          - "Server detects duplicate and returns cached response"
+        notes: "Show the complete flow of the Idempotent Receiver pattern, demonstrating how it prevents duplicate execution while ensuring clients get responses."
+
+  - title: "What we have built so far?"
+    slides:
+      - type: "text"
+        title: "From Basic Consensus to Production Systems"
+        bullets:
+          - "We've built the foundation: single-value consensus with recovery"
+          - "Extended it to replicated logs for practical use"
+          - "This is the core of systems like Zookeeper, etcd, and Consul"
+          - "Real systems add optimizations, but the principles remain the same"
+        notes: "Connect the concepts learned to real-world distributed systems."
+
+  - title: "RAFT: Optimizing Multi-Paxos for Practical Implementation"
+    slides:
+      - type: "text"
+        title: "Multi-Paxos Recovery Limitations"
+        bullets:
+          - "Multi-Paxos with heartbeats detects leader failures efficiently"
+          - "However, recovery process requires checking ALL uncommitted log entries"
+          - "New leader must query followers for pending requests in the log"
+          - "All uncommitted entries must be sent to leader and re-proposed with new generation number"
+          - "This creates significant overhead during leader election and recovery"
+          - "If few followers miss a few log entries, we need a mechanism to reconcile the differences, making sure that the system achieves 'full disclosure' of the system state."
+    
+        notes: "Explain the inefficiency in Multi-Paxos recovery process. This sets up the motivation for RAFT's optimizations."
+
+      - type: "diagram"
+        title: "Multi-Paxos Recovery Overhead"
+        diagramRef: "multi_paxos_recovery_overhead"
+        bullets:
+          - "New leader queries all followers for uncommitted entries"
+          - "Multiple uncommitted entries must be collected and analyzed"
+          - "Each entry must be re-proposed with new generation number"
+          - "Recovery time increases with number of uncommitted entries"
+        notes: "Show the step-by-step Multi-Paxos recovery process highlighting the overhead and complexity involved."
+
+      - type: "text"
+        title: "RAFT's First Optimization: Leader Election with Latest Log"
+        bullets:
+          - "RAFT optimizes leader election by considering both generation number AND latest log"
+          - "Log entries include generation numbers (called 'term' in RAFT) as part of their metadata"
+          - "Latest log is determined by: (latest term, highest log index)"
+          - "Prepare requests include both generation number and log state information"
+          - "Only nodes with the most up-to-date log can become leader"
+        notes: "Introduce RAFT's key insight: the leader should already have the latest log, eliminating the need for post-election recovery queries."
+
+      - type: "diagram"
+        title: "RAFT Leader Election with Log Information"
+        diagramRef: "raft_leader_election_with_log"
+        bullets:
+          - "Candidate includes (term, lastLogIndex, lastLogTerm) in vote requests"
+          - "Followers only vote for candidates with logs at least as up-to-date as theirs"
+          - "Winner already has the most current log state"
+          - "No need to query followers for uncommitted entries after election"
+        notes: "Show how RAFT's leader election process includes log information, ensuring the elected leader has the most up-to-date log."
+
+      - type: "text"
+        title: "RAFT's Second Optimization: Direct Log Replication"
+        bullets:
+          - "Since leader has the latest log, no need to re-propose existing entries"
+          - "Leader directly appends new entries and replicates to followers"
+          - "Uses AppendEntries RPC instead of separate prepare/accept phases"
+          - "Followers receive entries directly without intermediate recovery phase"
+          - "Significantly reduces leader election and recovery time"
+        notes: "Explain how RAFT eliminates the re-proposal overhead by ensuring the leader already has the latest state."
+
+      - type: "diagram"
+        title: "RAFT Direct Log Replication"
+        diagramRef: "raft_direct_log_replication"
+        bullets:
+          - "New leader immediately starts sending AppendEntries to followers"
+          - "No recovery phase or re-proposal of existing entries needed"
+          - "Followers receive entries with previous log index for consistency checking"
+          - "Much faster recovery compared to Multi-Paxos"
+        notes: "Demonstrate RAFT's streamlined approach where the leader immediately starts replicating entries without recovery overhead."
+
+      - type: "text"
+        title: "Handling Log Inconsistencies: The Truncation Challenge"
+        bullets:
+          - "Problem: Followers might have more entries than leader, but from older terms"
+          - "Example: Follower has entries 1-10 from term 3, new leader has entries 1-8 from term 4"
+          - "Follower's extra entries (9-10) are from old term and must be removed"
+          - "RAFT uses AppendEntries consistency check to detect and resolve conflicts"
+        notes: "Introduce the complexity that arises when log histories diverge and need to be reconciled."
+
+      - type: "text"
+        title: "The Commitment Safety Problem"
+        bullets:
+          - "Critical issue: Leader cannot immediately commit entries from previous terms"
+          - "Even if entries exist on majority of servers, they might not be committed"
+          - "Example: Entry from term 3 exists on 3/5 servers, but was never committed"
+          - "New leader in term 4 cannot safely commit term 3 entries directly"
+          - "Risk: Committing old entries might violate safety if another leader was elected"
+        notes: "Explain the subtle but critical safety issue in RAFT regarding committing entries from previous terms."
+
+      - type: "diagram"
+        title: "RAFT Previous Term Commitment Problem"
+        diagramRef: "raft_previous_term_commitment_problem"
+        bullets:
+          - "Leader has entries from previous term on majority of servers"
+          - "Cannot directly commit these entries due to safety concerns"
+          - "Must ensure no competing leader could have committed different entries"
+          - "Demonstrates the complexity of maintaining safety across term changes"
+        notes: "Illustrate the scenario where a leader has old entries on majority but cannot safely commit them immediately."
+
+      - type: "text"
+        title: "RAFT's Solution: No-Op Entry Commitment"
+        bullets:
+          - "RAFT leader must propose and commit a new no-op entry in current term"
+          - "Once the no-op entry is committed, it proves current leader has true majority"
+          - "CommitIndex (RAFT's high-water mark) is updated to include the no-op"
+          - "All previous entries up to the no-op are now safe to commit and execute"
+          - "This ensures safety while allowing progress on old entries"
+        notes: "Explain RAFT's elegant solution to the previous term commitment problem using no-op entries."
+
+      - type: "diagram"
+        title: "RAFT No-Op Entry Commitment Process"
+        diagramRef: "raft_no_op_entry_solution"
+        bullets:
+          - "New leader proposes no-op entry in current term"
+          - "Once no-op is committed, proves leader has stable majority"
+          - "CommitIndex updated to include no-op and all previous entries"
+          - "All entries up to commitIndex are executed in order"
+          - "Ensures both safety and liveness for old entries"
+        notes: "Show the complete process of how RAFT uses no-op entries to safely commit and execute entries from previous terms."
+
+      - type: "text"
+        title: "RAFT vs Multi-Paxos: Key Differences Summary"
+        bullets:
+          - "Leader Election: RAFT includes log state, Multi-Paxos only generation number"
+          - "Recovery: RAFT eliminates recovery queries, Multi-Paxos requires re-proposal"
+          - "Log Consistency: RAFT uses direct truncation, Multi-Paxos uses re-proposal"
+          - "Commitment: RAFT requires no-op for old entries, Multi-Paxos can commit any recovered entry"
+          - "Performance: RAFT optimizes for common case, Multi-Paxos more general but slower"
+        notes: "Summarize the key architectural differences between RAFT and Multi-Paxos, highlighting the trade-offs in each approach."
+
+  - title: "Dynamic Membership: Safely Changing Cluster Configuration"
+    slides:
+      - type: "text"
+        title: "The Configuration Change Challenge"
+        bullets:
+          - "Production clusters need to add/remove servers without downtime"
+          - "Naive approach: directly switch from old to new configuration"
+          - "Problem: Creates unsafe windows where two separate majorities can exist"
+          - "Example: 3→5 nodes, old majority (2/3) ≠ new majority (3/5)"
+          - "Risk: Split-brain scenarios where both majorities make conflicting decisions"
+        notes: "Introduce the fundamental challenge of changing cluster membership safely. Emphasize why this is a non-trivial problem that requires careful design."
+
+      - type: "text"
+        title: "Joint Consensus: The Safe Solution"
+        bullets:
+          - "Raft's solution: Two-phase configuration change using joint consensus"
+          - "Phase 1: Joint configuration (C_old,new) - requires BOTH majorities"
+          - "Phase 2: New configuration (C_new) - requires only new majority"
+          - "Key insight: Never allow old and new majorities to make independent decisions"
+          - "Mathematical guarantee: No split-brain scenarios possible"
+        notes: "Explain the joint consensus approach and why it's mathematically safe. This is the theoretical foundation before showing the practical implementation."
+
+      - type: "diagram"
+        title: "Dynamic Membership: Joint Consensus in Action"
+        diagramRef: "dynamic_membership_joint_consensus"
+        bullets:
+          - "Adding new server Delphi to existing 3-node cluster"
+          - "Two-phase process ensures safety throughout transition"
+          - "Joint configuration prevents split-brain scenarios"
+          - "Demonstrates the complete membership change workflow"
+        notes: "Walk through the complete dynamic membership process step by step. Emphasize the dual majority requirement during the joint phase and how it guarantees safety."
+
+      - type: "text"
+        title: "Configuration Change Best Practices"
+        bullets:
+          - "Only one configuration change at a time (no concurrent changes)"
+          - "New servers should catch up before being added to configuration"
+          - "Remove servers gracefully - let them finish current operations"
+          - "Leader can initiate configuration changes, but any node can propose"
+          - "Failed configuration changes can be retried safely"
+        notes: "Provide practical guidance for implementing configuration changes in production systems. These are lessons learned from real-world deployments."
+
+      - type: "text"
+        title: "Why Joint Consensus Works: Safety Analysis"
+        bullets:
+          - "During joint phase, decisions require agreement from both old and new majorities"
+          - "Impossible for old configuration to make decisions without new configuration approval"
+          - "Impossible for new configuration to make decisions without old configuration approval"
+          - "Once joint configuration is committed, system can safely transition to new configuration"
+          - "Provides stronger safety guarantees than any single-phase approach"
+        notes: "Deep dive into the mathematical properties that make joint consensus safe. This solidifies understanding of why the approach works."
+
+  - title: "Snapshotting & Log Compaction: Managing Unbounded Growth"
+    slides:
+      - type: "text"
+        title: "The Log Growth Problem"
+        bullets:
+          - "Consensus logs grow indefinitely as system processes requests"
+          - "Problem: Memory and disk usage increases without bound"
+          - "Large logs slow down crash recovery and new node bootstrapping"
+          - "Example: 1M log entries × 1KB each = 1GB memory + disk overhead"
+          - "Solution needed: Safely compact old log entries without losing safety"
+        notes: "Introduce the fundamental challenge of unbounded log growth. This affects all consensus systems and requires careful solution design to maintain safety properties."
+
+      - type: "text"
+        title: "Snapshotting: Capturing Consistent State"
+        bullets:
+          - "Snapshot = consistent point-in-time copy of state machine state"
+          - "Contains: state data + last applied log index + term"
+          - "Represents the result of applying all log entries up to snapshot point"
+          - "After snapshot: can safely discard old log entries"
+          - "New nodes can bootstrap from snapshot + recent log entries"
+        notes: "Explain the concept of snapshotting and how it enables log compaction. Emphasize the consistency requirements."
+
+      - type: "diagram"
+        title: "Snapshotting & Log Compaction Workflow"
+        diagramRef: "snapshotting_log_compaction"
+        bullets:
+          - "Leader creates snapshot and compacts log to save space"
+          - "InstallSnapshot RPC used when follower needs compacted entries"
+          - "Follower installs snapshot and resumes normal replication"
+          - "Demonstrates complete snapshot creation and installation process"
+        notes: "Walk through the complete snapshotting workflow. Pay special attention to the InstallSnapshot RPC and how it handles the case where needed log entries have been compacted away."
+
+      - type: "text"
+        title: "InstallSnapshot RPC: Bulk State Transfer"
+        bullets:
+          - "Used when follower needs log entries that have been compacted"
+          - "Transfers entire state machine state instead of log entries"
+          - "Includes: snapshot data, lastIncludedIndex, lastIncludedTerm"
+          - "Follower discards conflicting log entries and installs new baseline"
+          - "More efficient than replaying thousands of old log entries"
+        notes: "Focus on the InstallSnapshot RPC mechanics. This is a key innovation that enables practical log compaction in consensus systems."
+
+      - type: "text"
+        title: "Snapshot Best Practices & Trade-offs"
+        bullets:
+          - "Frequency: Balance compaction overhead vs log growth (e.g., every 10K entries)"
+          - "Consistency: Snapshots must represent consistent state machine state"
+          - "Performance: Large snapshots can temporarily impact system performance"
+          - "Storage: Keep multiple snapshot versions for fault tolerance"
+          - "Network: InstallSnapshot can be chunked for large state machines"
+        notes: "Provide practical guidance for implementing snapshotting in production systems. These considerations are crucial for real-world deployments."
+
+      - type: "text"
+        title: "Snapshotting in Production Systems"
+        bullets:
+          - "etcd: Snapshots triggered by log size thresholds and periodic timers"
+          - "Kubernetes: Uses etcd snapshots for cluster state backup and recovery"
+          - "Consul: Snapshots enable fast cluster bootstrap and disaster recovery"
+          - "Real systems often compress snapshots to reduce storage and transfer costs"
+          - "Critical for systems managing large amounts of state (databases, file systems)"
+        notes: "Connect snapshotting concepts to real-world implementations. Show how major distributed systems use these techniques in practice."
+
+  - title: "RAFT Optimizations: Leader Transfer & Pre-Vote"
+    slides:
+      - type: "text"
+        title: "Leader Transfer: Planned Leadership Changes"
+        bullets:
+          - "Problem: Leader shutdown/maintenance causes temporary unavailability"
+          - "Solution: Graceful leader transfer to designated successor"
+          - "Process: Current leader stops accepting new requests, transfers leadership"
+          - "Benefits: Zero-downtime maintenance, faster failover"
+          - "Used in production for rolling updates and planned maintenance"
+        notes: "Introduce leader transfer as a way to handle planned leadership changes gracefully, avoiding unnecessary elections."
+
+      - type: "text"
+        title: "Leader Transfer Implementation"
+        bullets:
+          - "Phase 1: Leader identifies best successor (most up-to-date log)"
+          - "Phase 2: Leader replicates outstanding entries to successor"
+          - "Phase 3: Leader sends TimeoutNow message to successor"
+          - "Phase 4: Successor immediately starts election (guaranteed to win)"
+          - "Phase 5: Old leader steps down and becomes follower"
+        notes: "Explain the step-by-step process of leader transfer. This is a practical optimization used in production systems."
+
+      - type: "text"
+        title: "Pre-Vote: Preventing Disruptive Elections"
+        bullets:
+          - "Problem: Partitioned nodes can disrupt stable clusters"
+          - "Scenario: Node rejoins after partition with higher term"
+          - "Issues: Forces unnecessary elections, disrupts stable leader"
+          - "Solution: Pre-Vote phase checks if election would succeed"
+          - "Only start real election if Pre-Vote indicates likely success"
+        notes: "Introduce the pre-vote optimization that prevents unnecessary elections caused by partitioned nodes."
+
+      - type: "text"
+        title: "Pre-Vote Algorithm"
+        bullets:
+          - "Candidate first sends PreVote requests (doesn't increment term)"
+          - "Followers respond based on: log up-to-date, no recent leader contact"
+          - "If majority grants PreVote: proceed with normal RequestVote"
+          - "If majority rejects PreVote: back off without disrupting cluster"
+          - "Prevents spurious term increases and leadership disruption"
+        notes: "Explain how pre-vote works in detail. This is a subtle but important optimization for cluster stability."
+
+      - type: "text"
+        title: "Production Impact of Optimizations"
+        bullets:
+          - "Leader Transfer: Enables zero-downtime rolling updates"
+          - "Pre-Vote: Reduces election storms in unstable networks"
+          - "Combined: Significantly improves production cluster stability"
+          - "Real systems (etcd, Consul) implement both optimizations"
+          - "Critical for meeting high availability SLAs (99.9%+)"
+        notes: "Connect these optimizations to real-world production benefits. These are not academic curiosities but practical necessities."
+
+  - title: "Beyond Raft: The Broader Consensus Landscape"
+    slides:
+      - type: "text"
+        title: "Consensus Algorithm Landscape"
+        bullets:
+          - "Raft and Multi-Paxos are the foundation, but innovation continues"
+          - "Different workloads and requirements drive specialized algorithms"
+          - "Trade-offs: Performance vs simplicity, latency vs throughput"
+          - "Geographic distribution creates new challenges and opportunities"
+          - "Let's explore some notable alternatives and their unique properties"
+        notes: "Set the stage for exploring other consensus algorithms. Emphasize that Raft/Paxos are foundational but not the end of the story."
+
+      - type: "text"
+        title: "Emerging Trends & Future Directions"
+        bullets:
+          - "🌐 Geo-distributed: Protocols optimized for WAN latencies"
+          - "🚀 Specialized Hardware: RDMA, persistent memory, programmable NICs"
+          - "📊 Byzantine Fault Tolerance: Blockchain and cryptocurrency influence"
+          - "🎯 Domain-Specific: Consensus tailored for specific applications"
+          - "The field continues to evolve as systems scale and requirements change"
+        notes: "Provide a forward-looking perspective on where consensus research and practice are heading. This keeps the presentation current and forward-thinking."
+
+  - title: "Production Performance & Benchmarks"
+    slides:
+      - type: "text"
+        title: "Consensus Performance in Production"
+        bullets:
+          - "Academic correctness is necessary but not sufficient for production"
+          - "Real systems must handle: high throughput, low latency, failures"
+          - "Performance characteristics affect architecture decisions"
+          - "Let's examine actual benchmarks and production considerations"
+          - "Focus: Storage cost, network overhead, and real-world trade-offs"
+        notes: "Introduce the importance of understanding performance characteristics in addition to correctness properties."
+
+      - type: "text"
+        title: "Disk I/O: The Critical Bottleneck"
+        bullets:
+          - "Consensus requires durable storage for safety guarantees"
+          - "fsync() calls ensure data survives crashes - but they're expensive"
+          - "Replication multiplies the fsync cost across multiple nodes"
+          - "Benchmark: fsync latency with different replication factors"
+          - "Understanding: Why consensus can't be faster than disk I/O"
+        notes: "Set up the disk I/O benchmark by explaining why fsync is critical for consensus safety and how replication affects performance."
+
+      - type: "text"
+        title: "fsync Performance Benchmark Results"
+        bullets:
+          - "Test Setup: SSD storage, 1KB log entries, measured fsync latency"
+          - "1 Replica: ~0.1ms fsync (no replication, baseline)"
+          - "3 Replicas: ~2.5ms commit (majority of 3 nodes must fsync)"
+          - "5 Replicas: ~4.1ms commit (majority of 5 nodes must fsync)" 
+          - "Key Insight: Consensus latency ≥ (majority_size × fsync_latency)"
+          - "Production Impact: Choose replication factor carefully"
+        notes: "Present realistic fsync benchmark results. These numbers are representative of what you'd see with modern SSDs. Emphasize the linear relationship between replication factor and commit latency."
+
+      - type: "text"
+        title: "Network Overhead: Message Complexity Analysis"
+        bullets:
+          - "Message count directly affects network utilization and latency"
+          - "Different consensus algorithms have different message overhead"
+          - "Analysis: Messages per committed operation in steady state"
+          - "Factors: Network RTT, bandwidth, message size"
+          - "Trade-offs: Fewer messages vs more complex coordination"
+        notes: "Introduce the message complexity analysis that will help practitioners understand network costs of different consensus approaches."
+
+      - type: "text"
+        title: "Consensus Algorithm Message Comparison"
+        bullets:
+          - "Basic Paxos (single value): 4 messages (Prepare + Promise + Accept + Accepted)"
+          - "Multi-Paxos (optimized): 2 messages (Accept + Accepted per operation)"
+          - "Raft (AppendEntries): 2 messages (AppendEntries + Response per operation)"
+          - "Leader Election Overhead: Raft ~O(n) messages, Paxos ~O(n²) messages"
+          - "Network Utilization: All similar in steady state (~2 msg/operation)"
+        notes: "Provide concrete message counts for different algorithms. Emphasize that steady-state performance is similar, but failure recovery differs significantly."
+
+      - type: "text"
+        title: "Throughput vs Latency Trade-offs"
+        bullets:
+          - "Batching: Group operations to amortize consensus overhead"
+          - "Pipeline Depth: Multiple outstanding operations improve throughput"
+          - "Write Amplification: Each client write becomes multiple replica writes"
+          - "Read Performance: Leaders can serve reads without consensus (with caveats)"
+          - "Real Systems: etcd ~10K ops/sec, Consul ~5K ops/sec, typical deployments"
+        notes: "Discuss practical performance optimization techniques and provide realistic throughput numbers from production systems."
+
+  - title: "Production Case Studies & Security"
+    slides:
+      - type: "text"
+        title: "Case Study: etcd Snapshot Recovery"
+        bullets:
+          - "Scenario: Kubernetes etcd cluster with 1 slow follower"
+          - "Problem: Slow disk on one node causes cluster performance degradation"
+          - "Symptoms: Leader waits for slow follower, increasing commit latency"
+          - "Solution: Use InstallSnapshot to catch up slow follower"
+          - "Process: Create snapshot → Send to slow node → Resume normal replication"
+          - "Result: Cluster performance restored, slow node caught up"
+        notes: "Present a realistic production scenario that demonstrates the practical value of snapshotting. This is based on common Kubernetes etcd issues."
+
+      - type: "text"
+        title: "Case Study: Slow Follower Recovery Details"
+        bullets:
+          - "Detection: Monitor commit latency increases from ~5ms to ~100ms"
+          - "Root Cause: Node3 disk latency spikes due to hardware issues"
+          - "Immediate Action: Leader creates snapshot at log index 500,000"
+          - "Recovery Process: InstallSnapshot RPC sends 50MB state to Node3"
+          - "Outcome: Node3 catches up in 30 seconds vs 10 minutes of normal replication"
+          - "Lesson: Snapshots are critical for production cluster health"
+        notes: "Provide specific metrics and timelines to make the case study concrete and actionable for practitioners."
+
+      - type: "text"
+        title: "Production Deployment Patterns"
+        bullets:
+          - "Multi-AZ Deployment: Distribute replicas across availability zones"
+          - "Resource Isolation: Dedicated nodes for consensus clusters"
+          - "Monitoring: Track commit latency, leader election frequency"
+          - "Backup Strategy: Regular snapshots + log archival"
+          - "Capacity Planning: CPU, memory, disk I/O, and network requirements"
+          - "Upgrade Strategy: Rolling updates with leader transfer"
+        notes: "Provide practical guidance for deploying consensus systems in production environments."
+
+      - type: "text"
+        title: "Security Considerations in Production"
+        bullets:
+          - "Transport Security: TLS 1.3 for all inter-node communication"
+          - "Certificate Management: Automatic rotation, short-lived certificates"
+          - "Authentication: mTLS client certificates for cluster membership"
+          - "Authorization: RBAC for different operations and data access"
+          - "Network Security: Private networks, firewall rules, network policies"
+          - "Data Encryption: Encryption at rest for logs and snapshots"
+        notes: "Cover the essential security practices for production consensus deployments. These are critical for enterprise deployments."
+
+      - type: "text"
+        title: "TLS & Certificate Rotation in Consensus Clusters"
+        bullets:
+          - "Challenge: Rotate certificates without breaking consensus"
+          - "Solution: Gradual certificate rollout across cluster nodes"
+          - "Process: Update one node at a time, verify connectivity"
+          - "Tools: cert-manager, HashiCorp Vault, cloud certificate services"
+          - "Best Practice: Automate rotation, monitor certificate expiry"
+          - "Fallback: Manual intervention procedures for certificate emergencies"
+        notes: "Focus on the specific challenge of certificate management in consensus systems where all nodes must trust each other."
+
+      - type: "text"
+        title: "Security Monitoring & Incident Response"
+        bullets:
+          - "Threat Monitoring: Unusual network patterns, authentication failures"
+          - "Access Logging: All consensus operations with client identity"
+          - "Anomaly Detection: Unexpected leader elections, message patterns"
+          - "Incident Response: Procedures for compromise detection and recovery"
+          - "Compliance: SOC2, FedRAMP requirements for consensus clusters"
+          - "Penetration Testing: Regular security assessments of cluster deployment"
+        notes: "Address the operational security considerations that are critical for enterprise consensus deployments."
+
+  - title: "Comparative Analysis: Paxos vs Raft"
+    slides:
+      - type: "text"
+        title: "Paxos ↔ Raft Conceptual Cross-walk"
+        bullets:
+          - "Generation Number (Paxos) ↔ Term (Raft): Both provide ordering and leader authority"
+          - "Prepare Phase (Paxos) ↔ RequestVote (Raft): Both establish leadership"
+          - "Promise Response (Paxos) ↔ VoteGranted (Raft): Both acknowledge leadership"
+          - "Accept Phase (Paxos) ↔ AppendEntries (Raft): Both replicate decisions"
+          - "Accepted Response (Paxos) ↔ AppendEntries Response (Raft): Both confirm replication"
+          - "Proposer (Paxos) ↔ Leader (Raft): Both coordinate consensus"
+        notes: "Provide a clear mapping between Paxos and Raft concepts. This helps practitioners understand the fundamental similarities despite different terminology."
+
+      - type: "text"
+        title: "Key Algorithmic Differences"
+        bullets:
+          - "Leader Election: Raft restricts voting based on log completeness, Paxos more flexible"
+          - "Recovery: Raft new leader has latest log, Paxos leaders query for missing values"
+          - "Log Structure: Raft enforces ordered log, Paxos allows arbitrary proposal numbers"
+          - "Safety Mechanism: Raft uses log matching property, Paxos uses highest ballot number"
+          - "Optimization: Raft optimizes for common case, Paxos more general but complex"
+          - "Implementation: Raft designed for understandability, Paxos for theoretical elegance"
+        notes: "Highlight the key design differences that lead to different implementation and performance characteristics."
+
+      - type: "text"
+        title: "Message Count Analysis: Steady State"
+        bullets:
+          - "Raft AppendEntries: 2 messages per operation (Request + Response)"
+          - "Multi-Paxos Optimized: 2 messages per operation (Accept + Accepted)"
+          - "Basic Paxos: 4 messages per operation (Prepare + Promise + Accept + Accepted)"
+          - "Network Overhead: Similar in optimized form (~2 messages per operation)"
+          - "Batching Impact: Both benefit equally from operation batching"
+          - "Conclusion: Steady-state performance very similar between algorithms"
+        notes: "Provide concrete message counts to dispel myths about performance differences between Raft and Paxos in steady state."
+
+      - type: "text"
+        title: "Message Count Analysis: Recovery Scenarios"
+        bullets:
+          - "Raft Leader Election: O(n) messages for RequestVote + responses"
+          - "Paxos Leader Election: O(n) messages for Prepare + Promise"
+          - "Raft Log Recovery: 0 additional messages (leader has latest log)"
+          - "Paxos Value Recovery: O(k x n) messages for k missing values"
+          - "Total Recovery Cost: Raft O(n), Paxos O(k x n) where k = missing values"
+          - "Advantage: Raft's recovery optimization significantly reduces failure recovery time"
+        notes: "Show where Raft's optimization really shines - during failure recovery scenarios. This is the key advantage of Raft's design choices."
+    

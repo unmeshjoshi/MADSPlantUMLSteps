@@ -1,0 +1,70 @@
+digraph QuorumIntersection {
+
+    // General node style
+    node [shape=circle, style=filled, fontname="Helvetica", fontsize=10];
+
+    
+    
+    subgraph cluster_legend {
+        label="Legend";
+        style=solid; color=black; penwidth=0.2;
+        
+        node [shape=rectangle, width=0.1, height=0.1  style=filled, fontname="Helvetica", fontsize=6];
+        
+        N [label="Live" fillcolor="lightblue"];
+        F [label="Failed" fillcolor="lightgray"];
+        W [label="Intersection" fillcolor="lightgreen"];
+    }
+    
+    // ===== Time T1 Cluster =====
+    subgraph cluster_time1 {
+        label = "Time T1: Write Operation (Qw = 3, F=2)";
+        style=dashed;
+        color=grey;
+        fontname="Helvetica-Bold";
+        fontsize=12;
+
+        // Nodes at T1
+        A1 [label="Node A", fillcolor="lightblue", 
+            tooltip="Participated in Write, Failed at Read"];
+        B1 [label="Node B", fillcolor="lightblue", 
+            tooltip="Participated in Write, Failed at Read"];
+        C1 [label="Node C", fillcolor="#90EE90", 
+            tooltip="Participated in Write AND Read (The Witness)"];
+        D1 [label="Node D", fillcolor="lightgray", 
+            tooltip="Failed at Write, Participated in Read"];
+        E1 [label="Node E", fillcolor="lightgray", 
+            tooltip="Failed at Write, Participated in Read"];
+    }
+
+    // ===== Time T2 Cluster =====
+    subgraph cluster_time2 {
+        label = "Time T2: Read Operation (Qr = 3, F=2)";
+        style=dashed;
+        color=grey;
+        fontname="Helvetica-Bold";
+        fontsize=12;
+
+        // Nodes at T2
+        A2 [label="Node A", fillcolor="lightgray", 
+            tooltip="Participated in Write, Failed at Read"];
+        B2 [label="Node B", fillcolor="lightgray", 
+            tooltip="Participated in Write, Failed at Read"];
+        C2 [label="Node C", fillcolor="#90EE90", 
+            tooltip="Participated in Write AND Read (The Witness)"];
+        D2 [label="Node D", fillcolor="lightblue", 
+            tooltip="Failed at Write, Participated in Read"];
+        E2 [label="Node E", fillcolor="lightblue", 
+            tooltip="Failed at Write, Participated in Read"];
+    }
+
+    // Optional: invisible edges just to align T1 and T2 nodes nicely
+    N -> A1 [style=invis];
+   
+    
+    A1 -> A2 [style=invis];
+    B1 -> B2 [style=invis];
+    C1 -> C2 [style=dotted, label="Intersection", fontcolor="#555555", fontsize=10];
+    D1 -> D2 [style=invis];
+    E1 -> E2 [style=invis];
+}

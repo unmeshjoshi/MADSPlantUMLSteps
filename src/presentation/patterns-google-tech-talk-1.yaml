@@ -1,0 +1,131 @@
+title: "Patterns of Distributed Systems — Why Patterns, and Broken Assumptions"
+sections:
+  - title: "Why Patterns, Not Protocol Catalogs"
+    slides:
+      - type: "text"
+        title: "Why Patterns"
+        bullets:
+          - "We will explore why a pattern-based approach is essential for learning and understanding distributed systems. Rather than treating distributed systems as a collection of disparate algorithms, patterns provide a vocabulary for recurring problems and their battle-tested solutions."
+          - "Patterns encode forces, context, solution, and consequences — guiding real trade-offs."
+          - "A shared vocabulary accelerates design reviews, incident response, and onboarding."
+        notes: |
+          Set the narrative: patterns help us reason under production forces, not just prove properties in idealized models.
+      - type: "text"
+        title: "Patterns Emphasize Forces"
+        bullets:
+          - "Forces: latency budgets, failure modes, partitions, operator ergonomics, cost"
+          - "Trade-offs: consistency↔availability, coordination↔throughput, freshness↔cost"
+          - "Pattern = recurring resolution of forces in a recurring context"
+          - "Examples: Logs, Leaders, Leases; Quorums and Time; Idempotency and Backpressure"
+        notes: |
+          Use examples you already know (Spanner, Chubby, Borg, Pub/Sub) and name the patterns they instantiate.
+ 
+  - title: "Three Theory Assumptions That Break in Production"
+    slides:
+      - type: "text"
+        title: "What Breaks Outside the Classroom"
+        bullets:
+          - "1) Operations are atomic (e.g., 'append to log' happens all-at-once)"
+          - "2) Time and ordering are clear (clocks are accurate; total order is obvious)"
+          - "3) The network is reliable and failures are clean (no partial failures)"
+        notes: |
+          We'll motivate patterns by showing how these assumptions fail, and how patterns provide robust substitutes.
+ 
+  - title: "1) Operations Are Atomic — Not Really"
+    slides:
+      - type: "text"
+        title: "The Assumption"
+        bullets:
+          - "Atomic append/write: a single operation either fully happens or not"
+          - "Durability: once a write returns, data is safely on disk"
+          - "Ordering: writes are observed in the order they were issued"
+        notes: |
+          Many algorithms assume atomic, durable steps for brevity and proof clarity.
+      - type: "text"
+        title: "What Production Does"
+        bullets:
+          - "Partial writes and torn records at page boundaries"
+          - "Buffered I/O and reordering by OS, filesystem, and storage controllers"
+          - "fsync semantics vary; caches may acknowledge before data reaches stable media"
+          - "Power loss and kernel crashes leave mixed, prefix, or duplicated tails"
+        notes: |
+          The 'atomic write' is an illusion without explicit guardrails.
+      - type: "text"
+        title: "Pattern: Write-Ahead Log (WAL)"
+        bullets:
+          - "Append-only records with framing: length, type, LSN/sequence"
+          - "Checksums per record or block to detect partial/torn writes"
+          - "Force synchronization (fsync) at commit boundaries; group commit for throughput"
+          - "Idempotent replay: apply-intent semantics on recovery"
+          - "Segmentation and durable metadata (manifest) for bounded recovery time"
+        notes: |
+          Forces: durability vs throughput vs recovery time. WAL makes failures observable and repairable.
+      - type: "text"
+        title: "WAL Record Sketch"
+        bullets:
+          - "record = [len|type|lsn|payload|crc32]"
+          - "append(record); maybe_fsync(commit_policy)"
+          - "on read: verify crc32 and length; reject/truncate tail on mismatch"
+          - "replay idempotent intents to rebuild derived state"
+        notes: "Keep conceptual; no API specifics required."
+      - type: "text"
+        title: "Recovery Protocol"
+        bullets:
+          - "On startup: start from last checkpoint or manifest"
+          - "Scan forward; stop at first checksum or length mismatch; truncate tail"
+          - "Reapply intents idempotently; rebuild indexes and caches"
+          - "Use epochs/fencing to prevent old leaders from writing after failover"
+        notes: |
+          Safety over speed: prefer truncation over trusting ambiguous tails.
+ 
+      - type: "diagram"
+        title: "Write Path: Page Cache and Block Device Blocks"
+        diagramRef: "os_page_cache_write_path"
+        notes: "Sequence shows caching, dirty pages, block mapping, and fsync durability boundary."
+ 
+      - type: "diagram"
+        title: "Torn Writes Across Logical Blocks"
+        diagramRef: "torn_writes_logical_blocks"
+        notes: "Demonstrates how partial persistence creates mixed old/new bytes and how WAL guardrails recover safely."
+ 
+      - type: "diagram"
+        title: "Torn Write: Full Block + Partial Next Block"
+        diagramRef: "torn_write_partial_second_block"
+        notes: "Highlights common torn-write case when a record crosses a block boundary."
+ 
+      - type: "diagram"
+        title: "Unaligned Flush vs Sector-Aligned Padding"
+        diagramRef: "torn_write_sector_alignment"
+        notes: "Shows why sector alignment matters and a pragmatic padding strategy to reduce torn-write risk."
+ 
+  
+ 
+  - title: "Putting Patterns to Work"
+    slides:
+      - type: "text"
+        title: "From Assumptions to Design Choices"
+        bullets:
+          - "Map broken assumption → choose pattern(s) to compensate"
+          - "Write explicit contracts: durability, ordering, delivery, authority"
+          - "Design review checklist: logs, leaders, quorums, leases, idempotency, backpressure"
+        notes: |
+          Use the vocabulary to critique and evolve your systems.
+      - type: "text"
+        title: "Audit Exercise"
+        bullets:
+          - "Pick one service; name its patterns and missing guardrails"
+          - "Find: WAL or journaling; fencing/epochs; quorum points; idempotent boundaries"
+          - "Plan: where to add leases, retries, commit-waits, or flow control"
+        notes: "Make the next oncall easier by reducing ambiguities."
+ 
+  - title: "References and Next"
+    slides:
+      - type: "text"
+        title: "Next: Replication Patterns Deep Dive"
+        bullets:
+          - "Logs, Leaders, Quorums — mechanics, forces, and production guardrails"
+      - type: "text"
+        title: "Reading"
+        bullets:
+          - "Patterns of Distributed Systems (Joshi, AW 2024) — pattern forces"
+          - "Spanner, Chubby, Borg, Pub/Sub papers — patterns in practice"

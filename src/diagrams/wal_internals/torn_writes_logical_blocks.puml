@@ -1,0 +1,58 @@
+@startuml
+!include ../../style.puml
+
+title Torn Writes Across Logical Blocks (Partial Persist on Power Loss)
+
+actor Application as App
+box "OS Layer" #LightBlue
+participant "VFS / FileSystem" as FS
+participant "OS Page Cache\n(4KB pages)" as Cache
+end box
+box "Block Storage Layer" #LightGray
+participant "Block Layer\n(I/O Scheduler)" as Block
+participant "Block Device\n(SSD/HDD/NVMe)" as Dev
+database "Stable Media" as Media
+end box
+'[step1 {"name":"Intent"}]
+== Intent ==
+App -> FS: write(fd, record[8KB])
+FS -> Cache: copy to pages P0,P1 (each 4KB)\nmark DIRTY
+FS --> App: return (success)\n(data is cached)
+'[/step1]
+' [step2 {"name":"Flush"}]
+== Flush ==
+App -> FS: fsync(fd)
+FS -> Cache: select DIRTY pages (P0,P1)
+Cache -> Block: submit writes for P0,P1
+Block -> Dev: write P0 blocks [LBA..LBA+7]\n(write P1 blocks [LBA+8..LBA+15])
+
+note over Dev
+  Example: logical block size = 512B.\n4KB page = 8 blocks.\n8KB record spans 16 blocks.
+end note
+'[/step2]
+' [step3 {"name":"Failure", "newPage":"true"}]
+== Failure ==
+Dev -> Media: persist blocks [LBA..LBA+4]
+note over Dev,Media #FFEEEE
+  Power Loss occurs now.\nOnly a prefix of the intended blocks persisted.
+  On disk: mixed old/new across record range → torn write.
+end note
+'[/step3]
+' [step4 {"name":"After Restart (Recovery)", "newPage":"true"}]
+== After Restart (Recovery) ==
+App -> FS: open and recover
+FS -> Cache: read WAL/log tail
+Cache -> Dev: read record header/trailer
+Dev -> Cache: return bytes (mixed old/new tail)
+note over Cache
+  Checksum/length mismatch detected.\nTail is ambiguous → truncate from last good LSN.
+end note
+Cache -> FS: truncate torn tail, stop at last valid record
+FS --> App: recovery complete (state rebuilt via idempotent replay)
+
+note over FS,Dev
+  Guardrails:\n- Frame records: [len|type|lsn|payload|crc]\n- Align fsync boundaries to commit points\n- Prefer truncation over trusting ambiguous tails
+end note
+'[/step4]
+@enduml
+

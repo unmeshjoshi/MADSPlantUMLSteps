@@ -1,0 +1,66 @@
+@startuml
+
+!include ../../style.puml
+
+title OS Page Cache Write Path and Block Device Logical Blocks
+
+participant Application as App
+box "OS Layer" #LightBlue
+participant "VFS / FileSystem" as FS
+participant "OS Page Cache\n(4KB pages)" as Cache
+end box
+box "Block Storage Layer" #LightGray
+participant "Block Layer\n(I/O Scheduler)" as Block
+participant "Block Device\n(SSD/HDD/NVMe)" as Dev
+database "Stable Media" as Media
+end box
+'[step1 {"name":"Application write"}]
+== Application write ==
+App -> FS: write(fd, bytes)
+'[/step1]
+' [step2 {"name":"Copy to Page Cache"}]
+FS -> Cache: copy bytes into page(s)\nmark pages DIRTY
+note over Cache
+  OS page cache uses fixed-size pages (e.g., 4KB).
+  A write can span multiple pages.
+  Each 4KB page maps to multiple logical blocks\n(e.g., 8 × 512B blocks or 1 × 4KB block).
+end note
+FS --> App: return (success)\n(data is cached in memory)
+'[/step2]
+' [step3 {"name":"Time passes"}]
+... time passes ...
+'[/step3]
+' [step4 {"name":"Flush for Durability", "newPage":"true"}]
+== Flush for Durability ==
+App -> FS: fsync(fd)
+' [/step4]
+' [step5 {"name":"Block Device write"}]
+FS -> Cache: select DIRTY pages to flush
+'[/step5]
+' [step6 {"name":"Block Device write complete"}]
+Cache -> Block: submit BIOs for page ranges\n(page -> [LBA..LBA+k])
+note over Block
+  Coalesce and reorder adjacent writes.\nAligns I/O to device logical block size.
+end note
+'[/step6]
+' [step7 {"name":"Block Device write complete"}]
+Block -> Dev: write logical blocks [LBA..]
+note over Dev
+  Device uses logical block size (512B/4KB).\nController may reorder internally.
+end note
+Dev -> Media: persist blocks to stable media
+'[/step7]
+' [step8 {"name":"Block Device write complete"}]
+Dev --> Block: ack (write complete)
+Block --> Cache: ack (pages CLEAN)
+Cache -> FS: flush complete
+FS --> App: fsync returns (durability guaranteed)
+
+== Notes ==
+note over FS,Dev
+  Without explicit fsync, data may remain only in caches\n(OS page cache and device caches).
+  WAL/journaling uses checksums + fsync boundaries\nto detect and repair torn/partial writes.
+end note
+'[/step8]
+@enduml
+

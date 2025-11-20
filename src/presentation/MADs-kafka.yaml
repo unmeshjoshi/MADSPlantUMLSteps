@@ -82,3 +82,22 @@ sections:
         title: "Brokers handle LeaderAndIsrRequest"
         diagramRef: "kafka_handle_leaderIsr_request"
         notes: "Brokers create log files"
+
+  - title: "Log Structure"
+    slides:
+      - type: "text"
+        title: "Log: Append-Only File with Offset Index"
+        bullets:
+          - "Log is an append-only file: messages written sequentially, no modifications or deletions"
+          - "Messages have variable length, so we cannot calculate file position from offset"
+      
+      - type: "text"
+        title: "OffsetIndex maps logical offset (message ID) to physical file position"
+        bullets:
+          - "On append: write to end of file, store offset → file position mapping"
+          - "On read: lookup file position from offset index, then read from that position"
+
+      - type: "diagram"
+        title: "Log: Append-Only File with Offset Index"
+        diagramRef: "kafka_log_append_only"
+        notes: "Shows two key concepts: (1) Append-only file structure where messages are written sequentially to the end of the file, and (2) OffsetIndex mapping that allows efficient random access by offset despite variable-length messages. The diagram demonstrates both append and read operations, showing how the index is maintained and used."
