@@ -1,0 +1,38 @@
+@startuml
+!include ../../style.puml
+
+title Generation Rejection: Old Leader vs New Generation
+
+participant Athens as "Athens\n(Old Leader)"
+participant Byzantium as "Byzantium\n(New Leader)"
+participant Cyrene as "Cyrene\n(Follower)"
+
+' [step1 {"name":"Disconnection and Generation Update"}]
+note over Athens #FFCCCC: Generation 1\nDisconnected
+note over Byzantium, Cyrene: Generation 1
+
+group "Generation Update"
+    note over Byzantium, Cyrene: Athens detected as down
+    Byzantium -> Cyrene: vote(generation=2)
+    Cyrene -> Byzantium: voted(generation=2)
+    note over Byzantium, Cyrene: Moved to Generation 2
+end
+' [/step1]
+
+' [step2 {"name":"Athens Recovery and Rejection", "newPage":"true"}]
+group "Athens Recovery"
+    note over Athens: Athens recovers\nStill at Generation 1
+    Athens -> Byzantium: request(generation=1)
+    Athens -> Cyrene: request(generation=1)
+    
+    note over Byzantium: Current Generation 2 > 1\nReject request
+    Byzantium -[#red]-> Athens: rejected(generation=2)
+    
+    note over Cyrene: Current Generation 2 > 1\nReject request
+    Cyrene -[#red]-> Athens: rejected(generation=2)
+    
+    note over Athens: Receives higher generation\nMust step down / update
+end
+' [/step2]
+
+@enduml

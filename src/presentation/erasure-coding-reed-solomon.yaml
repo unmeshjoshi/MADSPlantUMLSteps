@@ -1,0 +1,25 @@
+title: "Erasure Coding with Reed–Solomon: Efficient Durability"
+sections:
+  - title: "Reed-Solomon Fundamentals"
+    slides:
+      - type: "text"
+        title: "Why Erasure Coding (RS)"
+        bullets:
+          - "Parameters: n = k + m shards (k data, m parity) — tolerate up to m failures"
+          - "Systematic code: data shards unchanged; parity computed over GF(2^8)"
+          - "Overhead: n/k; example k=6,m=3 → 1.5× storage vs 3× with triple replication"
+          - "Stripe: fixed-size chunk split into k shards; parity per stripe"
+          - "Trade-offs: CPU for encode/decode vs bandwidth and storage savings"
+        notes: "Used in HDFS-EC, Ceph, and cold storage. Emphasize efficiency and failure tolerance."
+ 
+  - title: "RS Encode/Decode Flow"
+    slides:
+      - type: "diagram"
+        title: "Reed-Solomon Encode and Reconstruct"
+        diagramRef: "reed_solomon_encode_decode"
+        bullets:
+          - "Encode: split data into k shards; compute m parity; store across n nodes"
+          - "Any k of n shards suffice to reconstruct missing shards"
+          - "Decode: fetch available shards; solve linear system to rebuild data"
+        notes: "Sequence shows client, encoder, storage nodes, parity creation, failure, and reconstruction."
+

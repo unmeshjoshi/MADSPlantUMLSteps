@@ -1,0 +1,72 @@
+@startuml
+!include ../style.puml
+title Reed-Solomon (RS) Encode and Reconstruct (n = k + m)
+
+actor Client
+box "Compute Layer" #LightBlue
+participant "RS Encoder/Decoder\n(GF(2^8))" as RS
+end box
+
+box "Storage Cluster (n nodes)" #LightGray
+participant "Node 1\n(Data D1)" as N1
+participant "Node 2\n(Data D2)" as N2
+participant "Node 3\n(...)" as N3
+participant "Node k\n(Data Dk)" as Nk
+participant "Node k+1\n(Parity P1)" as P1
+participant "Node k+2\n(Parity P2)" as P2
+participant "Node n\n(Parity Pm)" as Pm
+end box
+
+' [step1 {"name":"Encode (Write)"}]
+== Encode (Write) ==
+Client -> RS: 1) PUT Object/Stripe
+note right of RS
+  Params: k data, m parity; n = k + m
+  Stripe: split into k equal shards
+end note
+RS -> RS: 2) Split into D1..Dk
+RS -> RS: 3) Compute P1..Pm
+RS -> N1: 4) Store D1
+RS -> N2: 5) Store D2
+RS -> N3: 6) Store D3
+...
+RS -> Nk: 7) Store Dk
+RS -> P1: 8) Store P1
+RS -> P2: 9) Store P2
+...
+RS -> Pm: 10) Store Pm
+RS --> Client: 11) ACK
+' [/step1]
+
+' [step2 {"name":"Failure", "newPage":"true"}]
+== Failure ==
+note over N2 #FFE0E0
+  Node 2 failed; D2 unavailable
+end note
+
+== Reconstruct (Read/Repair) ==
+Client -> RS: 12) GET Object/Stripe
+RS -> N1: 13) Fetch D1
+RS -> N3: 14) Fetch D3
+...
+RS -> Nk: 15) Fetch Dk
+RS -> P1: 16) Fetch P1
+...
+RS -> Pm: 17) Fetch Pm
+note right of RS
+  Any k shards suffice if >= k available
+end note
+RS -> RS: 18) Recover missing shard(s)
+RS --> Client: 19) Return data stripe
+' [/step3]
+
+' [step4 {"name":"Background Repair", "newPage":"true"}]
+== Optional: Background Repair ==
+RS -> N2: 20) Write reconstructed D2'
+note over RS
+  Overhead: n/k; CPU: encode/decode;
+  Placement: spread across failure domains
+end note
+' [/step4]
+@enduml
+
