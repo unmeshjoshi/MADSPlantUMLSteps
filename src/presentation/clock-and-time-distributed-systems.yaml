@@ -10,7 +10,7 @@ sections:
         bullets:
           - "Why transaction consistency is hard in distributed systems"
           - "How Spanner, YugabyteDB, and CockroachDB solve it"
-          - "From clock drift to external consistency: the complete journey"
+          - "From clock drift to external consistency"
         notes: "Set the stage: This talk is about why transaction consistency is hard and how modern distributed databases solve it using clock-based patterns."
 
   - title: "The Problem: Physical Clock Drift"
@@ -20,7 +20,7 @@ sections:
         bullets:
           - "Computers run on independent clocks that drift apart"
           - "No global time source: Each node has its own view of time"
-          - "Clock skew (ε): The uncertainty window - maximum difference between any two clocks"
+          - "Clock skew (ε): The uncertainty window - difference between any two clocks"
           - "This is a fundamental, unsolvable hardware problem"
         notes: "Start with the fundamental issue. Define ε (the uncertainty window) early. Use the analogy of two generals or two bank accounts. Goal: Convince them this is a fundamental, unsolvable hardware problem."
       
@@ -49,7 +49,7 @@ sections:
       - type: "text"
         title: "Lamport Clock: Ensuring Causality"
         bullets:
-          - "Logical clock that ensures causality (partial order)"
+          - "Logical clock that ensures causality"
           - "Maintains happens-before relationships through message passing"
           - "If A sends to B, B's timestamp > A's timestamp"
           - "Establishes order but has no relation to real time (wall time)"
@@ -72,6 +72,7 @@ sections:
         bullets:
           - "Alice writes to server Blue at timestamp 1"
           - "Bob writes to server Green at timestamp 2"
+          - "Both the writes are not related to each other"
           - "Cannot determine which write happened first in real time"
           - "Values are only partially ordered: causally related events can be ordered, but concurrent events cannot"
           - "This is why Lamport clocks alone cannot provide total ordering across all events"
@@ -82,7 +83,7 @@ sections:
         bullets:
           - "Partial order only: Cannot order concurrent events on different servers"
           - "No real-time correlation: Cannot relate events to wall-clock time"
-          - "Cannot implement snapshot isolation: Transactions need timestamps that represent points in time"
+          - "Cannot implement snapshot isolation: Readers need timestamps that represent points in time for read operations"
           - "Need something better: Hybrid Logical Clock"
         notes: "Summarize why Lamport clocks aren't sufficient. They solve causality but not the real-time ordering problem."
 
@@ -110,38 +111,6 @@ sections:
           - "Returns hybrid timestamp to client, which updates its clock"
         notes: "Shows basic hybrid clock usage similar to Lamport clock, but with wall-clock time component for real-time correlation."
       
-      - type: "diagram"
-        title: "Hybrid Clock in Distributed Transactions"
-        diagramRef: "hybrid_clock_transaction"
-        bullets:
-          - "Coordinator starts transaction with clock value"
-          - "Each server compares received timestamp with local clock, takes maximum"
-          - "Servers increment clock before writing, return written timestamp"
-          - "Coordinator tracks highest timestamp across all servers"
-          - "Transaction commits at highest timestamp, ensuring all values stored at same timestamp"
-        notes: "Shows how hybrid clocks maintain causality in distributed transactions and ensure consistent commit timestamps."
-      
-      - type: "text"
-        title: "HLC Enables Decentralized Snapshot Isolation"
-        bullets:
-          - "Each node generates timestamps locally using its HybridClock"
-          - "Clocks stay synchronized through message passing (Lamport rules)"
-          - "HLC values used as transaction read timestamps"
-          - "CockroachDB and YugabyteDB use HLC for decentralized Snapshot Isolation (SI)"
-          - "No centralized timestamp oracle needed"
-        notes: "Explain how CockroachDB and YugabyteDB use HLC values as transaction read timestamps to achieve decentralized Snapshot Isolation (SI)."
-      
-      - type: "diagram"
-        title: "Snapshot Isolation with HLC: Complete Transaction Flow"
-        diagramRef: "snapshot_isolation_hybrid_clock_detailed"
-        bullets:
-          - "BEGIN: Client sends BeginTxnRequest with hybrid timestamp; server creates transaction record"
-          - "READ: Lazy read timestamp assignment on first operation; reads see snapshot at readTimestamp"
-          - "WRITE: Creates intent with transaction ID; intent is invisible to other transactions"
-          - "COMMIT: Conflict detection (only checks committed values), convert intents to committed values"
-          - "MVCC store maintains multiple versions with hybrid timestamps"
-        notes: "Complete step-by-step flow showing how snapshot isolation works with hybrid clocks from BEGIN to COMMIT."
-
   - title: "The Remaining Gap: External Consistency"
     slides:
       - type: "text"
@@ -156,10 +125,10 @@ sections:
       - type: "text"
         title: "External Consistency Violation Example"
         bullets:
-          - "Real Time: T₁ commits at 10:00:00.100, T₂ starts at 10:00:00.150"
-          - "T₁'s clock: 10:00:00.100, T₂'s clock: 10:00:00.050 (lagging by 100ms)"
-          - "T₁ commits with timestamp (10:00:00.100, 0)"
-          - "T₂ starts with read timestamp (10:00:00.050, 0)"
+          - "Real Time: T₁ commits at 10.2, T₂ starts after T1"
+          - "T₁'s clock: 10.2, T₂'s clock: 10.1 (lagging by 100ms)"
+          - "T₁ commits with timestamp (10:2, 0)"
+          - "T₂ starts with read timestamp (10:1, 0)"
           - "T₂'s readTs < T₁'s commitTs, but T₂ started AFTER T₁ committed in real time!"
           - "T₂ doesn't see T₁'s write → violates external consistency"
         notes: "Use a concrete example to show how clock skew causes external consistency violations even with HLC."
@@ -167,13 +136,13 @@ sections:
       - type: "text"
         title: "The Uncertainty Window"
         bullets:
-          - "For any read at timestamp T_read, values committed in window [T_read - ε, T_read] might have been written after our transaction started in real time"
+          - "For any read at timestamp T_read, values committed in window [T_read - ε, T_read] might have been written at the timestamp higher than T_read"
           - "ε (epsilon): Maximum expected clock skew (e.g., 100-500ms)"
           - "We cannot safely read values in this window without violating external consistency"
-          - "This justifies the need for Clock-Bound Wait pattern"
+          - "We need serves to wait before exposing the value to the readers"
         notes: "Explain the uncertainty window concept and why it exists. This sets up the need for the next pattern."
 
-  - title: "The Breakthrough: Clock-Bound Wait Pattern"
+  - title: "Clock-Bound Wait Pattern"
     slides:
       - type: "text"
         title: "Clock-Bound Wait: The Solution"
@@ -193,17 +162,6 @@ sections:
           - "Ensures all other servers have clocks past the write timestamp"
           - "After wait completes, value is stored and visible to all readers"
         notes: "Shows how commit wait ensures writes are visible to all nodes despite clock skew. Use a simple timeline diagram."
-      
-      - type: "diagram"
-        title: "Read Restart: Handling Uncertainty Window"
-        diagramRef: "read_restart_clock_skew"
-        bullets:
-          - "Alice reads at timestamp 1 from server Amber (clock lagging)"
-          - "Server Green detects version in uncertainty window [1-maxOffset, 1]"
-          - "Server throws ReadRestartException, suggests restart at timestamp 2"
-          - "Alice updates read timestamp to 2 and re-issues read"
-          - "Now sees 'After Dawn' safely outside uncertainty window"
-        notes: "Demonstrates read restart mechanism that handles clock uncertainty without blocking writes. Alternative to commit wait."
       
       - type: "diagram"
         title: "Commit Wait: Complete Flow - Write Waits"
@@ -256,7 +214,7 @@ sections:
         notes: "Demonstrates that after commit wait, even lagging clocks see the new value."
       
       - type: "diagram"
-        title: "Clock Bounds Across Cluster Nodes"
+        title: "What True Time gives?. Clock Bounds Across Cluster Nodes"
         diagramRef: "clock_bound"
         bullets:
           - "Each node has different error bounds (Green: ±1, Blue: ±2, Amber: ±3)"
@@ -309,15 +267,15 @@ sections:
         notes: "Shows how larger error bounds result in longer commit wait times."
       
       - type: "diagram"
-        title: "Read-Wait: Reads Wait for Pending Writes"
-        diagramRef: "commit_wait_clock_bound_philip_write_alice_read_wait"
+        title: "Read Restart: Handling Uncertainty Window while reading"
+        diagramRef: "read_restart_clock_skew"
         bullets:
-          - "Alice reads at time 4, handled by Amber (error bound ±3)"
-          - "Amber picks latest time (7) as read timestamp"
-          - "Philip writes at Green (error bound ±1), picks timestamp 5"
-          - "Alice's read waits until Green's earliest bound > 7 and write completes"
-          - "Ensures read sees all writes that should be visible"
-        notes: "Shows read-wait mechanism: reads wait for pending writes to complete before returning."
+          - "Alice reads at timestamp 1 from server Amber (clock lagging)"
+          - "Server Green detects version in uncertainty window [1-maxOffset, 1]"
+          - "Server throws ReadRestartException, suggests restart at timestamp 2"
+          - "Alice updates read timestamp to 2 and re-issues read"
+          - "Now sees 'After Dawn' safely outside uncertainty window"
+        notes: "Demonstrates read restart mechanism that handles clock uncertainty without blocking writes. Alternative to commit wait."
       
       - type: "text"
         title: "Commit Wait vs Read Restart"
@@ -325,8 +283,8 @@ sections:
           - "Commit Wait: Writes wait ε before acknowledging (Spanner approach)"
           - "Read Restart: Reads restart if uncertainty detected (YugabyteDB/CockroachDB approach)"
           - "Both achieve external consistency but with different trade-offs"
-          - "Commit wait: Higher write latency, simpler reads"
-          - "Read restart: Lower write latency, occasional read restarts"
+          - "Commit wait: Higher write latency, simpler reads."
+          - "Read restart: Lower write latency, occasional read restarts. Preferred in open source databases which dont have TrueTime"
         notes: "Compare the two approaches to handling the uncertainty window."
 
   - title: "The Enabler: TrueTime and Time Sync"
@@ -358,15 +316,6 @@ sections:
           - "Enables Spanner-like guarantees on AWS infrastructure"
         notes: "Amazon Time Sync/ClockBound: Mention this provides the ε guarantee to commodity clouds, democratizing the Spanner approach."
       
-      - type: "text"
-        title: "Snapshot Isolation with HLC: Complete Picture"
-        bullets:
-          - "HLC provides decentralized timestamp generation"
-          - "Enables Snapshot Isolation without centralized oracle"
-          - "Clock-Bound Wait (commit wait or read restart) ensures external consistency"
-          - "Together: Distributed transactions with external consistency guarantees"
-        notes: "Bring it all together: How HLC + Clock-Bound Wait enables distributed snapshot isolation with external consistency."
-
   - title: "Conclusion & Key Takeaways"
     slides:
       - type: "text"
@@ -376,7 +325,7 @@ sections:
           - "Lamport Clock: Solves causality but only partial order"
           - "Hybrid Logical Clock: Adds real-time correlation, enables decentralized SI"
           - "Clock-Bound Wait: Bridges the gap to external consistency"
-          - "Achievement: External Consistency (Linearizability) at global scale"
+          - "External Consistency (Linearizability) at global scale"
         notes: "Summarize the journey: Problem → HLC → Commit Wait → Bounded Time. End with the achievement: How these patterns allow External Consistency (Linearizability) at global scale."
       
       - type: "text"
@@ -399,14 +348,3 @@ sections:
           - "CockroachDB Transaction Model"
           - "Amazon Time Sync Service and ClockBound"
         notes: "Provide references for further reading."
-
-  - title: "Q&A"
-    slides:
-      - type: "text"
-        title: "Questions?"
-        bullets:
-          - "Open floor for questions"
-          - "Discussion on clock synchronization strategies"
-          - "Trade-offs between commit wait and read restart"
-          - "Implementation details and best practices"
-        notes: "Open the floor for questions about clock synchronization, external consistency, and distributed transaction patterns."

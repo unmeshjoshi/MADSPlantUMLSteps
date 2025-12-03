@@ -6,6 +6,7 @@ participant Server
 database "MVCCStore" as Store
 database "TxnRecord" as TxnRecord
 
+' [step1 {"name":"BEGIN Transaction", "newPage":"true"}]
 note over Client: HybridClock: (1000, 0)
 
 == BEGIN Transaction ==
@@ -16,7 +17,8 @@ Server -> TxnRecord: store(status=PENDING, startTime=(1000,1))
 Server --> Client: BeginTxnResponse(txnId="T1", propagatedTime=(1000,1))
 Client -> Client: tick((1000,1))
 note over Client: HybridClock: (1000, 1)
-
+' [/step1]
+' [step2 {"name":"READ Operation (Lazy Read Timestamp Assignment)", "newPage":"true"}]
 == READ Operation (Lazy Read Timestamp Assignment) ==
 Client -> Client: ensureReadTimestamp()\nif readTs == null:\n  readTs = clock.now() = (1000, 2)
 note over Client: Transaction T1\nreadTimestamp: (1000, 2)
@@ -34,7 +36,8 @@ note right of Server: Returns latest committed\nversion <= (1000,2)
 Server --> Client: StorageReadResponse(value="150", propagatedTime=(1000,3))
 Client -> Client: tick((1000,3))
 note over Client: HybridClock: (1000, 3)
-
+' [/step2]
+' [step3 {"name":"WRITE Operation (Create Intent)", "newPage":"true"}]
 == WRITE Operation (Create Intent) ==
 Client -> Server: StorageWriteIntentRequest(key="balance", value="200", txnId="T1", clientTime=(1000,3))
 Server -> Server: tick((1000,3))
@@ -49,6 +52,8 @@ end note
 Server --> Client: StorageWriteIntentResponse(success=true, propagatedTime=(1000,4))
 Client -> Client: tick((1000,4))
 note over Client: HybridClock: (1000, 4)
+' [/step3]
+' [step4 {"name":"Another READ (Read Own Write)", "newPage":"true"}]
 
 == Another READ (Read Own Write) ==
 Client -> Server: StorageReadRequest(key="balance", readTs=(1000,2), txnId="T1", clientTime=(1000,4))
@@ -63,6 +68,8 @@ note over Client: Read own write: sees intent
 Client -> Server: StorageCommitRequest(txnId="T1", writeKeys=["balance"], readKeys=["balance"], clientTime=(1000,5))
 Server -> Server: tick((1000,5))
 Server -> Server: now() → commitTs = (1000, 6)
+' [/step4]
+' [step5 {"name":"Conflict Detection", "newPage":"true"}]
 
 == Conflict Detection ==
 Server -> Store: hasWritesAfter("balance", readTimestamp=(1000,2))
@@ -85,6 +92,6 @@ Server -> TxnRecord: update(status=COMMITTED, commitTimestamp=(1000,6))
 Server --> Client: StorageCommitResponse(success=true, propagatedTime=(1000,6))
 Client -> Client: tick((1000,6))
 note over Client: Transaction committed
-
+' [/step5]
 @enduml
 
