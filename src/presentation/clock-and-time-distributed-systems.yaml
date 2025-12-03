@@ -319,7 +319,7 @@ sections:
   - title: "Conclusion & Key Takeaways"
     slides:
       - type: "text"
-        title: "The Journey: Problem → HLC → Clock-Bound Wait → External Consistency"
+        title: "Problem → HLC → Clock-Bound Wait → External Consistency"
         bullets:
           - "Problem: Physical clock drift (ε) makes global ordering impossible"
           - "Lamport Clock: Solves causality but only partial order"
@@ -338,13 +338,36 @@ sections:
           - "YugabyteDB/CockroachDB use read restart with larger ε (200-500ms)"
           - "Amazon Time Sync democratizes Spanner approach on commodity clouds"
         notes: "Provide clear takeaways that summarize the key concepts and solutions."
-      
-      - type: "text"
-        title: "References and Further Reading"
+  - title: "Appendix"
+    slides:
+      - type: "diagram"
+        title: "Hybrid Clock in Distributed Transactions"
+        diagramRef: "hybrid_clock_transaction"
         bullets:
-          - "Hybrid Logical Clocks (Kulkarni et al., 2014)"
-          - "Spanner: Google's Globally-Distributed Database"
-          - "YugabyteDB Transaction Layer Architecture"
-          - "CockroachDB Transaction Model"
-          - "Amazon Time Sync Service and ClockBound"
-        notes: "Provide references for further reading."
+          - "Coordinator starts transaction with clock value"
+          - "Each server compares received timestamp with local clock, takes maximum"
+          - "Servers increment clock before writing, return written timestamp"
+          - "Coordinator tracks highest timestamp across all servers"
+          - "Transaction commits at highest timestamp, ensuring all values stored at same timestamp"
+        notes: "Shows how hybrid clocks maintain causality in distributed transactions and ensure consistent commit timestamps."
+
+      - type: "text"
+        title: "HLC Enables Decentralized Snapshot Isolation"
+        bullets:
+          - "Each node generates timestamps locally using its HybridClock"
+          - "Clocks stay synchronized through message passing (Lamport rules)"
+          - "HLC values used as transaction read timestamps"
+          - "CockroachDB and YugabyteDB use HLC for decentralized Snapshot Isolation (SI)"
+          - "No centralized timestamp oracle needed"
+        notes: "Explain how CockroachDB and YugabyteDB use HLC values as transaction read timestamps to achieve decentralized Snapshot Isolation (SI)."
+
+      - type: "diagram"
+        title: "Snapshot Isolation with HLC: Complete Transaction Flow"
+        diagramRef: "snapshot_isolation_hybrid_clock_detailed"
+        bullets:
+          - "BEGIN: Client sends BeginTxnRequest with hybrid timestamp; server creates transaction record"
+          - "READ: Lazy read timestamp assignment on first operation; reads see snapshot at readTimestamp"
+          - "WRITE: Creates intent with transaction ID; intent is invisible to other transactions"
+          - "COMMIT: Conflict detection (only checks committed values), convert intents to committed values"
+          - "MVCC store maintains multiple versions with hybrid timestamps"
+        notes: "Complete step-by-step flow showing how snapshot isolation works with hybrid clocks from BEGIN to COMMIT."
