@@ -1,0 +1,26 @@
+@startuml
+!include ../style.puml 
+
+participant Client1
+participant Client2
+participant Server
+
+note right of Server
+==KV==
+| k1 | v1 | ts1 |
+end note
+
+Client1 --> Server:read(k1, ts=1)
+Client1 <-- Server:v1
+
+Client2 --> Server:write(k1, v2, ts=2)
+note right of Server
+| k1 | v1 | ts1 |
+| k1 | v2 | ts2 |
+end note
+
+Client1 --> Server:read(k1, ts=1)
+Client1 <-- Server:v1
+
+
+@enduml

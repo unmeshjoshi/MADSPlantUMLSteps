@@ -1,0 +1,52 @@
+@startuml
+title Kubernetes Components Overview
+
+!include ../style.puml
+
+rectangle "Control Plane" #LightBlue {
+  component "API Server" as APIS
+  component "Controller Manager" as CM
+  component "Scheduler" as SCH
+  database "etcd" as ETCD
+}
+
+rectangle "Node 1" #LightGray {
+  component "kubelet" as K1
+  component "kube-proxy" as KP1
+  frame "Pods" {
+    component "Pod A" as P1A
+    component "Pod B" as P1B
+  }
+}
+
+rectangle "Node 2" #LightGray {
+  component "kubelet" as K2
+  component "kube-proxy" as KP2
+  frame "Pods" {
+    component "Pod C" as P2C
+  }
+}
+
+APIS <--> ETCD : store/observe cluster state
+CM --> APIS : reconcile desired state\n(List/Watch, Update)
+SCH --> APIS : watch unscheduled pods\nbind Pod->Node
+
+K1 --> APIS : watch assigned pods\npost status/heartbeats
+K2 --> APIS : watch assigned pods\npost status/heartbeats
+
+KP1 --> APIS : watch Services/Endpoints
+KP2 --> APIS : watch Services/Endpoints
+
+note right of APIS
+  Single front door for the cluster.
+  All components talk to etcd via API Server.
+end note
+
+note bottom of K1
+  kubelet manages containers via CRI,
+  mounts volumes (CSI), and reports status.
+end note
+
+@enduml
+
+

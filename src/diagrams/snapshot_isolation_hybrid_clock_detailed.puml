@@ -1,0 +1,90 @@
+@startuml
+!include ../style.puml
+
+participant Client
+participant Server
+database "MVCCStore" as Store
+database "TxnRecord" as TxnRecord
+
+note over Client: HybridClock: (1000, 0)
+
+== BEGIN Transaction ==
+Client -> Server: BeginTxnRequest(clientTime=(1000,0))
+Server -> Server: tick((1000,0))
+Server -> Server: createTxnRecord(txnId="T1")
+Server -> TxnRecord: store(status=PENDING, startTime=(1000,1))
+Server --> Client: BeginTxnResponse(txnId="T1", propagatedTime=(1000,1))
+Client -> Client: tick((1000,1))
+note over Client: HybridClock: (1000, 1)
+
+== READ Operation (Lazy Read Timestamp Assignment) ==
+Client -> Client: ensureReadTimestamp()\nif readTs == null:\n  readTs = clock.now() = (1000, 2)
+note over Client: Transaction T1\nreadTimestamp: (1000, 2)
+
+Client -> Server: StorageReadRequest(key="balance", readTs=(1000,2), txnId="T1", clientTime=(1000,2))
+Server -> Server: tick((1000,2))
+note over Store
+== MVCC Store ==
+key: "balance@(995,5)" → value: "100" (COMMITTED)
+key: "balance@(998,2)" → value: "150" (COMMITTED)
+end note
+Server -> Store: get("balance", atTimestamp=(1000,2))
+Store --> Server: TxnValue(value="150", type=COMMITTED, txnId=null)
+note right of Server: Returns latest committed\nversion <= (1000,2)
+Server --> Client: StorageReadResponse(value="150", propagatedTime=(1000,3))
+Client -> Client: tick((1000,3))
+note over Client: HybridClock: (1000, 3)
+
+== WRITE Operation (Create Intent) ==
+Client -> Server: StorageWriteIntentRequest(key="balance", value="200", txnId="T1", clientTime=(1000,3))
+Server -> Server: tick((1000,3))
+Server -> Server: now() → (1000, 4)
+Server -> Store: putIntent("balance", version=(1000,4), TxnValue(value="200", type=INTENT, txnId="T1"))
+note over Store
+== MVCC Store ==
+key: "balance@(995,5)" → value: "100" (COMMITTED)
+key: "balance@(998,2)" → value: "150" (COMMITTED)
+key: "balance@(1000,4)" → value: "200" (INTENT, txnId="T1")
+end note
+Server --> Client: StorageWriteIntentResponse(success=true, propagatedTime=(1000,4))
+Client -> Client: tick((1000,4))
+note over Client: HybridClock: (1000, 4)
+
+== Another READ (Read Own Write) ==
+Client -> Server: StorageReadRequest(key="balance", readTs=(1000,2), txnId="T1", clientTime=(1000,4))
+Server -> Server: tick((1000,4))
+Server -> Store: get("balance", atTimestamp=(1000,2))
+Store --> Server: TxnValue(value="200", type=INTENT, txnId="T1")
+note right of Server: Found intent from same\ntransaction → return it
+Server --> Client: StorageReadResponse(value="200", propagatedTime=(1000,5))
+note over Client: Read own write: sees intent
+
+== COMMIT ==
+Client -> Server: StorageCommitRequest(txnId="T1", writeKeys=["balance"], readKeys=["balance"], clientTime=(1000,5))
+Server -> Server: tick((1000,5))
+Server -> Server: now() → commitTs = (1000, 6)
+
+== Conflict Detection ==
+Server -> Store: hasWritesAfter("balance", readTimestamp=(1000,2))
+note right of Store: Check for committed writes\nafter (1000,2)\nOnly check COMMITTED values\n(ignore intents)
+Store --> Server: false (no committed writes after (1000,2))
+note right of Server: No conflicts detected
+
+== Convert Intents to Committed ==
+Server -> Store: commit("balance", commitTs=(1000,6), value="200")
+Store -> Store: remove intent at (1000,4)
+Store -> Store: put("balance", version=(1000,6), TxnValue(value="200", type=COMMITTED, txnId=null))
+note over Store
+== MVCC Store (After Commit) ==
+key: "balance@(995,5)" → value: "100" (COMMITTED)
+key: "balance@(998,2)" → value: "150" (COMMITTED)
+key: "balance@(1000,6)" → value: "200" (COMMITTED)
+end note
+
+Server -> TxnRecord: update(status=COMMITTED, commitTimestamp=(1000,6))
+Server --> Client: StorageCommitResponse(success=true, propagatedTime=(1000,6))
+Client -> Client: tick((1000,6))
+note over Client: Transaction committed
+
+@enduml
+

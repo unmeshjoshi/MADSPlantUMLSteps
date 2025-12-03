@@ -1,0 +1,34 @@
+@startuml
+!include ../style.puml
+participant Bob as b
+participant Blue as bl
+participant Green as s1
+
+note over bl
+ t=4
+ error=+-2
+ earliest=2, 
+ latest=6
+end note 
+
+note over s1
+ t=6
+ error=+-1
+ earliest=5, 
+ latest=7
+ title@5="After Dawn"
+end note 
+
+note over bl
+ t=6
+ error=+-2
+ earliest=4, 
+ latest=8
+end note 
+
+b -> bl:get("title")
+bl -> s1:get("title", 8)
+bl <-- s1:"After Dawn"
+b <-- bl:"After Dawn"
+
+@enduml

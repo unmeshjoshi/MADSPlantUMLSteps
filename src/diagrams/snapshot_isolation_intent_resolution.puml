@@ -1,0 +1,62 @@
+@startuml
+!include ../style.puml
+
+participant Txn1 as "Txn1\n(readTs=(1000,2))"
+participant Txn2 as "Txn2\n(readTs=(1000,5))"
+participant Server
+database "MVCCStore" as Store
+database "TxnRecord" as TxnRecord
+
+== Initial State ==
+note over Store
+== MVCC Store ==
+key: "balance@(998,2)" → value: "100" (COMMITTED)
+end note
+
+== Txn1: Write Intent ==
+Txn1 -> Server: WriteIntent("balance", "200", txnId="T1")
+Server -> Store: putIntent("balance", (1000,3), INTENT, txnId="T1")
+Server -> TxnRecord: store(txnId="T1", status=PENDING)
+note over Store
+== MVCC Store ==
+key: "balance@(998,2)" → value: "100" (COMMITTED)
+key: "balance@(1000,3)" → value: "200" (INTENT, txnId="T1")
+end note
+
+== Txn2: Read (Encounters Intent) ==
+Txn2 -> Server: Read("balance", readTs=(1000,5), txnId="T2")
+Server -> Store: get("balance", atTimestamp=(1000,5))
+Store --> Server: TxnValue(value="200", type=INTENT, txnId="T1")
+note right of Server: Found intent from\ndifferent transaction
+
+== Intent Resolution ==
+Server -> TxnRecord: getTransactionStatus(txnId="T1")
+TxnRecord --> Server: status=PENDING
+note right of Server: Intent is from pending\ntransaction → skip it\nReturn last committed value
+Server -> Store: getLastCommitted("balance", atTimestamp=(1000,5))
+Store --> Server: TxnValue(value="100", type=COMMITTED, txnId=null)
+Server --> Txn2: ReadResponse(value="100")
+note over Txn2: Sees committed value\nIntent is invisible
+
+== Txn1: Commit ==
+Txn1 -> Server: Commit(txnId="T1")
+Server -> Store: commit("balance", commitTs=(1000,7), value="200")
+Server -> TxnRecord: update(txnId="T1", status=COMMITTED, commitTs=(1000,7))
+note over Store
+== MVCC Store ==
+key: "balance@(998,2)" → value: "100" (COMMITTED)
+key: "balance@(1000,7)" → value: "200" (COMMITTED)
+end note
+
+== Txn2: Read Again (Intent Now Committed) ==
+Txn2 -> Server: Read("balance", readTs=(1000,5), txnId="T2")
+Server -> Store: get("balance", atTimestamp=(1000,5))
+Store --> Server: TxnValue(value="200", type=COMMITTED, txnId=null)
+note right of Server: Now sees committed value\nat (1000,7)\nBut readTs=(1000,5) < commitTs\nSo not visible!
+Server -> Store: getLastCommitted("balance", atTimestamp=(1000,5))
+Store --> Server: TxnValue(value="100", type=COMMITTED, txnId=null)
+Server --> Txn2: ReadResponse(value="100")
+note over Txn2: Still sees old value\nConsistent snapshot at (1000,5)
+
+@enduml
+

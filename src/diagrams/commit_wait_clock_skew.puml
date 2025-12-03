@@ -1,0 +1,25 @@
+
+@startuml
+!include ../style.puml  
+participant Philip as p
+participant Green as g
+
+p -> g :write("title", "After Dawn")
+
+note over g
+    clock:2,
+    max_diff:1 
+    "title@1":"Before Dawn" 
+end note 
+g -> g:wait(2 + max_diff)
+
+note over g
+    clock:3,
+    max_diff:1
+    "title@1":"Before Dawn" 
+    "title@2":"After Dawn" 
+end note 
+
+p <-- g
+
+@enduml

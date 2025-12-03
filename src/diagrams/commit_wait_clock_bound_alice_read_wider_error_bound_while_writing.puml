@@ -1,0 +1,52 @@
+@startuml
+!include ../style.puml
+participant Alice as a
+
+participant Amber as am
+participant Green as g
+
+note over g
+ t=4
+ error=+-3
+ earliest=1, 
+ latest=7
+ title@2="Before Dawn"
+end note 
+
+
+note over am
+ t=4
+ error=+-2
+ earliest=2, 
+ latest=6
+end note 
+
+g -> g:waitUntilTimeInPast(7)
+
+a -> am:get("title")
+am -> g:get("title", 6)
+a <-- g:"Before Dawn"
+
+note over g
+ t=10
+ error=+-3
+ earliest=7, 
+ latest=13
+ title@2="Before Dawn"
+ title@7="After Dawn"
+end note 
+
+
+
+note over am
+ t=10
+ error=+-2
+ earliest=8, 
+ latest=12
+end note 
+
+a -> am:get("title")
+am -> g:get("title", 12)
+a <-- g:"After Dawn"
+
+@enduml

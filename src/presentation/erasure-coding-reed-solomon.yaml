@@ -23,3 +23,5 @@ sections:
           - "Decode: fetch available shards; solve linear system to rebuild data"
         notes: "Sequence shows client, encoder, storage nodes, parity creation, failure, and reconstruction."
 
+
+

@@ -1,0 +1,58 @@
+@startuml
+!include ../style.puml
+
+participant Txn1 as "Txn1\n(readTs=(1000,2))"
+participant Txn2 as "Txn2\n(readTs=(1000,5))"
+participant Server
+database "MVCCStore" as Store
+
+== Initial State ==
+note over Store
+== MVCC Store ==
+key: "balance@(998,2)" → value: "100" (COMMITTED)
+end note
+
+== Txn1: Write Intent ==
+Txn1 -> Server: WriteIntent("balance", "200", txnId="T1")
+Server -> Store: putIntent("balance", (1000,3), INTENT, txnId="T1")
+note over Store
+== MVCC Store ==
+key: "balance@(998,2)" → value: "100" (COMMITTED)
+key: "balance@(1000,3)" → value: "200" (INTENT, txnId="T1")
+end note
+
+== Txn2: Write Intent (Concurrent) ==
+Txn2 -> Server: WriteIntent("balance", "300", txnId="T2")
+Server -> Store: putIntent("balance", (1000,6), INTENT, txnId="T2")
+note over Store
+== MVCC Store ==
+key: "balance@(998,2)" → value: "100" (COMMITTED)
+key: "balance@(1000,3)" → value: "200" (INTENT, txnId="T1")
+key: "balance@(1000,6)" → value: "300" (INTENT, txnId="T2")
+end note
+
+== Txn1: Commit (First) ==
+Txn1 -> Server: Commit(txnId="T1", writeKeys=["balance"], readTs=(1000,2))
+Server -> Store: hasWritesAfter("balance", readTs=(1000,2))
+note right of Store: Check for COMMITTED writes\nafter (1000,2)\nOnly committed values count!\nIntents are ignored.
+Store --> Server: false (no committed writes after (1000,2))
+Server -> Store: commit("balance", commitTs=(1000,7), value="200")
+Store -> Store: remove intent, add committed
+note over Store
+== MVCC Store ==
+key: "balance@(998,2)" → value: "100" (COMMITTED)
+key: "balance@(1000,7)" → value: "200" (COMMITTED)
+key: "balance@(1000,6)" → value: "300" (INTENT, txnId="T2")
+end note
+Server --> Txn1: CommitResponse(success=true)
+
+== Txn2: Commit (Second - Conflict!) ==
+Txn2 -> Server: Commit(txnId="T2", writeKeys=["balance"], readTs=(1000,5))
+Server -> Store: hasWritesAfter("balance", readTs=(1000,5))
+note right of Store: Check for COMMITTED writes\nafter (1000,5)\nFound: "balance@(1000,7)"\ncommitted after readTs!
+Store --> Server: true (committed write at (1000,7) > readTs (1000,5))
+Server --> Txn2: CommitResponse(success=false, error="Write Conflict")
+note over Txn2: Transaction aborted\nFirst-committer-wins
+
+@enduml
+

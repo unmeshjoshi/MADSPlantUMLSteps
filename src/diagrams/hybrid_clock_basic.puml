@@ -1,0 +1,33 @@
+@startuml
+!include ../style.puml
+
+participant Client
+note over Client: HybridClock: (1000, 0)
+
+Client -> Blue: write("name", "Alice", "timestamp=(1000,0)")
+note over Blue: HybridClock: (1000, 0)
+Blue -> Blue: tick((1000,0))
+Blue -> Blue: now() → (1000, 1)
+note over Blue 
+HybridClock: (1000, 1)
+key: "name@(1000,1)"
+value: "Alice"
+end note
+Client <-- Blue: writtenAt (1000, 1)
+note over Client: HybridClock: (1000, 1)
+
+note over Green: HybridClock: (1005, 0)
+Client -> Green: write("title", "Microservices", "timestamp=(1000,1)")
+Green -> Green: tick((1000,1))
+Green -> Green: max((1005,0), (1000,1)) → (1005,0)
+Green -> Green: now() → (1005, 1)
+note over Green 
+HybridClock: (1005, 1)
+key: "title@(1005,1)"
+value: "Microservices"
+end note
+Client <-- Green: writtenAt (1005, 1)
+note over Client: HybridClock: (1005, 1)
+
+@enduml
+

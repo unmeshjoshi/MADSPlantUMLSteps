@@ -1,0 +1,36 @@
+@startuml
+!include ../style.puml
+participant Alice as a
+participant Bob as b
+participant Amber as am
+participant Blue as bl
+participant Green as g
+
+note over am
+ clock:1
+end note 
+
+note over bl
+ clock:2
+end note 
+
+note over g
+    "title@1":"Before Dawn" 
+    "title@2":"After Dawn" 
+end note 
+b -> bl:read("title")
+bl -> g:read("title", 2)
+b <-- bl:"After Dawn"
+
+a -> am :read("title")
+am -> g :read("title", 1)
+g -> g :checksIfVersionInUncertaintyInterval("title", 1)
+am <- g: ReadRestartException
+note over am
+ clock:2
+end note 
+am -> g :read("title", 2)
+am <- g: "After Dawn"
+a <- am: "After Dawn"
+
+@enduml

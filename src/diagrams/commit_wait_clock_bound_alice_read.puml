@@ -1,0 +1,27 @@
+@startuml
+!include ../style.puml
+participant Alice as a
+
+participant Amber as am
+participant Green as g
+
+note over g
+ t=6
+ error=+-1
+ earliest=5, 
+ latest=7
+ title@5="After Dawn"
+end note 
+
+note over am
+ t=6
+ error=+-3
+ earliest=3, 
+ latest=9
+end note 
+
+a -> am:get("title")
+am -> g:get("title", 9)
+a <-- g:"After Dawn"
+
+@enduml

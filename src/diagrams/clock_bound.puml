@@ -1,0 +1,23 @@
+@startuml
+!include ../style.puml
+skinparam packageStyle rectangle
+package Time@4 {  
+  node Green
+  node Blue
+  node Amber  
+}
+
+note bottom of Green
+Error:+-1
+ClockBound:{earliest=3, latest=5}
+end note
+note right of Blue
+Error:+-2
+ClockBound:{earliest=2, latest=6}
+end note
+note bottom of Amber
+Error:+-3
+ClockBound:{earliest=1, latest=7}
+end note
+
+@enduml

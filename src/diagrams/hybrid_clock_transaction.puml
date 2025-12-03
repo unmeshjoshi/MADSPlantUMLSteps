@@ -1,0 +1,46 @@
+@startuml
+!include ../style.puml
+participant Client
+note over Coordinator: Clock: 1
+Client -> Coordinator:BeginTransaction
+Client -> Coordinator:put("name", "Alice")
+note over  Blue: Clock: 2
+note over  Green: Clock: 4
+
+Coordinator ->  Blue:put("name", "Alice", "timestamp:1")
+ Blue ->  Blue:chooseMax("1", "2")
+ Blue ->  Blue:incrementClock
+note over  Blue 
+Clock:3
+key:"name@3"
+value:"Alice"
+end note
+Coordinator <--  Blue:writtenAt:3
+
+Client -> Coordinator:put("title", "Microservices")
+Coordinator ->  Green:put("name", "Alice", "timestamp:3")
+ Green ->  Green:chooseMax("3", "4")
+ Green ->  Green:incrementClock
+note over  Green 
+Clock:5
+key:"title@5"
+value:"Microservices"
+end note
+Coordinator <--  Green:writtenAt:5
+
+Client -> Coordinator:commit
+Coordinator-> Blue: commit("name", "timestamp:5")
+note over  Blue 
+Clock:5
+key:"name@5"
+value:"Alice"
+end note
+
+Coordinator-> Green: commit("title", "timestamp:5")
+note over  Green 
+Clock:5
+key:"title@5"
+value:"Microservices"
+end note
+
+@enduml

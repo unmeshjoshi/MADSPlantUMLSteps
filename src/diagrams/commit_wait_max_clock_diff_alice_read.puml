@@ -1,0 +1,23 @@
+
+@startuml
+!include ../style.puml
+participant Alice as a
+participant Amber as am
+participant Green as g
+
+note over am
+    clock:1,
+end note 
+
+note over g
+    clock:2,
+    "title@1":"Before Dawn" 
+end note 
+
+
+a -> am :read("title")
+am -> g: read("title", "1")
+am <-- g:"Before Dawn"
+a <-- am:"Before Dawn"
+
+@enduml

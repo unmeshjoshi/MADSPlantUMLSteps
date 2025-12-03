@@ -24,6 +24,15 @@ sections:
           - "Kubelet: Node agent that manages containers and communicates with API server"
         notes: "Each component has specific responsibilities that work together to provide the orchestration capabilities."
 
+      - type: "diagram"
+        title: "Kubernetes Components Overview"
+        diagramRef: "kubernetes_components_overview"
+        bullets:
+          - "Control Plane: API Server, Controller Manager, Scheduler, etcd"
+          - "Worker Nodes: kubelet, kube-proxy, Pods (containers)"
+          - "All components interact via the API Server; etcd is the source of truth"
+        notes: "High-level view showing control plane and nodes, and how they interact through the API server and etcd."
+
   - title: "API Server Deep Dive"
     slides:
       - type: "text"

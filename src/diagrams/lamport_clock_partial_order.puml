@@ -1,0 +1,18 @@
+@startuml
+!include ../style.puml
+object Alice
+object Bob
+
+object Blue {
+    clock = 1
+}
+object Green {
+    clock = 2
+}
+
+Alice --> Blue: write("name", "Alice")
+Bob --> Green: write("title", "Microservices")
+
+note right of Blue: key: "name@1"\nvalue: "Alice"
+note right of Green: key: "title@2"\nvalue: "Microservices"
+@enduml

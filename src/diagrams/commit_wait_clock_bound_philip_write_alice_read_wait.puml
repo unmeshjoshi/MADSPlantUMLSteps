@@ -1,0 +1,47 @@
+@startuml
+!include ../style.puml
+
+participant Alice as a
+participant Philip as p
+
+participant Amber as am
+participant Green as s1
+
+
+p -> s1 :put("title", "After Dawn")
+
+note over s1
+ t=4
+ error=+-1
+ earliest=3, 
+ latest=5
+end note 
+
+s1 -> s1:waitUntilTimeInPast(5)
+
+note over am
+ t=4
+ error=+-3
+ earliest=1, 
+ latest=7
+end note 
+
+a -> am:read("title")
+am -> s1:read("title", "7")
+s1 -> s1:waitUntilTimeInPast(7)
+s1 -> s1:waitForPendingWrites(7)
+
+note over s1
+ t=6
+ error=+-1
+ earliest=5, 
+ latest=7
+ title@5="After Dawn"
+end note 
+
+p <-- s1
+
+am <-- s1:"After Dawn"
+a <-- am:"After Dawn"
+
+@enduml

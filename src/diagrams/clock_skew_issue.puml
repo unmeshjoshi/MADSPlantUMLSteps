@@ -1,0 +1,31 @@
+@startuml
+!include ../style.puml
+object Alice
+object Bob
+
+object Amber {
+    clock: 1
+}
+
+object Blue {
+    clock:2
+}
+
+object Green {
+    clock = 2
+}
+
+note right of Green
+  key: "title@1" value: "Before Dawn"
+  key: "title@2" value: "After Dawn"
+end note
+
+Alice --> Amber: read("title")
+Amber --> Green:read("title", "1")
+Amber <-- Green:"Before Dawn"
+
+Bob --> Blue: read("title")
+Blue --> Green: read("title", "2")
+Blue <-- Green:"After Dawn"
+
+@enduml

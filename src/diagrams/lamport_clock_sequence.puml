@@ -1,0 +1,26 @@
+@startuml
+!include ../style.puml
+
+participant Client
+note over Client: Clock: 1
+note over Blue: Clock: 1
+Client -> Blue: write("name", "Alice", "clock=1")
+Blue -> Blue: incrementClock
+note over Blue 
+Clock:2
+key: "name@2"
+value: "Alice"
+end note
+Client <-- Blue: writtenAt 2
+note over Client: Clock: 2
+note over Green: Clock: 1
+Client -> Green: write("title", "Microservices", "clock=2")
+Green -> Green: incrementClock
+note over Green 
+Clock:3
+key: "title@3"
+value: "Microservices"
+end note
+Client <-- Green: writtenAt 3
+note over Client: Clock: 3
+@enduml
