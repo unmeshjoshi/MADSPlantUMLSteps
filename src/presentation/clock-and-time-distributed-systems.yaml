@@ -1,12 +1,12 @@
-title: "Clock and Time in Distributed Systems: From Clock Drift to External Consistency"
+title: "Consistency and Time: Patterns in Distributed Databases"
 description: "Journey from the fundamental problem of physical clock drift through Lamport clocks, Hybrid Logical Clocks, to Clock-Bound Wait pattern. Learn how Spanner, YugabyteDB, and CockroachDB achieve external consistency at global scale."
 icon: "fas fa-clock"
 category: "Distributed Systems"
 sections:
-  - title: "Title & Agenda"
+  - title: "Consistency and Time: Patterns in Distributed Databases"
     slides:
       - type: "text"
-        title: "Clock and Time in Distributed Systems"
+        title: "Agenda"
         bullets:
           - "Why transaction consistency is hard in distributed systems"
           - "How Spanner, YugabyteDB, and CockroachDB solve it"
@@ -83,7 +83,7 @@ sections:
         bullets:
           - "Partial order only: Cannot order concurrent events on different servers"
           - "No real-time correlation: Cannot relate events to wall-clock time"
-          - "Cannot implement snapshot isolation: Readers need timestamps that represent points in time for read operations"
+          - "Lamport clocks can give a consistent serialization order, but because they don't track real time, they are awkward for snapshot reads expressed in terms of wall-clock time or that must respect real-time ordering"
           - "Need something better: Hybrid Logical Clock"
         notes: "Summarize why Lamport clocks aren't sufficient. They solve causality but not the real-time ordering problem."
 
@@ -100,14 +100,16 @@ sections:
         notes: "The Improvement: Show how HLC marries the two. Crucial point: HLC allows nodes to decentralize timestamp generation while ensuring they are always moving forward."
       
       - type: "diagram"
-        title: "Hybrid Clock: Basic Usage"
+        title: "Hybrid Logical Clock (HLC): Basic Usage"
         diagramRef: "hybrid_clock_basic"
         bullets:
-          - "Client maintains HybridClock with (wallClockTime, logicalTicks)"
+          - "Client maintains Hybrid Logical Clock (HLC) with (wallClockTime, logicalTicks)"
           - "Client sends hybrid timestamp with write request"
-          - "Server uses tick() to update clock: max(systemTime, receivedTime, localTime) + 1"
-          - "If system time advanced: use new wall-clock time, reset ticks to 0"
-          - "If system time unchanged: increment logical ticks"
+          - "On each event: Read local physical clock (now)"
+          - "Set newWallTime = max(now, local.wallTime, received.wallTime)"
+          - "If newWallTime > local.wallTime AND newWallTime > received.wallTime: newLogical = 0"
+          - "Else: newLogical = max(local.logical, received.logical) + 1"
+          - "Important: We don't add 1 to wallTime; only logical counter is incremented"
           - "Returns hybrid timestamp to client, which updates its clock"
         notes: "Shows basic hybrid clock usage similar to Lamport clock, but with wall-clock time component for real-time correlation."
       
@@ -139,7 +141,7 @@ sections:
           - "For any read at timestamp T_read, values committed in window [T_read - ε, T_read] might have been written at the timestamp higher than T_read"
           - "ε (epsilon): Maximum expected clock skew (e.g., 100-500ms)"
           - "We cannot safely read values in this window without violating external consistency"
-          - "We need serves to wait before exposing the value to the readers"
+          - "We need servers to wait before exposing the value to the readers"
         notes: "Explain the uncertainty window concept and why it exists. This sets up the need for the next pattern."
 
   - title: "Clock-Bound Wait Pattern"
@@ -153,14 +155,22 @@ sections:
           - "Trade-off: Latency (wait time) for correctness (external consistency)"
         notes: "The Solution: Introduce the Commit Wait pattern (the 'Clock-Bound Wait'). Explain the trade-off: The system must wait ≈ ε after the commit timestamp is chosen but before the client is acknowledged. Why? To ensure that every other node's clock has advanced past the commit time T_c."
       
+      - type: "text"
+        title: "Clock-Bound Wait with Hybrid Timestamps"
+        bullets:
+          - "Diagrams show single integers for simplicity, but real systems use Hybrid Logical Clock timestamps (wallClockTime, logicalTicks)"
+          - "The wait applies to the wallClockTime component: wait until all nodes' wallClockTime > commitTimestamp.wallClockTime + ε"
+          - "The logicalTicks component doesn't affect the wait duration - it only breaks ties within the same millisecond"
+        notes: "Clarify that diagrams use integers for simplicity, but in practice we use hybrid timestamps. The wait is based on wallClockTime, not logicalTicks."
+      
       - type: "diagram"
         title: "Commit Wait: Write Waits for Clock Offset"
         diagramRef: "commit_wait_clock_skew"
         bullets:
           - "Write request arrives at server with clock=2, max_diff=1"
-          - "Server waits until clock >= (2 + max_diff) = 3 before storing value"
+          - "Server waits until clock >= (2 + max_diff) = 3 before acknowledging the write and making it visible at timestamp 2"
           - "Ensures all other servers have clocks past the write timestamp"
-          - "After wait completes, value is stored and visible to all readers"
+          - "After wait completes, value is visible to all readers at its commit timestamp"
         notes: "Shows how commit wait ensures writes are visible to all nodes despite clock skew. Use a simple timeline diagram."
       
       - type: "diagram"
@@ -168,17 +178,17 @@ sections:
         diagramRef: "commit_wait_clock_skew"
         bullets:
           - "Philip writes 'After Dawn' at server Green (clock=2, max_diff=1)"
-          - "Green waits until clock >= (2 + max_diff) = 3 before storing value"
-          - "During wait: value not yet available in store"
-          - "After wait: value stored at timestamp 2, visible to all"
-        notes: "Shows the commit wait mechanism: write waits for clock offset before making value available."
+          - "Green waits until clock >= (2 + max_diff) = 3 before acknowledging the write and making it visible at timestamp 2"
+          - "During wait: value is stored but not yet visible to readers"
+          - "After wait: value becomes visible at timestamp 2 to all readers"
+        notes: "Shows the commit wait mechanism: server waits before acknowledging the commit to the client and making the value visible at its commit timestamp."
       
       - type: "diagram"
         title: "Commit Wait: Bob Reads During Wait"
         diagramRef: "commit_wait_max_clock_diff_bob_read"
         bullets:
           - "While Philip's write is waiting, Bob reads from server Blue (clock=2)"
-          - "Blue tries to read at timestamp 2, but Green hasn't made value available yet"
+          - "Blue tries to read at timestamp 2, but Green hasn't made value visible yet"
           - "Bob gets 'Before Dawn' (last committed value before timestamp 2)"
           - "Shows that reads during commit wait see old values"
         notes: "Demonstrates what happens when a read occurs while a write is waiting for commit wait."
@@ -231,7 +241,7 @@ sections:
           - "Green has error bound ±1, write starts at time 4"
           - "Green picks latest clock bound value (5) as write timestamp"
           - "Green waits until earliest clock bound value > 5"
-          - "Waits for uncertainty interval (2 units) before storing value"
+          - "Waits for uncertainty interval (2 units) before acknowledging the commit and making the value visible at timestamp 5"
           - "Ensures all nodes' latest clock bounds > write timestamp"
         notes: "Shows commit wait using clock bounds: write waits until uncertainty interval passes."
       
@@ -284,7 +294,7 @@ sections:
           - "Read Restart: Reads restart if uncertainty detected (YugabyteDB/CockroachDB approach)"
           - "Both achieve external consistency but with different trade-offs"
           - "Commit wait: Higher write latency, simpler reads."
-          - "Read restart: Lower write latency, occasional read restarts. Preferred in open source databases which dont have TrueTime"
+          - "Read restart: Lower write latency, occasional read restarts. Preferred in open source databases which don't have TrueTime"
         notes: "Compare the two approaches to handling the uncertainty window."
 
   - title: "The Enabler: TrueTime and Time Sync"
@@ -312,9 +322,9 @@ sections:
         bullets:
           - "Amazon Time Sync Service provides ε guarantee to commodity clouds"
           - "ClockBound library: AWS's implementation of clock-bound APIs"
-          - "Democratizes the Spanner approach: External consistency without special hardware"
-          - "Enables Spanner-like guarantees on AWS infrastructure"
-        notes: "Amazon Time Sync/ClockBound: Mention this provides the ε guarantee to commodity clouds, democratizing the Spanner approach."
+          - "Provides Spanner-style time guarantees (known bounds on clock error) on commodity AWS instances"
+          - "Enables building Spanner-like, externally consistent databases without special GPS/atomic clock hardware, assuming the database implements a commit-wait / TrueTime-style protocol"
+        notes: "Amazon Time Sync/ClockBound: Provides Spanner-style time guarantees (known bounds on clock error) on commodity AWS instances, enabling externally consistent databases without special hardware."
       
   - title: "Conclusion & Key Takeaways"
     slides:
@@ -325,7 +335,7 @@ sections:
           - "Lamport Clock: Solves causality but only partial order"
           - "Hybrid Logical Clock: Adds real-time correlation, enables decentralized SI"
           - "Clock-Bound Wait: Bridges the gap to external consistency"
-          - "External Consistency (Linearizability) at global scale"
+          - "External Consistency at global scale"
         notes: "Summarize the journey: Problem → HLC → Commit Wait → Bounded Time. End with the achievement: How these patterns allow External Consistency (Linearizability) at global scale."
       
       - type: "text"
@@ -336,12 +346,12 @@ sections:
           - "Clock-Bound Wait pattern ensures external consistency despite clock skew"
           - "Spanner uses TrueTime (ε ≤ 7ms) with commit wait"
           - "YugabyteDB/CockroachDB use read restart with larger ε (200-500ms)"
-          - "Amazon Time Sync democratizes Spanner approach on commodity clouds"
+          - "Amazon Time Sync provides Spanner-style time guarantees on commodity AWS instances"
         notes: "Provide clear takeaways that summarize the key concepts and solutions."
   - title: "Appendix"
     slides:
       - type: "diagram"
-        title: "Hybrid Clock in Distributed Transactions"
+        title: "Hybrid Logical Clock (HLC) in Distributed Transactions"
         diagramRef: "hybrid_clock_transaction"
         bullets:
           - "Coordinator starts transaction with clock value"
@@ -354,7 +364,7 @@ sections:
       - type: "text"
         title: "HLC Enables Decentralized Snapshot Isolation"
         bullets:
-          - "Each node generates timestamps locally using its HybridClock"
+          - "Each node generates timestamps locally using its Hybrid Logical Clock (HLC)"
           - "Clocks stay synchronized through message passing (Lamport rules)"
           - "HLC values used as transaction read timestamps"
           - "CockroachDB and YugabyteDB use HLC for decentralized Snapshot Isolation (SI)"

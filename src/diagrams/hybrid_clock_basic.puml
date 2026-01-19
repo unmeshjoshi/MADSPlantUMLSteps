@@ -7,7 +7,14 @@ note over Client: HybridClock: (1000, 0)
 Client -> Blue: write("name", "Alice", "timestamp=(1000,0)")
 note over Blue: HybridClock: (1000, 0)
 Blue -> Blue: tick((1000,0))
-Blue -> Blue: now() → (1000, 1)
+note right of Blue
+  Read local clock: now = 1000
+  newWallTime = max(1000, 1000, 1000) = 1000
+  Check: newWallTime > local.wallTime AND newWallTime > received.wallTime?
+  → 1000 > 1000 AND 1000 > 1000? = FALSE
+  Else: newLogical = max(0, 0) + 1 = 1
+  Result: (1000, 1)
+end note
 note over Blue 
 HybridClock: (1000, 1)
 key: "name@(1000,1)"
@@ -19,15 +26,20 @@ note over Client: HybridClock: (1000, 1)
 note over Green: HybridClock: (1005, 0)
 Client -> Green: write("title", "Microservices", "timestamp=(1000,1)")
 Green -> Green: tick((1000,1))
-Green -> Green: max((1005,0), (1000,1)) → (1005,0)
-Green -> Green: now() → (1005, 1)
+note right of Green
+  Read local clock: now = 1005
+  newWallTime = max(1005, 1005, 1000) = 1005
+  newWallTime > local.wallTime AND newWallTime > received.wallTime
+  → newLogical = 0
+  Result: (1005, 0)
+end note
 note over Green 
-HybridClock: (1005, 1)
-key: "title@(1005,1)"
+HybridClock: (1005, 0)
+key: "title@(1005,0)"
 value: "Microservices"
 end note
-Client <-- Green: writtenAt (1005, 1)
-note over Client: HybridClock: (1005, 1)
+Client <-- Green: writtenAt (1005, 0)
+note over Client: HybridClock: (1005, 0)
 
 @enduml
 
