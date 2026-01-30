@@ -101,3 +101,9 @@ sections:
         title: "Log: Append-Only File with Offset Index"
         diagramRef: "kafka_log_append_only"
         notes: "Shows two key concepts: (1) Append-only file structure where messages are written sequentially to the end of the file, and (2) OffsetIndex mapping that allows efficient random access by offset despite variable-length messages. The diagram demonstrates both append and read operations, showing how the index is maintained and used."
+
+  - title: "High-watermark and Replication"
+    slides:
+      - type: "diagram"
+        title: "High-watermark and Replication"
+        diagramRef: "kafka_high_watermark"

@@ -1,0 +1,132 @@
+@startuml
+!include ../style.puml
+
+title Kafka High Watermark and Replication
+
+participant Client
+box "Kafka Cluster" #LightBlue
+    participant "Leader\nNode" as Leader
+    participant "Follower 1\nNode" as Follower1
+    participant "Follower 2\nNode" as Follower2
+end box
+
+' [step1 {"name":"Initial State: All in Sync"}]
+note over Leader, Follower2 #E6F3FF
+**Initial State**
+messages up to offset 9
+**High Watermark (HWM): 9**
+Log End Offset (LEO): 9
+Log:
+| 8 |
+| 9 |
+end note
+' [/step1]
+
+' [step2 {"name":"Leader Appends New Message"}]
+Client -> Leader: Produce(Message 10)
+activate Leader
+Leader -> Leader: Append Message 10 to Log
+note right of Leader #FFFFCC
+**Leader Log Updated**
+**LEO: 10**
+HWM: 9 (Not yet replicated to quorum)
+Log:
+| 8 |
+| 9 |
+| 10 |
+end note
+Leader --> Client: Ack
+deactivate Leader
+' [/step2]
+
+' [step3 {"name":"Followers Pull Data", "newPage": true}]
+par Followers Fetch
+    Follower1 -> Leader: Fetch(Offset 10)
+    activate Follower1
+    activate Leader
+    Leader --> Follower1: Records(Message 10)
+    deactivate Leader
+    Follower1 -> Follower1: Append Message 10
+    note right of Follower1 #E6FFE6
+    **Follower 1 Log Updated**
+    LEO: 10
+    (HWM updated in next fetch)
+    Log:
+    | 8 |
+    | 9 |
+    | 10 |
+    end note
+    deactivate Follower1
+
+    Follower2 -> Leader: Fetch(Offset 10)
+    activate Follower2
+    activate Leader
+    Leader --> Follower2: Records(Message 10)
+    deactivate Leader
+    Follower2 -> Follower2: Append Message 10
+    deactivate Follower2
+end
+' [/step3]
+
+' [step4 {"name":"Followers Acknowledge & Leader Updates HWM", "newPage": true}]
+Follower1 -> Leader: Fetch(Offset 11)
+activate Leader
+note right of Leader #FFE6E6
+**Replication Check**
+Leader receives Fetch(11)
+⇒ Follower 1 has 10
+Leader has 10
+Quorum (2/3) reached for Offset 10
+**Update HWM to 10**
+end note
+
+note right of Leader
+Response includes
+**HighWatermark: 10**
+end note
+Leader --> Follower1: Records(Empty), HWM=10
+deactivate Leader
+Follower1 -> Follower1: Update HWM = 10
+' [/step4]
+
+' [step6 {"name":"Client Read Restricted by HWM", "newPage": true}]
+Client -> Leader: Consume(Offset 0)
+activate Leader
+note right of Leader
+Leader checks HWM=10
+Returns messages 0..10
+end note
+Leader --> Client: Messages 0..10
+deactivate Leader
+' [/step6]
+
+' [step7 {"name":"Scenario: Client attempts to read uncommitted", "newPage": true}]
+Client -> Leader: Produce(Message 11)
+activate Leader
+Leader -> Leader: Append 11 (LEO=11)
+note right of Leader
+HWM: 10
+Log:
+| 9 |
+| 10 |
+| 11 |
+end note
+deactivate Leader
+
+Client -> Leader: Consume(Offset 11)
+activate Leader
+note right of Leader #Pink
+**Read Check**
+Request Offset: 11
+Current HWM: 10
+Log:
+| 10 (HWM) |
+| 11 |
+**Result: Empty/Wait**
+(Message 11 exists but is not committed)
+end note
+Leader --> Client: Empty Response (or wait)
+deactivate Leader
+' [/step7]
+
+@enduml
