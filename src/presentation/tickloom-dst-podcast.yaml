@@ -1,0 +1,110 @@
+title: "Tickloom: Deterministic Simulation Testing in Practice"
+description: "A slide deck for a podcast-style discussion on Tickloom, deterministic simulation testing, executable inconsistency scenarios, and the relationship between simulated and real backends."
+icon: "fas fa-vial"
+category: "Distributed Systems"
+sections:
+  - title: "Tickloom: Deterministic Simulation Testing in Practice"
+    slides:
+      - type: "text"
+        title: "Tickloom In One Line"
+        bullets:
+          - "A laboratory for distributed executions"
+          - "Build a whole cluster in one process"
+          - "Replay faults, timing, and client-visible anomalies"
+        notes: "Open with the thesis. Tickloom is interesting because it makes distributed executions explicit and replayable. The emphasis is not just on testing, but on explanation: we can construct an execution, replay it, inspect each node, and reason about what the client actually observed."
+
+      - type: "text"
+        title: "Why Distributed Bugs Are Hard"
+        bullets:
+          - "Most bugs are bugs in interleavings"
+          - "Messages, timeouts, clocks, disk, and failures interact"
+          - "Ordinary tests rarely replay the same execution twice"
+        notes: "Set up the problem. A lot of distributed failures are not simple logic bugs. They come from timing and ordering. A timeout fires early, a message arrives late, one node persists before another one sees the write, and suddenly the client observes something inconsistent."
+
+      - type: "text"
+        title: "What DST Changes"
+        bullets:
+          - "Control time instead of observing it"
+          - "Inject failures instead of waiting for them"
+          - "Replay the same execution from the same seed"
+        notes: "Introduce deterministic simulation testing. The goal is not merely to find a failing test. The goal is to turn a rare distributed execution into something replayable and explainable. Use the line: if you cannot replay the execution, you do not fully own the bug."
+
+      - type: "text"
+        title: "The Core Execution Model"
+        bullets:
+          - "Single-threaded event loop"
+          - "Everything advances by explicit ticks"
+          - "No hidden scheduler in the protocol path"
+        notes: "Explain the foundational move. Tickloom makes the cluster progress through explicit `tick()` calls. Nothing happens in the background. This gives a deterministic order for message handling, timeouts, and storage completion. Stress that the point is to remove hidden decisions from the runtime."
+
+      - type: "text"
+        title: "Why Single-Threaded Still Works"
+        bullets:
+          - "Control paths are rarely CPU-bound"
+          - "Network, disk, and coordination dominate"
+          - "Fewer locks, races, and context switches"
+        notes: "Address the common objection. Single-threaded does not automatically mean slow. In distributed systems the critical path is usually network delay, storage delay, retries, and coordination overhead. The simulator optimizes for reproducibility and clarity, not peak throughput."
+
+      - type: "text"
+        title: "Control The World Or Remove It"
+        bullets:
+          - "Simulate clock, network, and storage"
+          - "Seed and share randomness"
+          - "Eliminate thread scheduling by design"
+        notes: "Make the core model explicit. Tickloom controls the major sources of non-determinism: time, message delivery, storage behavior, and randomness. Thread scheduling is handled differently: instead of simulating arbitrary races, Tickloom removes them from the model with a single-threaded event loop."
+
+      - type: "text"
+        title: "The Simulation Loop"
+        bullets:
+          - "Advance the cluster"
+          - "Issue client requests"
+          - "Inject nemesis-style faults"
+        notes: "Explain the main loop. Tickloom combines workload generation and failure injection in one deterministic run. This is conceptually close to Jepsen plus a Nemesis, except the whole cluster is running in one controlled process."
+
+      - type: "text"
+        title: "The Strongest Tickloom Feature"
+        bullets:
+          - "Encode inconsistency scenarios directly in code"
+          - "Inspect every node and message in one process"
+          - "Show exactly how the client got a bad result"
+        notes: "This is the slide to slow down on. Tickloom lets us create stale reads, delayed propagation, clock-skew races, partitioned quorums, and storage-failure scenarios as executable tests. We are not only talking about anomalies in theory. We are writing them down and replaying them."
+
+      - type: "text"
+        title: "Building Blocks For Bigger Protocols"
+        bullets:
+          - "Message passing and request correlation"
+          - "Waiting lists, heartbeats, timeouts"
+          - "Quorums and majority-based decisions"
+        notes: "Explain that Tickloom is not only a simulator. It codifies recurring distributed-systems mechanisms. Those become reusable building blocks for more complex protocols like quorum replication, Paxos, or Raft."
+
+      - type: "text"
+        title: "Judge The System From The Client"
+        bullets:
+          - "Capture invocations, responses, failures, and timeouts"
+          - "Build a client-visible history"
+          - "Check linearizability and related guarantees"
+        notes: "Connect Tickloom to Jepsen-style verification. The important thing is not just internal state. The important thing is the history seen by clients. Once the history is recorded, we can ask whether the system violated linearizability, sequential consistency, or other expectations."
+
+      - type: "text"
+        title: "Async API Is Not Async Execution"
+        bullets:
+          - "`ListenableFuture` gives callback-style async"
+          - "Simulated backends produce deterministic completion"
+          - "Real backends may still do real synchronous work"
+        notes: "Land the subtle but important distinction. Tickloom's API is callback-driven and non-blocking at the call site, but the backend determines how completion is produced. This helps explain why `SimulatedStorage` is part of DST, while RocksDB-backed storage is primarily a production or parity backend."
+
+      - type: "text"
+        title: "Where RocksDB Fits"
+        bullets:
+          - "`SimulatedStorage` is the DST backend"
+          - "`RocksDbStorage` is the real-world backend"
+          - "Same protocol layer, different purpose"
+        notes: "Be explicit that this separation is correct. Deterministic simulation requires a simulator-owned backend. Real storage backends are still valuable for persistence, parity, and crash-oriented testing, but they are not the source of replayability."
+
+      - type: "text"
+        title: "Why This Matters"
+        bullets:
+          - "Turns folklore into reproducible engineering"
+          - "Makes distributed behavior explainable"
+          - "Lets us reason from code to client-visible consistency"
+        notes: "Close strongly. Tickloom combines reusable distributed-systems building blocks with a deterministic simulated world. That lets us create realistic failure scenarios, replay them exactly, inspect every node, and verify what the client actually saw."
