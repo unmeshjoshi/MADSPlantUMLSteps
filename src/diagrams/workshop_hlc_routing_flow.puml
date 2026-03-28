@@ -1,0 +1,51 @@
+@startuml
+!include ../style.puml
+
+title Hybrid Timestamps Flow Through The Workshop
+
+' [step1 {"name":"Begin transaction goes to coordinator"}]
+actor "Client" as client
+participant "Txn Coordinator\nhash(txnId)" as coord
+participant "Key Replica\nhash(key)" as replica
+
+client -> coord: BeginTransaction(txnId, clientTime=(1000,0))
+activate coord
+coord -> coord: merge local clock with clientTime
+coord --> client: readTimestamp=(1000,1)
+deactivate coord
+' [/step1]
+
+' [step2 {"name":"Write carries both snapshot and propagated HLC"}]
+client -> replica: TxnWrite(key, value,\nreadTs=(1000,1), clientTime=(1000,2))
+activate replica
+replica -> replica: hybridClock.tick(clientTime)
+replica -> replica: assign intent timestamp\nusing local HLC
+replica --> client: TxnWriteResponse(propagatedTime=(1005,0))
+deactivate replica
+' [/step2]
+
+' [step3 {"name":"Client merges returned time"}]
+client -> client: hybridClock.tick((1005,0))
+
+note right of client
+Every request/response carries time.
+The client keeps learning a later HLC
+from replicas and reuses it on future RPCs.
+end note
+' [/step3]
+
+' [step4 {"name":"Commit returns final commit timestamp"}]
+client -> coord: Commit(txnId, participantWrites,\nclientTime=(1005,1))
+activate coord
+coord -> coord: choose commit timestamp\nfrom merged HLC state
+coord --> client: CommitResponse(commitTs=(1010,0))
+deactivate coord
+
+note over client, replica
+This is why the workshop can stay decentralized:
+no global timestamp oracle is needed.
+Ordering emerges from HLC propagation plus routing.
+end note
+' [/step4]
+
+@enduml

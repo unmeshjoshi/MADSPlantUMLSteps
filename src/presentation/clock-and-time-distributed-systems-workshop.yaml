@@ -1,0 +1,447 @@
+title: "Consistency and Time: Patterns in Distributed Databases - Workshop Edition"
+description: "Extended workshop-oriented version of the clock and time deck. Connects physical clock drift, HLC, clock uncertainty, read restart, and serializable validation to the hands-on distrib-txn-db repository."
+icon: "fas fa-clock"
+category: "Distributed Systems"
+sections:
+  - title: "Consistency and Time: Patterns in Distributed Databases"
+    slides:
+      - type: "text"
+        title: "Agenda"
+        bullets:
+          - "Why transaction consistency is hard in distributed systems"
+          - "How HLC, clock uncertainty handling, and external consistency fit together"
+          - "How those ideas show up in the distrib-txn-db workshop"
+          - "What to implement, what to observe, and what each module adds"
+        notes: "This version of the talk is both conceptual and hands-on. Keep reminding the audience that every major idea maps to a concrete module or test in distrib-txn-db."
+
+  - title: "Workshop Framing"
+    slides:
+      - type: "text"
+        title: "Workshop Repository: distrib-txn-db"
+        bullets:
+          - "A workshop-style Java project that builds a distributed transactional key-value store step by step"
+          - "Starts with Hybrid Logical Clocks and MVCC, then adds routing, intents, uncertainty handling, and serializable validation"
+          - "The code is intentionally split into small modules so each concept can be learned in isolation"
+          - "This deck will now connect each time-related idea to the module where participants implement or observe it"
+        notes: "Anchor the rest of the deck in the repo. This is not a generic database talk anymore; it is the conceptual guide for the workshop implementation."
+
+      - type: "diagram"
+        title: "Workshop Module Roadmap"
+        diagramRef: "workshop_module_roadmap"
+        bullets:
+          - "01-hybrid-clock introduces HybridClock and HybridTimestamp"
+          - "02-versioned-kv adds MVCC key encoding and versioned reads"
+          - "03-distrib-versioned-kv adds hash-based routing and timestamp propagation"
+          - "04-distrib-txn-kv adds intents, snapshot reads, commit, and resolve"
+          - "05-clock-uncertainty-and-read-restart fixes skewed snapshot reads"
+          - "06-serializable-txn prevents write skew using read provisional records"
+        notes: "This slide is the map for the whole workshop. Refer back to it often."
+
+      - type: "text"
+        title: "Recommended Learning Path"
+        bullets:
+          - "Module 01: understand how local HLC timestamps move forward"
+          - "Module 02: understand how MVCC stores multiple committed versions"
+          - "Module 03: understand how HLC timestamps move across RPC boundaries"
+          - "Module 04: build snapshot isolation with intents and transaction records"
+          - "Module 05: see why clock uncertainty breaks naive snapshot reads, then fix it"
+          - "Module 06: learn why a safe snapshot still does not guarantee serializability"
+        notes: "This is a useful orientation slide before diving into theory."
+
+  - title: "The Problem: Physical Clock Drift"
+    slides:
+      - type: "text"
+        title: "The Fundamental Issue: Independent, Drifting Clocks"
+        bullets:
+          - "Computers run on independent clocks that drift apart"
+          - "No global time source: each node has its own view of time"
+          - "Clock skew (epsilon): the uncertainty window between different machines"
+          - "This is a hardware reality, not an application bug"
+        notes: "Set up the rest of the talk. Everything that follows is a response to this one fact."
+
+      - type: "diagram"
+        title: "Clock Skew Problem: Different Readings"
+        diagramRef: "clock_skew_issue"
+        bullets:
+          - "Alice reads from Amber with a lagging clock and sees an older value"
+          - "Bob reads from Blue with a later clock and sees a newer value"
+          - "The same logical key appears to have different latest values"
+          - "This violates the real-time intuition users expect"
+        notes: "This is the motivating anomaly for the whole deck."
+
+      - type: "text"
+        title: "Why Physical Clocks Fail"
+        bullets:
+          - "NTP narrows skew but does not remove it"
+          - "Wall clocks can move backward, which breaks monotonic timestamp assignment"
+          - "Different servers cannot safely compare wall-clock timestamps as if they came from one clock"
+          - "So we need logical rules on top of physical time"
+        notes: "Make the audience distrust raw wall clocks before introducing Lamport and HLC."
+
+  - title: "Logical Foundation: Lamport Clock"
+    slides:
+      - type: "text"
+        title: "Lamport Clock: Ensuring Causality"
+        bullets:
+          - "Lamport clocks preserve happens-before relationships"
+          - "When a node receives a message, it takes the maximum of local and remote logical time"
+          - "The result is a causally meaningful order across message exchanges"
+          - "But the order is still detached from real wall-clock time"
+        notes: "Lamport solves causality, not real-time ordering."
+
+      - type: "diagram"
+        title: "Lamport Clock: Causal Ordering"
+        diagramRef: "lamport_clock_sequence"
+        bullets:
+          - "Each request carries a logical timestamp"
+          - "Each receiver updates its local logical clock using the received value"
+          - "Later responses propagate that newer logical time back to the client"
+          - "Causally related events get a stable order"
+        notes: "Useful precursor to HLC propagation in the workshop."
+
+      - type: "diagram"
+        title: "Lamport Clock: Partial Order Limitation"
+        diagramRef: "lamport_clock_partial_order"
+        bullets:
+          - "Concurrent events on different servers are still only partially ordered"
+          - "Lamport clocks cannot say which concurrent event was earlier in real time"
+          - "That makes snapshot reads awkward when users care about real-time ordering"
+          - "We need timestamps that stay close to physical time without losing causality"
+        notes: "This sets up the reason for HLC."
+
+      - type: "text"
+        title: "Lamport Clock Limitations"
+        bullets:
+          - "Partial order only"
+          - "No direct relation to wall time"
+          - "Good for causality, weak for user-facing time semantics"
+          - "Next step: combine wall-clock time and logical ticks"
+        notes: "Transition cleanly into HLC."
+
+  - title: "Hybrid Solution: Hybrid Logical Clock (HLC)"
+    slides:
+      - type: "text"
+        title: "Hybrid Logical Clock: Best of Both Worlds"
+        bullets:
+          - "HLC combines wall-clock time with a logical counter"
+          - "HybridTimestamp = (wallClockTime, logicalTicks)"
+          - "It stays close to physical time but still respects message causality"
+          - "It is monotonic even when raw wall-clock behavior is awkward"
+        notes: "This is the key timestamp primitive used throughout the workshop."
+
+      - type: "diagram"
+        title: "Hybrid Logical Clock (HLC): Basic Usage"
+        diagramRef: "hybrid_clock_basic"
+        bullets:
+          - "On each local event, compare local physical time, local HLC, and received HLC"
+          - "Advance wall time if possible"
+          - "Otherwise keep wall time and increment logical ticks"
+          - "This creates a timestamp that is both causal and close to real time"
+        notes: "Explain the rule slowly. This is foundational."
+
+      - type: "text"
+        title: "Module 01: What Participants Implement"
+        bullets:
+          - "Module 01 asks participants to implement HybridClock.now()"
+          - "If physical time does not advance, keep the same wall time and increment ticks"
+          - "If physical time advances, move to the new wall time and reset ticks to 0"
+          - "This makes the HLC monotonic without central coordination"
+        notes: "Tie the abstract HLC rule directly to the first exercise in the workshop."
+
+      - type: "diagram"
+        title: "How Hybrid Timestamps Flow Through The Workshop"
+        diagramRef: "workshop_hlc_routing_flow"
+        bullets:
+          - "BeginTransaction goes to coordinatorFor(txnId)"
+          - "TxnWrite goes to replicaFor(key)"
+          - "Each RPC carries clientTime or propagatedTime"
+          - "Both clients and replicas merge received HLC values into their local clock"
+          - "The system stays decentralized because time moves through normal request/response traffic"
+        notes: "This slide makes the workshop architecture concrete."
+
+      - type: "text"
+        title: "Modules 02 and 03: Where HLC Becomes Storage"
+        bullets:
+          - "Module 02 stores multiple committed versions under MVCC keys"
+          - "Reads ask: what version was visible at timestamp T?"
+          - "Module 03 routes keys to storage nodes using hash(key)"
+          - "Clients and replicas propagate HLC timestamps on every request and response"
+        notes: "This is the bridge from time to versioned distributed storage."
+
+  - title: "Distributed Transactions In The Workshop"
+    slides:
+      - type: "text"
+        title: "Module 04: Snapshot Isolation On Top Of HLC + MVCC"
+        bullets:
+          - "The workshop does not jump straight to commit wait or TrueTime"
+          - "It first builds a decentralized snapshot-isolation engine"
+          - "Transactions get a read timestamp at begin time"
+          - "Writes become intents first, then commit resolves them into committed MVCC versions"
+        notes: "This section explains what the audience is actually building in module 04."
+
+      - type: "diagram"
+        title: "Transaction Lifecycle In distrib-txn-db"
+        diagramRef: "workshop_transaction_lifecycle"
+        bullets:
+          - "BeginTransaction creates a PENDING TxnRecord on the coordinator"
+          - "TxnWrite stores an IntentRecord in the participant's intentStore"
+          - "TxnRead returns own intents first, otherwise reads committed data at readTimestamp"
+          - "Commit marks the record COMMITTED and sends resolve requests to participants"
+          - "Participants move intents into the committed store and delete provisional records"
+        notes: "This is the operational core of the workshop."
+
+      - type: "text"
+        title: "Module 04 Concepts To Emphasize"
+        bullets:
+          - "coordinatorFor(txnId): transaction records live on a node chosen by hashing txnId"
+          - "replicaFor(key): key-level reads and writes route by hash(key)"
+          - "intentStore and committedStore are separate"
+          - "read-your-own-writes is preserved even though writes are still provisional"
+          - "lazy intent resolution lets later reads and writes clean up old intents"
+        notes: "These are the ideas people should look for in TransactionalStorageClient and TransactionalStorageReplica."
+
+      - type: "diagram"
+        title: "Snapshot Isolation with HLC: Complete Transaction Flow"
+        diagramRef: "snapshot_isolation_hybrid_clock_detailed"
+        bullets:
+          - "BEGIN establishes transaction context and read timestamp"
+          - "READ sees one stable snapshot"
+          - "WRITE creates intents that are invisible to other transactions"
+          - "COMMIT converts intents to committed versions"
+          - "MVCC plus HLC gives decentralized snapshot isolation"
+        notes: "Reuse the existing detailed diagram here because it already matches the workshop story well."
+
+  - title: "The Remaining Gap: External Consistency"
+    slides:
+      - type: "text"
+        title: "The External Consistency Problem"
+        bullets:
+          - "HLC-based snapshot isolation is still vulnerable to clock-skew ambiguity"
+          - "A transaction can start after another transaction commits in real time"
+          - "But the later transaction may still read from an older snapshot timestamp"
+          - "That means a causally later client operation can miss a value that already committed"
+        notes: "This is the central gap between decentralized SI and externally consistent reads."
+
+      - type: "text"
+        title: "External Consistency Violation Example"
+        bullets:
+          - "Writer commits around wall-clock 1005 on one node"
+          - "Reader begins with read timestamp 1000 on another node"
+          - "The writer's value is newer than the reader snapshot"
+          - "Yet the real-time order says the read came later"
+          - "That is the uncertainty window problem in practical form"
+        notes: "Phrase this in module/test terms rather than only abstract database terms."
+
+      - type: "text"
+        title: "Module 04 Demonstrates The Problem On Purpose"
+        bullets:
+          - "ClockUncertaintySnapshotTest shows that a committed value can be missed inside the uncertainty window"
+          - "The reader at timestamp 1000 does not see a value committed at 1005"
+          - "A later read at a sufficiently advanced timestamp does see it"
+          - "This is not a bug in MVCC; it is the expected consequence of skewed clocks"
+        notes: "Use the module 04 test as the concrete proof point."
+
+  - title: "Clock-Bound Wait And Read Restart"
+    slides:
+      - type: "text"
+        title: "Two Families Of Solutions"
+        bullets:
+          - "Commit wait: delay acknowledgment until the uncertainty window has passed"
+          - "Read restart: let writes commit, but restart unlucky reads that fall inside the uncertainty window"
+          - "Both approaches protect real-time ordering"
+          - "The workshop implements the read-restart family"
+        notes: "This is the framing slide for comparing Spanner-style and Cockroach/Yugabyte-style behavior."
+
+      - type: "diagram"
+        title: "Commit Wait: Write Waits for Clock Offset"
+        diagramRef: "commit_wait_clock_skew"
+        bullets:
+          - "The write picks a timestamp and then waits before becoming visible"
+          - "The wait is long enough that every other node's clock should have advanced beyond that point"
+          - "After the wait, future reads are safe"
+          - "This is the intuition behind the clock-bound wait pattern"
+        notes: "Keep this as the conceptual commit-wait reference point."
+
+      - type: "diagram"
+        title: "What TrueTime Gives: Clock Bounds Across Cluster Nodes"
+        diagramRef: "clock_bound"
+        bullets:
+          - "Each node has a bounded uncertainty interval"
+          - "The database reasons about earliest and latest possible real time"
+          - "That bounded uncertainty turns external consistency into a wait problem"
+          - "Smaller bounds mean shorter waits"
+        notes: "This ties into Spanner and AWS ClockBound later."
+
+      - type: "diagram"
+        title: "Read Restart In Module 05"
+        diagramRef: "workshop_read_restart_flow"
+        bullets:
+          - "Module 04 would simply miss the newer value"
+          - "Module 05 looks ahead through readTs + uncertaintyOffset"
+          - "If it finds a newer committed version inside that window, it returns Read restart required"
+          - "The client restarts at a later propagated timestamp and retries safely"
+        notes: "This is the most important workshop-specific timing diagram in the whole deck."
+
+      - type: "diagram"
+        title: "Read Restart: Handling Uncertainty Window While Reading"
+        diagramRef: "read_restart_clock_skew"
+        bullets:
+          - "A read lands on a lagging timestamp"
+          - "The server detects that a newer value may exist in the uncertainty window"
+          - "The read restarts at a safer timestamp"
+          - "The second read sees the committed value"
+        notes: "Reuse the existing teaching diagram after the workshop-specific flow."
+
+      - type: "text"
+        title: "How Module 05 Implements Read Restart"
+        bullets:
+          - "ClockUncertaintyTransactionalStorageReplica extends the transactional replica from module 04"
+          - "It computes uncertaintyLimit = readTimestamp + uncertaintyOffset"
+          - "It searches for the latest committed version up to that limit"
+          - "If that latest version is newer than readTimestamp, it returns an error instead of a stale read"
+          - "That keeps writes fast and pushes the correction to the unlucky read path"
+        notes: "This slide should point people toward the exact logic in module 05 without overwhelming them with code."
+
+      - type: "text"
+        title: "Commit Wait vs Read Restart"
+        bullets:
+          - "Commit wait increases write latency to simplify later reads"
+          - "Read restart keeps the write path fast but occasionally retries reads"
+          - "Spanner famously leans on commit wait with tight time bounds"
+          - "CockroachDB and YugabyteDB are better known for read-restart style behavior on commodity infrastructure"
+          - "The workshop uses read restart because it is easier to teach on top of HLC + MVCC"
+        notes: "Good comparison slide before the real-world systems section."
+
+  - title: "The Enabler: Time Sync And Bounded Uncertainty"
+    slides:
+      - type: "text"
+        title: "Spanner: TrueTime With Dedicated Hardware"
+        bullets:
+          - "Spanner uses TrueTime to expose bounded uncertainty intervals"
+          - "That makes commit wait practical because epsilon is small"
+          - "The write waits for certainty before the client is acknowledged"
+          - "The result is externally consistent reads and writes at global scale"
+        notes: "Keep this high level and tie it back to the earlier commit-wait diagrams."
+
+      - type: "text"
+        title: "Open Source Databases: Software-Only Trade-Offs"
+        bullets:
+          - "Commodity infrastructure usually has larger uncertainty bounds"
+          - "That makes pure commit wait more expensive"
+          - "So many systems prefer HLC plus read restart"
+          - "The workshop follows that path because it matches what people can build and test locally"
+        notes: "Relate the design choice directly to the workshop."
+
+      - type: "text"
+        title: "Amazon Time Sync And ClockBound"
+        bullets:
+          - "AWS exposes bounded clock-error information through its time-sync tooling"
+          - "That brings a TrueTime-like model closer to commodity cloud infrastructure"
+          - "With bounded uncertainty, a database can implement commit-wait style external consistency"
+          - "But the protocol still has to be built in the database layer"
+        notes: "Useful modern context after the conceptual treatment."
+
+  - title: "Beyond Clock Uncertainty: Serializable Validation"
+    slides:
+      - type: "text"
+        title: "A Safe Snapshot Is Still Not Serializable"
+        bullets:
+          - "Read restart fixes uncertainty about what snapshot a transaction should see"
+          - "It does not stop two transactions from reading related rows and writing different keys"
+          - "That is the classic write-skew gap of snapshot isolation"
+          - "So module 06 tackles a different problem from module 05"
+        notes: "Very important distinction. Do not let people confuse uncertainty with write skew."
+
+      - type: "diagram"
+        title: "Serializable Layer Prevents Write Skew"
+        diagramRef: "workshop_serializable_write_skew_flow"
+        bullets:
+          - "Two snapshot transactions read the same invariant"
+          - "Under plain SI both might write different keys and both commit"
+          - "Module 06 records provisional reads and checks them on conflicting writes"
+          - "One transaction is rejected before both can violate the invariant"
+        notes: "This is the clearest way to show why module 06 exists."
+
+      - type: "text"
+        title: "What Module 06 Adds"
+        bullets:
+          - "A readProvisionalStore tracks what keys pending transactions have read"
+          - "A later writer checks for conflicting pending serializable reads"
+          - "Tie-break logic prevents both transactions from proceeding"
+          - "This converts the workshop from snapshot isolation into a simplified serializable layer"
+        notes: "Point people to SerializableTransactionalStorageReplica and SerializableWriteSkewTest."
+
+  - title: "Suggested Hands-On Flow"
+    slides:
+      - type: "text"
+        title: "Suggested Lab Sequence"
+        bullets:
+          - "Start with 01-hybrid-clock and make HybridClock.now() pass its tests"
+          - "Use 04-distrib-txn-kv to build begin, intent writes, snapshot reads, and commit/resolve"
+          - "Run the anomaly tests to see the limits of snapshot isolation"
+          - "Move to 05-clock-uncertainty-and-read-restart to fix skewed snapshot reads"
+          - "Finish with 06-serializable-txn to block write skew"
+        notes: "This closes the loop between deck and exercises."
+
+      - type: "text"
+        title: "Tests To Demo During The Workshop"
+        bullets:
+          - "ClockUncertaintySnapshotTest: module 04 demonstrates the anomaly"
+          - "ClockUncertaintyReadRestartTest: module 05 demonstrates the fix"
+          - "SerializableWriteSkewTest: module 06 demonstrates the next-level protection"
+          - "These tests are ideal discussion anchors because they tell a story with very little setup"
+        notes: "This is a practical presenter aid."
+
+  - title: "Conclusion & Key Takeaways"
+    slides:
+      - type: "text"
+        title: "Problem To Workshop Implementation"
+        bullets:
+          - "Physical clock drift makes real-time ordering unsafe by default"
+          - "Lamport clocks preserve causality but not wall-clock meaning"
+          - "HLC makes decentralized timestamp generation practical"
+          - "MVCC turns those timestamps into snapshots and versioned reads"
+          - "Read restart repairs the uncertainty window problem"
+          - "Serializable validation is still needed to prevent write skew"
+        notes: "This is the summary slide that ties the whole workshop together."
+
+      - type: "text"
+        title: "What Participants Should Leave With"
+        bullets:
+          - "An intuition for why clocks matter in distributed databases"
+          - "A concrete understanding of how HLC, MVCC, and routing combine"
+          - "A mental model for uncertainty windows and read restart"
+          - "A clear distinction between snapshot safety and serializable safety"
+          - "A codebase they can keep extending after the workshop"
+        notes: "End on confidence and momentum."
+
+  - title: "Appendix"
+    slides:
+      - type: "diagram"
+        title: "Hybrid Logical Clock (HLC) In Distributed Transactions"
+        diagramRef: "hybrid_clock_transaction"
+        bullets:
+          - "The coordinator starts with an HLC value"
+          - "Participants merge received timestamps with local clocks"
+          - "Responses carry propagated time back to the caller"
+          - "The transaction can commit using a causally safe timestamp"
+        notes: "Keep this in appendix for deep-dive discussion."
+
+      - type: "text"
+        title: "HLC Enables Decentralized Snapshot Isolation"
+        bullets:
+          - "Each node can generate timestamps locally"
+          - "Message propagation keeps HLC values causally aligned"
+          - "That removes the need for a centralized timestamp oracle"
+          - "The workshop uses this property throughout modules 03 to 06"
+        notes: "Useful appendix reinforcement."
+
+      - type: "diagram"
+        title: "Commit Wait With Clock Bounds: Write Waits"
+        diagramRef: "commit_wait_clock_bound_philip_write"
+        bullets:
+          - "The write chooses a timestamp from the upper edge of the uncertainty interval"
+          - "The system waits until the lower edge has passed that timestamp"
+          - "Only then is the write acknowledged"
+          - "This is the bounded-time alternative to read restart"
+        notes: "Appendix comparison diagram."

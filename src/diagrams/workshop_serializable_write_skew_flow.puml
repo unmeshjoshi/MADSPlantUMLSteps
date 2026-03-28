@@ -1,0 +1,56 @@
+@startuml
+!include ../style.puml
+
+title Serializable Layer Prevents Write Skew
+
+' [step1 {"name":"Two snapshot transactions read the same invariant"}]
+participant "Txn 1" as t1
+participant "Txn 2" as t2
+participant "Serializable replica" as replica
+
+t1 -> replica: read doctor-alice = on-call
+t1 -> replica: read doctor-bob = on-call
+t2 -> replica: read doctor-alice = on-call
+t2 -> replica: read doctor-bob = on-call
+
+note over t1, t2
+Invariant: at least one doctor must stay on-call.
+Under snapshot isolation both txns think it is safe to turn one doctor off.
+end note
+' [/step1]
+
+' [step2 {"name":"Module 06 tracks read provisional records"}]
+replica -> replica: record that txn 1 read doctor-alice and doctor-bob
+replica -> replica: record that txn 2 read doctor-alice and doctor-bob
+' [/step2]
+
+' [step3 {"name":"First write succeeds"}]
+t1 -> replica: write doctor-alice = off-call
+replica --> t1: success
+' [/step3]
+
+' [step4 {"name":"Second write conflicts", "newPage":"true"}]
+t2 -> replica: write doctor-bob = off-call
+replica -> replica: detect conflicting pending read\nfrom txn 1
+replica --> t2: failure: Conflicting serializable read
+
+note right of replica
+Module 06 stops the skew before both txns commit.
+That is a different problem from clock uncertainty:
+the snapshot is safe, but the cross-key invariant is not.
+end note
+' [/step4]
+
+' [step5 {"name":"Result preserves the invariant"}]
+t1 -> replica: commit
+replica --> t1: success
+
+note over t1, t2
+Final result:
+doctor-alice = off-call
+doctor-bob   = on-call
+The invariant survives because one transaction was blocked.
+end note
+' [/step5]
+
+@enduml

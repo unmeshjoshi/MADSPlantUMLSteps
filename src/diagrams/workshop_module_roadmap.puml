@@ -1,0 +1,48 @@
+@startuml
+!include ../style.puml
+
+title distrib-txn-db Workshop Roadmap
+
+skinparam defaultTextAlignment center
+skinparam rectangle {
+  RoundCorner 15
+}
+
+' [step1 {"name":"Module 01 and 02 foundations"}]
+rectangle "01-hybrid-clock\nHybridClock + HybridTimestamp" as m1
+rectangle "02-versioned-kv\nMVCC keys, versions, scans" as m2
+
+m1 -right-> m2 : timestamps index versions
+' [/step1]
+
+' [step2 {"name":"Module 03 adds distributed routing"}]
+rectangle "03-distrib-versioned-kv\nhash(key) routing\npropagate HLC on RPC" as m3
+
+m2 -right-> m3 : route reads and writes
+' [/step2]
+
+' [step3 {"name":"Module 04 adds distributed transactions"}]
+rectangle "04-distrib-txn-kv\nbegin txn\nintents\nsnapshot reads\ncommit + resolve" as m4
+
+m3 -right-> m4 : build SI on top of MVCC
+' [/step3]
+
+' [step4 {"name":"Module 05 adds clock uncertainty handling"}]
+rectangle "05-clock-uncertainty-and-read-restart\nuncertainty window\nread restart fix" as m5
+
+m4 -right-> m5 : fix skewed snapshot reads
+' [/step4]
+
+' [step5 {"name":"Module 06 adds serializable validation"}]
+rectangle "06-serializable-txn\nread provisional records\nblock write skew" as m6
+
+m5 -right-> m6 : go beyond snapshot isolation
+
+note bottom
+The workshop starts with time, then uses that time in MVCC,
+then turns it into distributed transactions, then fixes
+clock uncertainty, and finally blocks write skew.
+end note
+' [/step5]
+
+@enduml

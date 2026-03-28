@@ -1,0 +1,50 @@
+@startuml
+!include ../style.puml
+
+title Read Restart In Module 05
+
+' [step1 {"name":"Module 04 can miss a recent commit"}]
+actor "Reader txn" as reader
+participant "Storage replica" as replica
+database "Committed MVCC versions" as store
+
+reader -> replica: TxnRead(key=account-101,\nreadTs=(1000,0))
+activate replica
+replica -> store: get committed versions\n<= readTs
+store --> replica: no visible version at 1000
+replica --> reader: found=false
+deactivate replica
+
+note right of reader
+In module 04 this read can miss
+a value committed just after 1000
+but still inside the uncertainty window.
+end note
+' [/step1]
+
+' [step2 {"name":"Module 05 checks the uncertainty window"}]
+reader -> replica: TxnRead(key=account-101,\nreadTs=(1000,0))
+activate replica
+replica -> replica: uncertaintyLimit = readTs + maxOffset
+replica -> store: inspect versions up to uncertaintyLimit
+store --> replica: latest committed version at (1005,0)
+replica --> reader: error=Read restart required,\npropagatedTime=(1005,0)
+deactivate replica
+' [/step2]
+
+' [step3 {"name":"Client restarts at a safe timestamp"}]
+reader -> reader: move snapshot forward\nrestart read at (1005,0)
+reader -> replica: TxnRead(key=account-101,\nreadTs=(1005,0))
+activate replica
+replica -> store: get committed versions\n<= (1005,0)
+store --> replica: value=1000
+replica --> reader: found=true, value=1000
+deactivate replica
+
+note bottom
+The write path stays fast.
+Only the unlucky read inside the uncertainty window restarts.
+end note
+' [/step3]
+
+@enduml

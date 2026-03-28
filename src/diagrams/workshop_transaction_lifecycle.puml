@@ -1,0 +1,62 @@
+@startuml
+!include ../style.puml
+
+title Transaction Lifecycle In distrib-txn-db
+
+' [step1 {"name":"Begin creates a coordinator record"}]
+actor "Application" as app
+participant "Txn Client" as client
+participant "Coordinator\nhash(txnId)" as coord
+participant "Participant\nhash(key)" as part
+
+app -> client: begin txn
+client -> coord: BeginTransaction(txnId)
+activate coord
+coord -> coord: create TxnRecord(status=PENDING,\nreadTimestamp, participants=[])
+coord --> client: BeginTransactionResponse
+deactivate coord
+' [/step1]
+
+' [step2 {"name":"Writes create intents"}]
+app -> client: write key=account-101
+client -> part: TxnWrite(txnId, key, value, readTs)
+activate part
+part -> part: store IntentRecord in intentStore
+part --> client: TxnWriteResponse(success)
+deactivate part
+' [/step2]
+
+' [step3 {"name":"Reads use snapshot plus own intents"}]
+app -> client: read account-101
+client -> part: TxnRead(txnId, key, readTs)
+activate part
+part -> part: if own intent exists,\nreturn own provisional value
+part -> part: else read committedStore\nas of readTimestamp
+part --> client: TxnReadResponse
+deactivate part
+' [/step3]
+
+' [step4 {"name":"Commit marks record committed"}]
+app -> client: commit txn
+client -> coord: Commit(txnId, participantWrites)
+activate coord
+coord -> coord: mark TxnRecord COMMITTED\nchoose commitTimestamp
+coord -> part: ResolveTransaction(txnId,\ncommitTimestamp, keys)
+activate part
+part -> part: move intents to committedStore
+part -> part: delete provisional records
+part --> coord: ResolveTransactionResponse
+deactivate part
+coord --> client: CommitResponse(commitTimestamp)
+deactivate coord
+' [/step4]
+
+' [step5 {"name":"Later readers lazily resolve old intents"}]
+note over coord, part
+If a read/write later finds another transaction's intent,
+it asks the coordinator for status and resolves the intent lazily.
+That keeps the workshop flow realistic without adding background cleanup daemons.
+end note
+' [/step5]
+
+@enduml
