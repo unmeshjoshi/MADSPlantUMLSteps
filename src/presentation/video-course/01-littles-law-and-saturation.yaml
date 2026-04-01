@@ -25,7 +25,7 @@ sections:
         diagramRef: "02-utilization-constraint"
 
   - title: "The Hockey Stick Curve"
-    slides:          
+    slides:
       - type: "diagram"
         title: "Throughput vs Arrival Rate"
         diagramRef: "throughput_vs_arrival_rate_chart"
@@ -41,3 +41,14 @@ sections:
           - "Safe Zone: < 80% (Linear scaling)"
           - "Danger Zone: 80% - 95% (Non-linear queuing begins)"
           - "Saturation: > 1000 IOPS (Hockey Stick explosion!)"
+
+  - title: "Hands-on Lab"
+    slides:
+      - type: "text"
+        title: "Lab: Verifying Little's Law with iostat"
+        bullets:
+          - "Task 1: Run disk load with different IOPS"
+          - "Task 2: Capture metrics with iostat -x 1"
+          - "Task 3: Verify L = λ x W using aqu-sz, r/s, w/s, and await"
+          - "Task 4: Calculate Service Time (S) using U = X x S"
+          - "Task 5: Predict the Saturation Point"
