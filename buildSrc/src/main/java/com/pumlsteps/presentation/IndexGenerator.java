@@ -36,15 +36,15 @@ public class IndexGenerator {
         int totalSlides = 0;
         int totalDiagrams = 0;
         
-        // Scan all YAML files in the presentation directory
-        File[] yamlFiles = presentationDir.listFiles((dir, name) -> name.endsWith(".yaml"));
-        if (yamlFiles != null) {
-            for (File yamlFile : yamlFiles) {
-                PresentationInfo info = extractPresentationInfo(yamlFile);
-                if (info != null) {
-                    presentations.add(info);
-                    totalSlides += info.slideCount;
-                }
+        // Scan all YAML files in the presentation directory recursively
+        List<File> yamlFiles = new ArrayList<>();
+        findYamlFiles(presentationDir, yamlFiles);
+        
+        for (File yamlFile : yamlFiles) {
+            PresentationInfo info = extractPresentationInfo(yamlFile);
+            if (info != null) {
+                presentations.add(info);
+                totalSlides += info.slideCount;
             }
         }
         
@@ -59,6 +59,19 @@ public class IndexGenerator {
         
         // Generate the HTML
         generateIndexHtml(presentations, totalSlides, totalDiagrams, outputFile);
+    }
+    
+    private void findYamlFiles(File dir, List<File> result) {
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    findYamlFiles(file, result);
+                } else if (file.getName().endsWith(".yaml")) {
+                    result.add(file);
+                }
+            }
+        }
     }
     
     private PresentationInfo extractPresentationInfo(File yamlFile) throws IOException {
@@ -390,6 +403,16 @@ public class IndexGenerator {
             text-decoration: underline;
         }
 
+        .category-heading {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 3rem 0 1.5rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -452,11 +475,24 @@ public class IndexGenerator {
             </div>
         </div>
 
-        <div class="presentations-grid">
 """);
         
         // Generate cards for each presentation
+        String currentCategory = null;
         for (PresentationInfo presentation : presentations) {
+            if (!presentation.category.equals(currentCategory)) {
+                if (currentCategory != null) {
+                    body.append("""
+        </div>
+""");
+                }
+                body.append("""
+        <h2 class="category-heading">""").append(presentation.category).append("""
+</h2>
+        <div class="presentations-grid">
+""");
+                currentCategory = presentation.category;
+            }
             body.append("""
             <a href="presentations/""").append(presentation.fileName).append("""
 " class="presentation-card">
@@ -482,9 +518,11 @@ public class IndexGenerator {
 """);
         }
         
-        body.append("""
+        if (currentCategory != null) {
+            body.append("""
         </div>
 """);
+        }
         
         return body.toString();
     }

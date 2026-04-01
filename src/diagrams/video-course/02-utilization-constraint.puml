@@ -1,0 +1,45 @@
+@startuml
+!include ../../style.puml
+
+title Utilization Constraint
+
+actor "Clients" as clients
+box "Disk" #LightCyan
+  queue "Queue" as queue
+  database "Storage" as disk
+end box
+
+' [step1 {"name":"Arrivals & Throughput"}]
+clients -> queue: Arrive (λ) = 1000 IOPS
+queue -> disk: Dequeue & Write
+note over disk: S (svctm) = 0.5ms\n(0.0005s)
+disk --> clients: Ack (Throughput X)
+note over clients, disk: Because the system is stable:\nX = λ = 1000 IOPS (r/s + w/s)
+' [/step1]
+
+' [step2 {"name":"Utilization Formula"}]
+note over queue, disk #LightBlue
+  **Utilization (U)**
+  U = X x S
+  (iostat: %util)
+end note
+' [/step2]
+
+' [step3 {"name":"Current Utilization"}]
+note over queue, disk #LightGreen
+  At X = 1000 IOPS:
+  U = 1000 x 0.0005 = 0.50
+  System is 50% busy (%util = 50.00)
+end note
+' [/step3]
+
+' [step4 {"name":"The Capacity Limit"}]
+note over queue, disk #FFCCCC
+  **The Absolute Limit**
+  U cannot exceed 1.0 (%util = 100.00)
+  Max Throughput (X_max) = 1 / S
+  X_max = 1 / 0.0005 = 2000 IOPS
+end note
+' [/step4]
+
+@enduml

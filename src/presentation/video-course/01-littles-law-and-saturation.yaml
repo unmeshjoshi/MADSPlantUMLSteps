@@ -1,0 +1,26 @@
+title: "Little's Law and Saturation"
+description: "Understanding system saturation using Little's Law"
+icon: "fas fa-chart-line"
+category: "Queuing Theory"
+
+sections:
+  - title: "Introduction"
+    slides:
+      - type: "diagram"
+        title: "The Queuing Model"
+        diagramRef: "01-littles-law-and-saturation"
+          
+      - type: "text"
+        title: "The Stable System Assumption"
+        bullets:
+          - "For a system to be stable, the arrival rate must equal throughput"
+          - "λ = X"
+          - "What comes in, must go out at the same rate"
+          - "If λ > X, the queue grows"
+
+  - title: "System Utilization"
+    slides:
+      - type: "diagram"
+        title: "The Utilization Constraint"
+        diagramRef: "02-utilization-constraint"
+        

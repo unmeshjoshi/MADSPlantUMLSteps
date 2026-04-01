@@ -1625,6 +1625,10 @@ kbd {
 #goto-slide-button {
     background: var(--accent-color);
     color: var(--text-on-dark);
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1001;
 }
 
 #goto-slide-button:hover:not(:disabled) {
