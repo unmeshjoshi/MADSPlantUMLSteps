@@ -1,0 +1,40 @@
+@startuml
+!include ../../style.puml
+
+title The Three Performance Zones
+
+' [step1 {"name":"Zone 1: The Safe Zone"}]
+rectangle "Utilization: 0% to 80%" as safe #LightGreen
+note bottom of safe
+  **Predictable & Fast**
+  Response time is stable.
+  Queues empty almost instantly.
+  Lq < 5
+end note
+' [/step1]
+
+' [step2 {"name":"Zone 2: The Transition Zone"}]
+rectangle "Utilization: 80% to 95%" as warn #LightYellow
+safe -> warn
+
+note bottom of warn
+  **Queuing Begins**
+  Response time rises noticeably.
+  Bursts cause brief saturation.
+  Lq grows non-linearly.
+end note
+' [/step2]
+
+' [step3 {"name":"Zone 3: The Hockey Stick (Saturation)"}]
+rectangle "Utilization: > 95%" as danger #FFCCCC
+warn -> danger
+
+note bottom of danger
+  **Exponential Explosion**
+  Waiting time vastly exceeds service time.
+  Small increases in load cause massive delays.
+  System is effectively saturated.
+end note
+' [/step3]
+
+@enduml

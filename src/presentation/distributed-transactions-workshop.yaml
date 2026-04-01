@@ -68,6 +68,45 @@ sections:
           - "**Validation:** ./gradlew :03-mvcc-rocksdb:test"
         notes: "In-memory is great for learning, but real databases persist to disk. We'll swap our backend to RocksDB (an LSM KV store). The challenge here is schema design: how do we structure our keys so that sweeping a version chain is sequential and fast on disk? We append the descending timestamp to the key."
 
+      - type: "diagram"
+        title: "MVCC Version Chains: The Logical Model"
+        diagramRef: "workshop_mvcc_logical_version_ordering"
+        bullets:
+          - "A single logical key has multiple committed versions over time"
+          - "The visibility rule is simple: return the latest version whose timestamp is <= read timestamp"
+          - "readAt(MAX_TIMESTAMP) gives the latest value"
+          - "readAt(T) gives the historical snapshot visible at time T"
+        notes: "This slide mirrors the PDF intuition first, before dropping to raw bytes. Keep it very simple: one logical key, many versions, and the latest visible version wins."
+
+      - type: "text"
+        title: "From Logical Versions To RocksDB Bytes"
+        bullets:
+          - "The logical model is easy to explain, but RocksDB does not understand MVCC directly"
+          - "RocksDB stores keys and values as byte arrays and compares keys lexicographically using memcmp-style byte ordering"
+          - "So we must encode the logical key and timestamp into bytes that preserve the access pattern we want"
+          - "The workshop's codec turns the MVCC rule into a physical byte layout the storage engine can iterate efficiently"
+        notes: "This is the bridge between the PDF page and the workshop code. Stress that the storage engine only sees bytes."
+
+      - type: "diagram"
+        title: "Physical MVCC Key Layout In RocksDB"
+        diagramRef: "workshop_mvcc_physical_key_encoding"
+        bullets:
+          - "Encoded format: [LogicalKeyBytes] + [0x00] + [InvertedWallClock] + [InvertedTicks]"
+          - "The 0x00 separator creates a hard boundary between the user key and the timestamp suffix"
+          - "Timestamp bytes are inverted so newer versions sort before older versions"
+          - "That lets ascending RocksDB iteration return the latest version first"
+        notes: "Now connect directly to OrderPreservingCodec.encodeMVCCKey. Mention that the separator is mandatory for safe prefix scans, especially when keys like 'User' and 'User1' share a prefix."
+
+      - type: "diagram"
+        title: "How Prefix Seek And As-Of Reads Exploit The Encoding"
+        diagramRef: "workshop_mvcc_rocksdb_seek_behavior"
+        bullets:
+          - "All versions of one logical key stay contiguous in the byte order"
+          - "Seeking to the logical key prefix lands on the newest version first"
+          - "Seeking with an as-of timestamp lands on the newest version visible at that time"
+          - "This is how RocksDB-backed MVCC reproduces the same snapshot rule as the in-memory model"
+        notes: "This is the payoff slide. Show that the encoding is not arbitrary; it exists specifically so the iterator can implement MVCC visibility with very little work."
+
   - title: "Transactions"
     slides:
       - type: "text"

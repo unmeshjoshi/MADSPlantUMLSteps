@@ -47,8 +47,8 @@ sections:
       - type: "text"
         title: "Lab: Verifying Little's Law with iostat"
         bullets:
-          - "Task 1: Run disk load with different IOPS"
-          - "Task 2: Capture metrics with iostat -x 1"
-          - "Task 3: Verify L = λ x W using aqu-sz, r/s, w/s, and await"
-          - "Task 4: Calculate Service Time (S) using U = X x S"
-          - "Task 5: Predict the Saturation Point"
+          - "Run disk load with different IOPS"
+          - "Capture metrics with iostat -x 1"
+          - "Verify L = λ x W using aqu-sz, r/s, w/s, and await"
+          - "Calculate Service Time (S) using U = X x S"
+          - "Predict the Saturation Point"
