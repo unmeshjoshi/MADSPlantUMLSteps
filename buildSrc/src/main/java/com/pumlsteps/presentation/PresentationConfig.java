@@ -7,7 +7,7 @@ public class PresentationConfig {
     private String description;
     private String icon;
     private String category;
-    private List<String> includes;
+    private List<IncludeConfig> includes;
     private List<SlideConfig> slides;
     private List<SectionConfig> sections;
 
@@ -43,11 +43,11 @@ public class PresentationConfig {
         this.category = category;
     }
 
-    public List<String> getIncludes() {
+    public List<IncludeConfig> getIncludes() {
         return includes;
     }
 
-    public void setIncludes(List<String> includes) {
+    public void setIncludes(List<IncludeConfig> includes) {
         this.includes = includes;
     }
 

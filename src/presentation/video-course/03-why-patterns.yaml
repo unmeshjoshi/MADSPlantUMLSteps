@@ -1,0 +1,73 @@
+title: "Why Patterns"
+description: "Why a patterns-based approach makes distributed systems easier to understand and design"
+icon: "fas fa-shapes"
+category: "Architecture"
+
+sections:
+  - title: "The Patterns Approach"
+    slides:
+      - type: "text"
+        title: "Why Patterns?"
+        bullets:
+          - "Product docs are full of claims like replication, quorum, consistency, leases, and transactions"
+        notes: "Set up the motivation. The goal is not to memorize product-specific features. The goal is to understand the recurring design ideas behind them."
+
+      - type: "text"
+        title: "Examples from Real Systems"
+        bullets:
+          - "AWS MemoryDB talks about a replicated transactional log"
+          - "Amazon S3 talks about read-your-own-writes consistency"
+          - "Google Spanner talks about external consistency with TrueTime"
+          - "CockroachDB talks about HybridClock and MVCC"
+          - "Kafka, Kubernetes, MongoDB, and others all describe recurring distributed-systems solutions"
+        notes: "Use these examples to show that the language of patterns already appears in real product design and documentation."
+
+      - type: "diagram"
+        title: "How to Understand Them All?"
+        diagramRef: "08-understanding-complex-systems"
+        bullets:
+          - "Why are they designed this way?"
+          - "What problems do these designs solve?"
+          - "Find the recurring solutions"
+          - "Understand how to build and apply them"
+        notes: "This is the learning loop for the course. We are using patterns to move from product features to first principles."
+
+      - type: "text"
+        title: "Patterns: A Definition"
+        bullets:
+          - "A pattern is a recurring solution to a recurring problem in a specific context"
+          - "A good pattern names context and trade-offs, not just the mechanism"
+          - "It gives us a compact vocabulary for discussing system design"
+          - "It helps separate essential ideas from product-specific implementation details"
+        notes: "Keep this grounded. Patterns are useful because they connect context, problem, solution, and consequences."
+
+      - type: "diagram"
+        title: "Patterns Need Real Code"
+        diagramRef: "09-real-code-implementation"
+        bullets:
+          - "Patterns must be generic enough to apply across many systems"
+          - "But specific enough to connect to real implementations"
+          - "Distributed systems become easier to learn when theory and code reinforce each other"
+        notes: "This is a nice bridge to the workshop style of teaching. Patterns are not just abstract labels; they should help us read and write real systems."
+
+      - type: "text"
+        title: "Names Form Vocabulary"
+        bullets:
+          - "Names like Write-Ahead Log, Quorum, Lease, HeartBeat, and Idempotent Receiver create shared vocabulary"
+          - "That shared vocabulary makes design reviews, debugging, and onboarding much faster"
+          - "Complex systems are often combinations of several named patterns"
+          - "That combination is often called a pattern sequence or pattern language"
+        notes: "Emphasize that naming is not superficial. Good names compress experience and make complex designs easier to discuss."
+
+      - type: "diagram"
+        title: "Pattern Sequences"
+        diagramRef: "10-pattern-sequence-relationships"
+        notes: "Show that large systems are not built from one big idea. They are usually built by composing multiple smaller patterns."
+
+      - type: "text"
+        title: "Summary"
+        bullets:
+          - "Patterns help us move from isolated facts to reusable design knowledge"
+          - "They give us vocabulary, structure, and a way to reason about trade-offs"
+          - "They let us understand large systems as combinations of smaller proven ideas"
+        notes: "Land the message cleanly. We study patterns because they are the bridge between theory, products, and implementation."

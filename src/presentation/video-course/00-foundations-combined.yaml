@@ -4,5 +4,9 @@ icon: "fas fa-layer-group"
 category: "Video Course"
 
 includes:
-  - "01-littles-law-and-saturation.yaml"
-  - "02-failures.yaml"
+  - sectionTitle: "Why Patterns"
+    path: "03-why-patterns.yaml"
+  - sectionTitle: "Little's Law"
+    path: "01-littles-law-and-saturation.yaml"
+  - sectionTitle: "Failures and The Reality of Scale"
+    path: "02-failures.yaml"

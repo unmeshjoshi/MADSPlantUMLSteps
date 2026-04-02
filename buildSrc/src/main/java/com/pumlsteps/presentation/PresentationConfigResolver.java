@@ -46,12 +46,16 @@ public class PresentationConfigResolver {
             List<SectionConfig> orderedSections = new ArrayList<>();
 
             if (rawConfig.getIncludes() != null) {
-                for (String includePath : rawConfig.getIncludes()) {
-                    if (includePath == null || includePath.trim().isEmpty()) {
+                for (IncludeConfig include : rawConfig.getIncludes()) {
+                    if (include == null || include.getPath() == null || include.getPath().trim().isEmpty()) {
                         continue;
                     }
 
-                    File includedFile = new File(canonicalFile.getParentFile(), includePath).getCanonicalFile();
+                    if (include.getSectionTitle() != null && !include.getSectionTitle().isBlank()) {
+                        orderedSections.add(createSectionSeparator(include.getSectionTitle()));
+                    }
+
+                    File includedFile = new File(canonicalFile.getParentFile(), include.getPath()).getCanonicalFile();
                     PresentationConfig includedConfig = resolve(includedFile, resolutionStack);
                     adoptMissingMetadata(resolved, includedConfig);
                     orderedSections.addAll(copySections(normalizeToOrderedSections(includedConfig)));
@@ -127,6 +131,13 @@ public class PresentationConfigResolver {
             copies.add(copy);
         }
         return copies;
+    }
+
+    private SectionConfig createSectionSeparator(String title) {
+        SectionConfig section = new SectionConfig();
+        section.setTitle(title);
+        section.setSlides(new ArrayList<>());
+        return section;
     }
 
     private List<SlideConfig> copySlides(List<SlideConfig> slides) {
