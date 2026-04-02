@@ -3,52 +3,72 @@ description: "Understanding system saturation using Little's Law"
 icon: "fas fa-chart-line"
 category: "Queuing Theory"
 
-sections:
-  - title: "Introduction"
-    slides:
-      - type: "diagram"
-        title: "The Queuing Model"
-        diagramRef: "01-littles-law-and-saturation"
-          
-      - type: "text"
-        title: "The Stable System Assumption"
-        bullets:
-          - "For a system to be stable, the arrival rate must equal throughput"
-          - "λ = X"
-          - "What comes in, must go out at the same rate"
-          - "If λ > X, the queue grows"
+slides:
+  - type: "diagram"
+    title: "The Queuing Model"
+    diagramRef: "01-littles-law-and-saturation"
+      
+  - type: "text"
+    title: "The Stable System Assumption"
+    bullets:
+      - "For a system to be stable, the arrival rate must equal throughput"
+      - "λ = X"
+      - "What comes in, must go out at the same rate"
+      - "If λ > X, the queue grows"
 
-  - title: "System Utilization"
-    slides:
-      - type: "diagram"
-        title: "The Utilization Constraint"
-        diagramRef: "02-utilization-constraint"
+  - type: "diagram"
+    title: "The Utilization Constraint"
+    diagramRef: "02-utilization-constraint"
 
-  - title: "The Hockey Stick Curve"
-    slides:
-      - type: "diagram"
-        title: "Throughput vs Arrival Rate"
-        diagramRef: "throughput_vs_arrival_rate_chart"
-        bullets:
-          - "Throughput increases linearly until saturation"
-          - "Plateaus at max capacity (X_max = 1 / S)"
-          - "Requests $> X_{max}$ simply pile up in the Queue"
+  - type: "diagram"
+    title: "Network Bandwidth Saturation"
+    diagramRef: "06-network-bandwidth-saturation"
+    bullets:
+      - "A network link is another queued resource with a hard service limit"
+      - "A 1 Gbps link caps throughput at about 125 MB/s before overheads"
+      - "When incoming traffic exceeds link capacity, packets queue and latency rises"
+      - "The same saturation math applies to network, disk, CPU, and memory"
 
-      - type: "diagram"
-        title: "Latency vs Arrival Rate"
-        diagramRef: "latency_vs_arrival_rate_chart"
-        bullets:
-          - "Safe Zone: < 80% (Linear scaling)"
-          - "Danger Zone: 80% - 95% (Non-linear queuing begins)"
-          - "Saturation: > 1000 IOPS (Hockey Stick explosion!)"
+  - type: "diagram"
+    title: "Throughput vs Arrival Rate"
+    diagramRef: "throughput_vs_arrival_rate_chart"
+    bullets:
+      - "Throughput increases linearly until saturation"
+      - "Plateaus at max capacity (X_max = 1 / S)"
+      - "Requests $> X_{max}$ simply pile up in the Queue"
 
-  - title: "Hands-on Lab"
-    slides:
-      - type: "text"
-        title: "Lab: Verifying Little's Law with iostat"
-        bullets:
-          - "Run disk load with different IOPS"
-          - "Capture metrics with iostat -x 1"
-          - "Verify L = λ x W using aqu-sz, r/s, w/s, and await"
-          - "Calculate Service Time (S) using U = X x S"
-          - "Predict the Saturation Point"
+  - type: "diagram"
+    title: "Latency vs Arrival Rate"
+    diagramRef: "latency_vs_arrival_rate_chart"
+    bullets:
+      - "Safe Zone: < 80% (Linear scaling)"
+      - "Danger Zone: 80% - 95% (Non-linear queuing begins)"
+      - "Saturation: > 1000 IOPS (Hockey Stick explosion!)"
+
+  - type: "text"
+    title: "Lab: Verifying Little's Law with iostat"
+    bullets:
+      - "Run disk load with different IOPS"
+      - "Capture metrics with iostat -x 1"
+      - "Verify L = λ x W using aqu-sz, r/s, w/s, and await"
+      - "Calculate Service Time (S) using U = X x S"
+      - "Predict the Saturation Point"
+
+  - type: "diagram"
+    title: "The Four Physical Bottlenecks"
+    diagramRef: "03-four-physical-bottlenecks"
+    bullets:
+      - "Little's Law applies to every queued resource, not just disks"
+      - "CPU: cores and cycles set an upper bound on work per second"
+      - "Memory: capacity and bandwidth limit how fast data can move"
+      - "Disk: IOPS and throughput cap reads and writes"
+      - "Network: bandwidth and latency constrain messages between machines"
+
+  - type: "text"
+    title: "What to Watch in Production"
+    bullets:
+      - "Track throughput, latency, queue length, and utilization together"
+      - "Alert on queue growth, not just when utilization reaches 100%"
+      - "Watch for response time rising much faster than service time"
+      - "Keep headroom: a practical target is 70% to 80% utilization"
+      - "Use bottleneck-specific signals: CPU run queue, memory pressure, disk await, network drops and retransmits"

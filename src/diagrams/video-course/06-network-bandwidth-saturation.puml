@@ -1,0 +1,39 @@
+@startuml
+!include ../../style.puml
+left to right direction
+title Network Bandwidth Saturation
+
+actor "Senders" as senders
+actor "Receivers" as receivers
+
+queue "Network Pipe\n1 Gbps Link" as link #E6FFE6
+
+
+' [step1 {"name":"Traffic Flows Through the Link"}]
+senders -d-> link : Incoming Traffic (lambda)
+link -d-> receivers : Outgoing Traffic (X)
+' [/step1]
+
+' [step2 {"name":"Bandwidth Limit"}]
+note top of link #E6F3FF
+  **Bandwidth Limit**
+  1 Gbps = 125 MB/s theoretical
+  Throughput cannot exceed link capacity
+end note
+' [/step2]
+
+' [step3 {"name":"Incoming Saturation"}]
+note left of link #FFE6E6
+  **Incoming Saturation**
+  If incoming traffic > 125 MB/s,
+  packets queue before the link.
+end note
+
+note bottom of link #FEFFDD
+  Queues form in NICs, kernel buffers,
+  and switches, so latency rises sharply
+  before the link looks fully maxed out.
+end note
+' [/step3]
+
+@enduml

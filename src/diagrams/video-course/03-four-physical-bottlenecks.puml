@@ -1,0 +1,26 @@
+@startuml
+!include ../../style.puml
+
+title The Four Physical Bottlenecks
+
+top to bottom direction
+
+rectangle "Same Queueing Law\nL = lambda x W" as law #E6F3FF
+
+rectangle "CPU\nCores and cycles\nWatch: run queue, CPU busy" as cpu #FFE6E6
+rectangle "Memory\nCapacity and bandwidth\nWatch: reclaim, GC, swapping" as memory #E8F4FF
+rectangle "Disk\nIOPS and throughput\nWatch: await, util, queue depth" as disk #FFF7CC
+rectangle "Network\nBandwidth and latency\nWatch: drops, retransmits, buffer queues" as network #E6FFE6
+
+cpu --> law : queued work
+memory --> law : waiting on bytes
+disk --> law : waiting on I/O
+network --> law : waiting on packets
+
+note bottom of law #FEFFDD
+  Same pattern everywhere:
+  as utilization approaches the service limit,
+  queues grow and latency rises sharply.
+end note
+
+@enduml
