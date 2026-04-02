@@ -1,30 +1,29 @@
 package com.pumlsteps.presentation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-
 import java.io.File;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.List;
 
 public class RevealJsYamlProcessor {
     private final File projectDir;
-    private final ObjectMapper yamlMapper;
+    private final PresentationConfigResolver configResolver;
 
     public RevealJsYamlProcessor(File projectDir) {
         this.projectDir = projectDir;
-        this.yamlMapper = new ObjectMapper(new YAMLFactory());
+        this.configResolver = new PresentationConfigResolver();
     }
 
     public void processYamlToPresentation(File yamlFile, File outputFile) {
         try {
             // Read and parse YAML
-            PresentationConfig config = yamlMapper.readValue(yamlFile, PresentationConfig.class);
+            PresentationConfig config = configResolver.resolve(yamlFile);
             
             StringBuilder slides = new StringBuilder();
-            for (SlideConfig slide : config.getSlides()) {
+            for (SlideConfig slide : collectSlides(config)) {
                 slides.append(generateSlide(slide));
             }
 
@@ -166,6 +165,21 @@ public class RevealJsYamlProcessor {
         } catch (Exception e) {
             throw new RuntimeException("Error processing YAML presentation: " + e.getMessage(), e);
         }
+    }
+
+    private List<SlideConfig> collectSlides(PresentationConfig config) {
+        List<SlideConfig> orderedSlides = new ArrayList<>();
+        if (config.getSections() != null) {
+            for (SectionConfig section : config.getSections()) {
+                if (section.getSlides() != null) {
+                    orderedSlides.addAll(section.getSlides());
+                }
+            }
+        }
+        if (config.getSlides() != null) {
+            orderedSlides.addAll(config.getSlides());
+        }
+        return orderedSlides;
     }
 
     private String generateSlide(SlideConfig slide) throws Exception {

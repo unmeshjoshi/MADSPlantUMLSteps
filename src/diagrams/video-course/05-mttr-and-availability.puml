@@ -1,0 +1,40 @@
+@startuml
+!include ../../style.puml
+
+title MTTF vs. MTTR: The Availability Formula
+
+' [step1 {"name":"Modern System Timeline"}]
+rectangle "Normal Operation\nLong uptime window\nMTTF = 100 hrs" as uptime #LightGreen
+' [/step1]
+
+' [step2 {"name":"Availability Formula"}]
+rectangle "Repair Window\nShort outage and recovery\nMTTR = 1 hr" as repair #Salmon
+uptime -> repair
+
+rectangle "Availability (A)" as availability #LightBlue
+repair -> availability
+note right of availability
+  **A = MTTF / (MTTF + MTTR)**
+  Example:
+  MTTF = 100 hrs, MTTR = 1 hr
+  A = 100 / 101 ≈ **99.0%**
+end note
+' [/step2]
+
+' [step3 {"name":"The Dominant Strategy"}]
+rectangle "Two Ways to 99.9%" as strategies #LightYellow
+availability -> strategies
+note right of strategies
+  **Option A**: Double Reliability (MTTF = 200)
+  **Option B**: Halve Recovery Time (MTTR = 0.5)
+  In distributed systems, **Option B** is often cheaper
+  and more scalable than **Option A**.
+end note
+' [/step3]
+
+' [step4 {"name":"Availability Comparison"}]
+rectangle "Core Insight\nDistributed systems improve availability\nmore often by reducing repair time\nthan by trying to prevent every failure." as insight #E6F3FF
+strategies -> insight
+' [/step4]
+
+@enduml

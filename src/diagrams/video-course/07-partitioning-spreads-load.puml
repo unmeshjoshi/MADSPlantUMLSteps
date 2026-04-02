@@ -1,0 +1,36 @@
+@startuml
+!include ../../style.puml
+
+title Partitioning Spreads Load Across Servers
+
+left to right direction
+
+actor "Client Group A" as clientA
+actor "Client Group B" as clientB
+actor "Client Group C" as clientC
+
+node "Router /\nPartition Map" as router #E6F3FF
+
+clientA --> router : requests for partition A
+clientB --> router : requests for partition B
+clientC --> router : requests for partition C
+
+node "Server A\nSmaller queue" as serverA #E6FFE6
+node "Server B\nSmaller queue" as serverB #E6FFE6
+node "Server C\nSmaller queue" as serverC #E6FFE6
+
+router --> serverA
+router --> serverB
+router --> serverC
+
+note bottom of router #FEFFDD
+  Instead of one hot queue on one machine,
+  load is divided across multiple servers.
+end note
+
+note bottom of serverB #E6F3FF
+  Partitioning increases aggregate throughput
+  and pushes the saturation knee to the right.
+end note
+
+@enduml

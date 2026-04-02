@@ -24,16 +24,16 @@ import javax.imageio.ImageIO;
 
 public class YamlPresentationProcessor {
     private final File projectDir;
-    private final ObjectMapper yamlMapper;
     private final String plantUmlJarPath;
     private final FileSystemUtil fileSystemUtil;
+    private final PresentationConfigResolver configResolver;
     private File centralPngDir;  // Directory with all pre-converted PNG files
 
     public YamlPresentationProcessor(File projectDir, String plantUmlJarPath) {
         this.projectDir = projectDir;
-        this.yamlMapper = new ObjectMapper(new YAMLFactory());
         this.plantUmlJarPath = plantUmlJarPath;
         this.fileSystemUtil = new FileSystemUtil();
+        this.configResolver = new PresentationConfigResolver();
         System.out.println("YamlPresentationProcessor initialized with projectDir: " + projectDir.getAbsolutePath());
         System.out.println("PlantUML jar path: " + plantUmlJarPath + ", exists: " + new File(plantUmlJarPath).exists());
 
@@ -60,7 +60,7 @@ public class YamlPresentationProcessor {
                 throw new IllegalStateException("Central PNG directory is not set or does not exist.");
             }
             // Read and parse YAML
-            PresentationConfig config = yamlMapper.readValue(yamlFile, PresentationConfig.class);
+            PresentationConfig config = configResolver.resolve(yamlFile);
 
             // Create PPT
             PptGenerator generator = new PptGenerator();

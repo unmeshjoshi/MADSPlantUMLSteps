@@ -1,9 +1,6 @@
 package com.pumlsteps.presentation;
 
-import org.yaml.snakeyaml.Yaml;
-
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,6 +13,7 @@ public class HtmlGenerator {
     // Store total step count and current step index for use when rendering slide titles
     private ThreadLocal<Integer> totalStepsForCurrentDiagram = new ThreadLocal<>();
     private ThreadLocal<Integer> currentStepIndexForDiagram = new ThreadLocal<>();
+    private final PresentationConfigResolver configResolver = new PresentationConfigResolver();
     
     private String generateBulletList(List<String> bullets) {
         if (bullets == null || bullets.isEmpty()) {
@@ -39,25 +37,21 @@ public class HtmlGenerator {
         return TemplateLoader.processTemplate(template, data);
     }
 
-    private String generateDiagramContent(Map<String, Object> slide) throws IOException {
+    private String generateDiagramContent(SlideConfig slide) throws IOException {
         Map<String, Object> data = new HashMap<>();
         
         // Generate diagram container content
-        String diagramContent = generateDiagramContainer((String) slide.get("diagramRef"));
+        String diagramContent = generateDiagramContainer(slide.getDiagramRef());
         data.put("diagramContent", diagramContent);
         
         // Handle bullets if present
         boolean hasBullets = false;
         String bulletsHtml = "";
-        if (slide.containsKey("bullets")) {
-            List<String> bullets = (List<String>) slide.get("bullets");
-            // Only set hasBullets true if there's at least one non-empty bullet
-            if (bullets != null) {
-                hasBullets = bullets.stream().anyMatch(bullet -> bullet != null && !bullet.trim().isEmpty());
-                if (hasBullets) {
-                    // Generate the bullets HTML directly
-                    bulletsHtml = generateBulletList(bullets);
-                }
+        List<String> bullets = slide.getBullets();
+        if (bullets != null) {
+            hasBullets = bullets.stream().anyMatch(bullet -> bullet != null && !bullet.trim().isEmpty());
+            if (hasBullets) {
+                bulletsHtml = generateBulletList(bullets);
             }
         }
         
@@ -67,7 +61,7 @@ public class HtmlGenerator {
         data.put("bulletsHtml", bulletsHtml);
         
         // Store diagram step count for use in slide title
-        String diagramRef = (String) slide.get("diagramRef");
+        String diagramRef = slide.getDiagramRef();
         if (diagramRef != null) {
             File diagramDir = new File("build/diagrams/" + diagramRef);
             File[] stepFiles = diagramDir.listFiles((dir, name) -> name.endsWith(".svg"));
@@ -170,34 +164,25 @@ public class HtmlGenerator {
         return htmlContent.toString();
     }
 
-    private List<Map<String, Object>> getSectionsFromYaml(Map<String, Object> yamlData) {
-        Object sectionsObj = yamlData.get("sections");
-        if (sectionsObj != null) {
-            List<Map<String, Object>> sections = (List<Map<String, Object>>) sectionsObj;
-            for (Map<String, Object> section : sections) {
-                Object slidesObj = section.get("slides");
-                if (slidesObj instanceof List) {
-                    section.put("slides", slidesObj);
-                }
-            }
-            return sections;
+    private List<SectionConfig> getSectionsFromConfig(PresentationConfig config) {
+        if (config.getSections() != null && !config.getSections().isEmpty()) {
+            return config.getSections();
         }
-        
-        List<Map<String, Object>> sections = new ArrayList<>();
-        Map<String, Object> defaultSection = new HashMap<>();
-        defaultSection.put("title", "Presentation");
-        Object slides = yamlData.get("slides");
-        if (slides instanceof List) {
-            defaultSection.put("slides", slides);
+
+        List<SectionConfig> sections = new ArrayList<>();
+        if (config.getSlides() != null && !config.getSlides().isEmpty()) {
+            SectionConfig anonymousSection = new SectionConfig();
+            anonymousSection.setTitle(null);
+            anonymousSection.setSlides(config.getSlides());
+            sections.add(anonymousSection);
         }
-        sections.add(defaultSection);
         return sections;
     }
 
-    private int countTotalSlides(List<Map<String, Object>> sections) {
+    private int countTotalSlides(List<SectionConfig> sections) {
         int totalSlides = 0;
-        for (Map<String, Object> section : sections) {
-            List<Map<String, Object>> sectionSlides = (List<Map<String, Object>>) section.get("slides");
+        for (SectionConfig section : sections) {
+            List<SlideConfig> sectionSlides = section.getSlides();
             if (sectionSlides != null) {
                 totalSlides += sectionSlides.size();
             }
@@ -206,16 +191,15 @@ public class HtmlGenerator {
     }
 
     public void generateHtmlFromYaml(File yamlFile, File outputHtmlFile) throws IOException {
-        Yaml yaml = new Yaml();
-        Map<String, Object> yamlData = yaml.loadAs(new FileReader(yamlFile), Map.class);
+        PresentationConfig config = configResolver.resolve(yamlFile);
         StringBuilder htmlContent = new StringBuilder();
         
         // Prepare header data
         Map<String, Object> headerData = new HashMap<>();
-        headerData.put("title", yamlData.get("title"));
+        headerData.put("title", config.getTitle());
         
         // Get sections and calculate total slides
-        List<Map<String, Object>> sections = getSectionsFromYaml(yamlData);
+        List<SectionConfig> sections = getSectionsFromConfig(config);
         int totalSlides = countTotalSlides(sections);
         headerData.put("totalSlides", totalSlides);
         
@@ -223,25 +207,25 @@ public class HtmlGenerator {
         htmlContent.append(renderTemplate("header", headerData));
         
         // Process each section and its slides
-        for (Map<String, Object> section : sections) {
-            String sectionTitle = (String) section.get("title");
-            if (sectionTitle != null) {
+        for (SectionConfig section : sections) {
+            String sectionTitle = section.getTitle();
+            if (sectionTitle != null && !sectionTitle.trim().isEmpty()) {
                 Map<String, Object> sectionData = new HashMap<>();
                 sectionData.put("sectionTitle", sectionTitle);
                 htmlContent.append(renderTemplate("section", sectionData));
             }
 
-            List<Map<String, Object>> sectionSlides = (List<Map<String, Object>>) section.get("slides");
+            List<SlideConfig> sectionSlides = section.getSlides();
             if (sectionSlides == null) continue;
 
-            for (Map<String, Object> slide : sectionSlides) {
+            for (SlideConfig slide : sectionSlides) {
                 Map<String, Object> slideData = new HashMap<>();
                 slideData.put("sectionTitle", sectionTitle);
                 
                 // Handle diagram slide titles with step numbers (only for multi-step diagrams)
-                String slideTitle = (String) slide.get("title");
-                if ("diagram".equals(slide.get("type"))) {
-                    String diagramRef = (String) slide.get("diagramRef");
+                String slideTitle = slide.getTitle();
+                if ("diagram".equals(slide.getType())) {
+                    String diagramRef = slide.getDiagramRef();
                     File diagramDir = new File("build/diagrams/" + diagramRef);
                     File[] stepFiles = diagramDir.listFiles((dir, name) -> name.endsWith(".svg"));
                     
@@ -266,16 +250,16 @@ public class HtmlGenerator {
                 slideData.put("slideTitle", slideTitle);
                 
                 // Handle notes if present
-                if (slide.containsKey("notes")) {
+                if (slide.getNotes() != null && !slide.getNotes().trim().isEmpty()) {
                     slideData.put("hasNotes", true);
-                    slideData.put("notes", slide.get("notes"));
+                    slideData.put("notes", slide.getNotes());
                 }
                 
                 // Generate content based on slide type
                 String content;
-                if ("text".equals(slide.get("type"))) {
-                    content = generateBulletList((List<String>) slide.get("bullets"));
-                } else if ("diagram".equals(slide.get("type"))) {
+                if ("text".equals(slide.getType())) {
+                    content = generateBulletList(slide.getBullets());
+                } else if ("diagram".equals(slide.getType())) {
                     content = generateDiagramContent(slide);
                 } else {
                     content = "";

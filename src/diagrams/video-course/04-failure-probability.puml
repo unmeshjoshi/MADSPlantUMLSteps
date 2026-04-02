@@ -1,0 +1,49 @@
+@startuml
+!include ../../style.puml
+
+title The Mathematics of Failure Certainty
+
+' [step1 {"name":"Single Node Reliability"}]
+rectangle "Single Node" as node1 #LightBlue
+note right of node1
+  Daily probability of failure (**p**)
+  e.g., p = 0.001 (1 in 1000 days)
+end note
+' [/step1]
+
+' [step2 {"name":"Survival Probability"}]
+rectangle "Survival" as survival #LightGreen
+node1 -> survival
+note right of survival
+  Probability of **not** failing today:
+  **1 - p**
+  e.g., 0.999 (99.9%)
+end note
+' [/step2]
+
+' [step3 {"name":"Cluster Reliability (N Nodes)"}]
+rectangle "The Cluster (N = 10,000)" as cluster #AliceBlue
+survival -> cluster
+note right of cluster
+  Probability that **all** nodes survive:
+  **(1 - p)^N**
+  e.g., (0.999)^10,000 ≈ 0.000045
+end note
+' [/step3]
+
+' [step4 {"name":"The Certainty of Failure"}]
+rectangle "System Failure Probability" as system #FFCCCC
+cluster -> system
+note right of system #Salmon
+  Probability of **at least one** failure:
+  **P = 1 - (1 - p)^N**
+  For 10,000 nodes: **P = 99.995%**
+end note
+' [/step4]
+
+' [step5 {"name":"The Core Insight"}]
+rectangle "Core Insight\nFailure at scale is not an if,\nit is a when.\nSoftware must tolerate\ncomponent death as normal." as insight #E6F3FF
+system -> insight
+' [/step5]
+
+@enduml

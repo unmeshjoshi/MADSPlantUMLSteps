@@ -1,0 +1,50 @@
+title: "Distributed Systems Failures"
+description: "Understanding the mathematical certainty and architecture of failure at scale"
+icon: "fas fa-exclamation-triangle"
+category: "Reliability Engineering"
+
+sections:
+  - title: "The Reality of Scale"
+    slides:
+      - type: "text"
+        title: "Fun with Probability - Individual Failures"
+        bullets:
+          - "Suppose a single machine or disk fails once every 1000 days"
+          - "That means the daily probability of failure is p = 1/1000 = 0.001"
+          - "For 10,000 nodes, the probability of at least one daily failure is P = 1 - (1 - p)^N"
+          - "If p = 0.001 and N = 10,000, then P ≈ 99.995%"
+          - "At scale, failure is no longer surprising. It is expected."
+
+      - type: "diagram"
+        title: "Real Data Center Failures"
+        diagramRef: "datacenter_failures_google"
+        bullets:
+          - "Google's Monthly Experience"
+          - "Failure is not the exception—it's the norm"
+          - "Thousands of machine and disk failures monthly"
+          - "Scale amplifies failure probability dramatically"
+
+      - type: "text"
+        title: "Independent Failures Multiply Risk"
+        bullets:
+          - "Two independent failures are much less likely than one"
+          - "But real systems do not fail independently all the time"
+          - "Power, cooling, software rollout, and network problems create correlated failures"
+          - "At scale, your architecture must assume both frequent failures and shared-fate failures"
+
+      - type: "diagram"
+        title: "Partial Failures"
+        diagramRef: "distributed_state_partial_failures"
+        bullets:
+          - "Distributed state + partial failures = Complexity"
+          - "The system continues functioning as a whole"
+          - "Individual components can fail without taking down the cluster"
+          - "This is the essence of fault-tolerant design"
+
+      - type: "text"
+        title: "The Answer: Replication"
+        bullets:
+          - "Software must be smarter than the hardware it runs on"
+          - "Replication turns single-machine failure into a survivable event"
+          - "System resilience matters more than individual machine reliability"
+          - "Next module: Replication and Consensus"

@@ -1,15 +1,13 @@
 package com.pumlsteps.presentation;
 
-import org.yaml.snakeyaml.Yaml;
-
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class IndexGenerator {
+    private final PresentationConfigResolver configResolver = new PresentationConfigResolver();
     
     private static class PresentationInfo {
         String fileName;
@@ -76,23 +74,22 @@ public class IndexGenerator {
     
     private PresentationInfo extractPresentationInfo(File yamlFile) throws IOException {
         try {
-            Yaml yaml = new Yaml();
-            Map<String, Object> yamlData = yaml.loadAs(new FileReader(yamlFile), Map.class);
+            PresentationConfig config = configResolver.resolve(yamlFile);
             
-            String title = (String) yamlData.get("title");
+            String title = config.getTitle();
             if (title == null) {
                 title = yamlFile.getName().replace(".yaml", "").replace("-", " ");
                 title = title.substring(0, 1).toUpperCase() + title.substring(1);
             }
             
             // Count slides
-            int slideCount = countSlides(yamlData);
+            int slideCount = countSlides(config);
             
             // Extract metadata from YAML or infer from content
             String fileName = yamlFile.getName().replace(".yaml", ".html");
-            String description = extractOrGenerateDescription(yamlData, title);
-            String icon = extractOrGenerateIcon(yamlData, title);
-            String category = extractOrGenerateCategory(yamlData, title);
+            String description = extractOrGenerateDescription(config, title);
+            String icon = extractOrGenerateIcon(config, title);
+            String category = extractOrGenerateCategory(config, title);
             String timeInfo = getTimeInfo(slideCount);
             
             return new PresentationInfo(fileName, title, description, icon, category, timeInfo, slideCount);
@@ -103,33 +100,27 @@ public class IndexGenerator {
         }
     }
     
-    private int countSlides(Map<String, Object> yamlData) {
-        // Check if it has sections structure
-        Object sectionsObj = yamlData.get("sections");
-        if (sectionsObj != null) {
-            List<Map<String, Object>> sections = (List<Map<String, Object>>) sectionsObj;
+    private int countSlides(PresentationConfig config) {
+        if (config.getSections() != null) {
             int totalSlides = 0;
-            for (Map<String, Object> section : sections) {
-                List<Map<String, Object>> slides = (List<Map<String, Object>>) section.get("slides");
-                if (slides != null) {
-                    totalSlides += slides.size();
+            for (SectionConfig section : config.getSections()) {
+                if (section.getSlides() != null) {
+                    totalSlides += section.getSlides().size();
                 }
             }
             return totalSlides;
         }
-        
-        // Simple slides structure
-        Object slidesObj = yamlData.get("slides");
-        if (slidesObj instanceof List) {
-            return ((List<?>) slidesObj).size();
+
+        if (config.getSlides() != null) {
+            return config.getSlides().size();
         }
-        
+
         return 0;
     }
     
-    private String extractOrGenerateDescription(Map<String, Object> yamlData, String title) {
+    private String extractOrGenerateDescription(PresentationConfig config, String title) {
         // Check if description is explicitly provided in YAML
-        String description = (String) yamlData.get("description");
+        String description = config.getDescription();
         if (description != null && !description.trim().isEmpty()) {
             return description;
         }
@@ -138,9 +129,9 @@ public class IndexGenerator {
         return "Interactive presentation covering " + title.toLowerCase() + " concepts with step-by-step diagrams.";
     }
     
-    private String extractOrGenerateIcon(Map<String, Object> yamlData, String title) {
+    private String extractOrGenerateIcon(PresentationConfig config, String title) {
         // Check if icon is explicitly provided in YAML
-        String icon = (String) yamlData.get("icon");
+        String icon = config.getIcon();
         if (icon != null && !icon.trim().isEmpty()) {
             return icon;
         }
@@ -149,9 +140,9 @@ public class IndexGenerator {
         return "fas fa-diagram-project";
     }
     
-    private String extractOrGenerateCategory(Map<String, Object> yamlData, String title) {
+    private String extractOrGenerateCategory(PresentationConfig config, String title) {
         // Check if category is explicitly provided in YAML
-        String category = (String) yamlData.get("category");
+        String category = config.getCategory();
         if (category != null && !category.trim().isEmpty()) {
             return category;
         }

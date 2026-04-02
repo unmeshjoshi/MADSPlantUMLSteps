@@ -1,0 +1,8 @@
+title: "Video Course Foundations: Saturation and Failures"
+description: "Combined presentation for the Little's Law and failures modules"
+icon: "fas fa-layer-group"
+category: "Video Course"
+
+includes:
+  - "01-littles-law-and-saturation.yaml"
+  - "02-failures.yaml"
