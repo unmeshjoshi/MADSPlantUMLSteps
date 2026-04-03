@@ -1,0 +1,28 @@
+title: "Agenda"
+description: "Two-day agenda for the complete video course"
+icon: "fas fa-list"
+category: "Video Course"
+
+slides:
+  - type: "image"
+    title: |
+      Patterns Of Distributed Systems
+      - Unmesh Joshi
+    imagePath: "patternsbook.jpg"
+    notes: "Use this as the opening title card for the course before setup and agenda."
+
+  - type: "text"
+    title: "Prerequisites"
+    bullets:
+      - "JDK 21"
+      - "Workshop repository: https://github.com/unmeshjoshi/distrib-patterns-workshop"
+    notes: "Call out the minimum setup right away so learners know what they need before they start the exercises and code walkthroughs."
+
+  - type: "text"
+    title: "Agenda"
+    bullets:
+      - "Day 1: Why Patterns, Little's Law and Saturation, Failures, Write-Ahead Log, Quorum and Quorum Anomalies"
+      - "Day 2: Consensus, Multi-Paxos, and Raft"
+    notes: "Open the course with the overall map. Day 1 builds the intuition for scale, failure, durability, and quorum. Day 2 uses that foundation to explain consensus, then the practical paths through Multi-Paxos and Raft."
+
+    

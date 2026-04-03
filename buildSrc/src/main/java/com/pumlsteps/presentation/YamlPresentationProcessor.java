@@ -114,6 +114,9 @@ public class YamlPresentationProcessor {
             case "diagram":
                 createDiagramSlide(slide, generator);
                 break;
+            case "image":
+                createImageSlide(slide, generator);
+                break;
             default:
                 throw new IllegalArgumentException("Unknown slide type: " + slide.getType());
         }
@@ -189,7 +192,9 @@ public class YamlPresentationProcessor {
                     // Add slides directly using the PNG files
                     for (File pngFile : pngFiles) {
                         String stepNumber = pngFile.getName().substring(4, pngFile.getName().lastIndexOf('.'));
-                        String slideTitle = slide.getTitle() + " - Step " + stepNumber;
+                        String slideTitle = pngFiles.length > 1
+                                ? slide.getTitle() + " - Step " + stepNumber
+                                : slide.getTitle();
 
                         try {
                             // Verify the PNG is valid before adding to slide
@@ -232,6 +237,17 @@ public class YamlPresentationProcessor {
         } else {
             System.err.println("WARNING: Diagram slide has no diagramRef: " + slide.getTitle());
         }
+    }
+
+    private void createImageSlide(SlideConfig slide, PptGenerator generator) {
+        if (slide.getImagePath() == null || slide.getImagePath().isBlank()) {
+            throw new IllegalArgumentException("Image slide is missing imagePath: " + slide.getTitle());
+        }
+        File imageFile = new File(slide.getImagePath());
+        if (!imageFile.isAbsolute()) {
+            imageFile = imageFile.getAbsoluteFile();
+        }
+        generator.addImageSlide(slide.getTitle(), imageFile, slide.getBullets(), slide.getNotes());
     }
 
     /**

@@ -7,6 +7,7 @@ public class SlideConfig {
     private String type;  // "text", "diagram", etc.
     private List<String> bullets;
     private String diagramRef;
+    private String imagePath;
     private String notes;
 
     public String getTitle() {
@@ -39,6 +40,14 @@ public class SlideConfig {
 
     public void setDiagramRef(String diagramRef) {
         this.diagramRef = diagramRef;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
     
     public String getNotes() {

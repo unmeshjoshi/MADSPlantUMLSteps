@@ -186,6 +186,7 @@ public class RevealJsYamlProcessor {
         return switch (slide.getType().toLowerCase()) {
             case "text" -> generateTextSlide(slide);
             case "diagram" -> generateDiagramSlide(slide);
+            case "image" -> generateImageSlide(slide);
             default -> throw new IllegalArgumentException("Unknown slide type: " + slide.getType());
         };
     }
@@ -265,5 +266,33 @@ public class RevealJsYamlProcessor {
 
         content.append("</section>");
         return content.toString();
+    }
+
+    private String generateImageSlide(SlideConfig slide) throws Exception {
+        if (slide.getImagePath() == null || slide.getImagePath().isBlank()) {
+            return "";
+        }
+
+        File imageFile = new File(slide.getImagePath());
+        if (!imageFile.isAbsolute()) {
+            imageFile = imageFile.getAbsoluteFile();
+        }
+
+        String base64Image = Base64.getEncoder().encodeToString(Files.readAllBytes(imageFile.toPath()));
+        String imageFormat = imageFile.getName().toLowerCase().endsWith(".png") ? "png" : "jpeg";
+
+        return String.format("""
+            <section>
+                <h2>%s</h2>
+                <div class="step-container">
+                    <img src="data:image/%s;base64,%s" alt="%s">
+                </div>
+            </section>
+            """,
+            slide.getTitle(),
+            imageFormat,
+            base64Image,
+            slide.getTitle()
+        );
     }
 }

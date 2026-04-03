@@ -58,11 +58,11 @@ public class PresentationConfigResolver {
                     File includedFile = new File(canonicalFile.getParentFile(), include.getPath()).getCanonicalFile();
                     PresentationConfig includedConfig = resolve(includedFile, resolutionStack);
                     adoptMissingMetadata(resolved, includedConfig);
-                    orderedSections.addAll(copySections(normalizeToOrderedSections(includedConfig)));
+                    orderedSections.addAll(copySections(normalizeToOrderedSections(includedConfig), includedFile.getParentFile()));
                 }
             }
 
-            orderedSections.addAll(copySections(normalizeCurrentConfig(rawConfig)));
+            orderedSections.addAll(copySections(normalizeCurrentConfig(rawConfig, canonicalFile.getParentFile()), canonicalFile.getParentFile()));
 
             if (!orderedSections.isEmpty()) {
                 resolved.setSections(orderedSections);
@@ -90,17 +90,17 @@ public class PresentationConfigResolver {
         }
     }
 
-    private List<SectionConfig> normalizeCurrentConfig(PresentationConfig config) {
+    private List<SectionConfig> normalizeCurrentConfig(PresentationConfig config, File baseDir) {
         List<SectionConfig> orderedSections = new ArrayList<>();
 
         if (config.getSections() != null && !config.getSections().isEmpty()) {
-            orderedSections.addAll(copySections(config.getSections()));
+            orderedSections.addAll(copySections(config.getSections(), baseDir));
         }
 
         if (config.getSlides() != null && !config.getSlides().isEmpty()) {
             SectionConfig anonymousSection = new SectionConfig();
             anonymousSection.setTitle(null);
-            anonymousSection.setSlides(copySlides(config.getSlides()));
+            anonymousSection.setSlides(copySlides(config.getSlides(), baseDir));
             orderedSections.add(anonymousSection);
         }
 
@@ -116,18 +116,18 @@ public class PresentationConfigResolver {
         if (config.getSlides() != null && !config.getSlides().isEmpty()) {
             SectionConfig anonymousSection = new SectionConfig();
             anonymousSection.setTitle(null);
-            anonymousSection.setSlides(copySlides(config.getSlides()));
+            anonymousSection.setSlides(copySlides(config.getSlides(), null));
             orderedSections.add(anonymousSection);
         }
         return orderedSections;
     }
 
-    private List<SectionConfig> copySections(List<SectionConfig> sections) {
+    private List<SectionConfig> copySections(List<SectionConfig> sections, File baseDir) {
         List<SectionConfig> copies = new ArrayList<>();
         for (SectionConfig section : sections) {
             SectionConfig copy = new SectionConfig();
             copy.setTitle(section.getTitle());
-            copy.setSlides(copySlides(section.getSlides()));
+            copy.setSlides(copySlides(section.getSlides(), baseDir));
             copies.add(copy);
         }
         return copies;
@@ -140,7 +140,7 @@ public class PresentationConfigResolver {
         return section;
     }
 
-    private List<SlideConfig> copySlides(List<SlideConfig> slides) {
+    private List<SlideConfig> copySlides(List<SlideConfig> slides, File baseDir) {
         List<SlideConfig> copies = new ArrayList<>();
         if (slides == null) {
             return copies;
@@ -151,6 +151,7 @@ public class PresentationConfigResolver {
             copy.setTitle(slide.getTitle());
             copy.setType(slide.getType());
             copy.setDiagramRef(slide.getDiagramRef());
+            copy.setImagePath(resolveImagePath(slide.getImagePath(), baseDir));
             copy.setNotes(slide.getNotes());
             if (slide.getBullets() != null) {
                 copy.setBullets(new ArrayList<>(slide.getBullets()));
@@ -158,5 +159,16 @@ public class PresentationConfigResolver {
             copies.add(copy);
         }
         return copies;
+    }
+
+    private String resolveImagePath(String imagePath, File baseDir) {
+        if (imagePath == null || imagePath.isBlank()) {
+            return imagePath;
+        }
+        File imageFile = new File(imagePath);
+        if (imageFile.isAbsolute() || baseDir == null) {
+            return imageFile.getPath();
+        }
+        return new File(baseDir, imagePath).getPath();
     }
 }

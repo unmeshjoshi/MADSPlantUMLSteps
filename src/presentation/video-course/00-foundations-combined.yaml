@@ -4,6 +4,7 @@ icon: "fas fa-layer-group"
 category: "Video Course"
 
 includes:
+  - path: "00-agenda.yaml"
   - sectionTitle: "Why Patterns"
     path: "03-why-patterns.yaml"
   - sectionTitle: "Little's Law"

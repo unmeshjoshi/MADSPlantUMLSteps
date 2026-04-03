@@ -39,6 +39,13 @@ public class HtmlGenerator {
         return TemplateLoader.processTemplate(template, data);
     }
 
+    private String formatTitleForHtml(String title) {
+        if (title == null) {
+            return "";
+        }
+        return title.replace("\n", "<br>");
+    }
+
     private void sortStepFiles(File[] stepFiles) {
         if (stepFiles == null) {
             return;
@@ -87,6 +94,23 @@ public class HtmlGenerator {
         }
         
         return renderTemplate("diagram_content", data);
+    }
+
+    private String generateImageContent(SlideConfig slide) {
+        if (slide.getImagePath() == null || slide.getImagePath().isBlank()) {
+            return "<p class='error-message'>Missing image path</p>";
+        }
+
+        File imageFile = new File(slide.getImagePath());
+        if (!imageFile.isAbsolute()) {
+            imageFile = imageFile.getAbsoluteFile();
+        }
+
+        return "<div class='diagram-slide-content'><div class='diagram-container'><img src='"
+                + imageFile.getAbsolutePath()
+                + "' alt='"
+                + slide.getTitle()
+                + "' style='max-width: 100%; max-height: 70vh; object-fit: contain;'></div></div>";
     }
 
     private String generateDiagramContainer(String diagramRef) {
@@ -265,7 +289,7 @@ public class HtmlGenerator {
                         }
                     }
                 }
-                slideData.put("slideTitle", slideTitle);
+                slideData.put("slideTitle", formatTitleForHtml(slideTitle));
                 
                 // Handle notes if present
                 if (slide.getNotes() != null && !slide.getNotes().trim().isEmpty()) {
@@ -279,6 +303,8 @@ public class HtmlGenerator {
                     content = generateBulletList(slide.getBullets());
                 } else if ("diagram".equals(slide.getType())) {
                     content = generateDiagramContent(slide);
+                } else if ("image".equals(slide.getType())) {
+                    content = generateImageContent(slide);
                 } else {
                     content = "";
                 }
