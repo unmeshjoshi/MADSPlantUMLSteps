@@ -1,5 +1,5 @@
-title: "Video Course Foundations and Write-Ahead Log"
-description: "Combined presentation for why patterns, saturation, failures, and write-ahead log"
+title: "Video Course Complete Presentation"
+description: "Combined presentation for why patterns, saturation, failures, write-ahead log, quorum, and consensus"
 icon: "fas fa-layer-group"
 category: "Video Course"
 
@@ -12,6 +12,8 @@ includes:
     path: "02-failures.yaml"
   - sectionTitle: "Write-Ahead Log"
     path: "04-write-ahead-log.yaml"
-  - sectionTitle: "Quorum Intersection"
+  - sectionTitle: "Quorum and Quorum Anomalies"
     path: "05-quorum.yaml"
+  - sectionTitle: "Consensus"
+    path: "06-consensus.yaml"
   
