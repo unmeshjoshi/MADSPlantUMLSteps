@@ -45,7 +45,7 @@ public class StepParser {
         List<Step> steps = new ArrayList<>();
 
         List<String> includes = new ArrayList<>();
-        List<String> participants = new ArrayList<>();
+        List<String> lifelines = new ArrayList<>();
         List<String> commonDefinitions = new ArrayList<>();
 
         List<String> lines = sourceFile.readLines();
@@ -71,13 +71,13 @@ public class StepParser {
             } else if (line.trim().startsWith("!include")) {
                 addInclude(line, includes, currentContent);
 
-            } else if (line.trim().startsWith("participant")) {
-                participants.add(line);
+            } else if (isTopLevelLifelineDeclaration(line)) {
+                lifelines.add(line);
                 currentContent.append(line).append("\n");
 
             } else if (isStepStart(line)) {
                 endPreviousStep(steps, currentContent, stepContent);
-                createStep(line, currentContent, includes, participants, commonDefinitions, steps);
+                createStep(line, currentContent, includes, lifelines, commonDefinitions, steps);
                 stepContent.setLength(0); // Reset step content tracker
 
             } else {
@@ -113,10 +113,11 @@ public class StepParser {
         Step step = steps.get(steps.size() - 1); // Get the last added step
         String content = currentContent.toString();
         
-        // Check if this step only contains notes and has participants defined
-        if (isNoteOnlyStep(stepContent.toString()) && hasParticipants(content)) {
-            // Remove participant definitions for note-only steps
-            content = removeParticipants(content);
+        // For pure note slides, remove lifelines only when the accumulated content
+        // does not still contain sequence activity that depends on them.
+        if (isNoteOnlyStep(stepContent.toString()) && hasLifelines(content) && !hasSequenceActivity(content)) {
+            // Remove lifeline definitions for note-only steps
+            content = removeLifelines(content);
         }
         
         // Only add @enduml if it's not already present
@@ -155,16 +156,37 @@ public class StepParser {
         return hasNote && !hasSequenceElements && !hasNoteAcross;
     }
     
-    private static boolean hasParticipants(String content) {
-        return content.contains("participant ");
+    private static boolean hasLifelines(String content) {
+        return content.contains("participant ") || content.contains("actor ");
+    }
+
+    private static boolean hasSequenceActivity(String content) {
+        String[] lines = content.split("\n");
+
+        for (String line : lines) {
+            String trimmed = line.trim();
+
+            if (trimmed.isEmpty() || trimmed.startsWith("' [") || trimmed.startsWith("'[")) {
+                continue;
+            }
+
+            if (trimmed.contains("->") || trimmed.contains("-->") ||
+                trimmed.contains("<--") || trimmed.contains("->x") ||
+                trimmed.contains("-->>") || trimmed.contains("<<--") ||
+                trimmed.startsWith("group ") || trimmed.equals("end")) {
+                return true;
+            }
+        }
+
+        return false;
     }
     
-    private static String removeParticipants(String content) {
+    private static String removeLifelines(String content) {
         StringBuilder result = new StringBuilder();
         String[] lines = content.split("\n");
         
         for (String line : lines) {
-            if (!line.trim().startsWith("participant ")) {
+            if (!isTopLevelLifelineDeclaration(line)) {
                 result.append(line).append("\n");
             }
         }
@@ -172,23 +194,23 @@ public class StepParser {
         return result.toString();
     }
 
-    private int createStep(String line, StringBuilder currentContent, List<String> includes, List<String> participants, List<String> commonDefinitions, List<Step> steps) {
+    private int createStep(String line, StringBuilder currentContent, List<String> includes, List<String> lifelines, List<String> commonDefinitions, List<Step> steps) {
         Map<String, Object> metadata = parseMetadata(line);
         int stepNumber = steps.size() + 1;
         if (metadata.containsKey("newPage")) {
             currentContent.setLength(0);
             currentContent.append("@startuml\n");
             addIncludes(currentContent, includes);
-            addParticipants(currentContent, participants);
+            addLifelines(currentContent, lifelines);
             addCommonDefinitions(currentContent, commonDefinitions);
         }
         steps.add(new Step(stepNumber, metadata));
         return stepNumber;
     }
 
-    private void addParticipants(StringBuilder currentContent, List<String> participants) {
-        for (String participant : participants) {
-            currentContent.append(participant).append("\n");
+    private void addLifelines(StringBuilder currentContent, List<String> lifelines) {
+        for (String lifeline : lifelines) {
+            currentContent.append(lifeline).append("\n");
         }
     }
     
@@ -208,6 +230,11 @@ public class StepParser {
         // Store includes for reuse
         includes.add(line);
         currentContent.append(line).append("\n");
+    }
+
+    private static boolean isTopLevelLifelineDeclaration(String line) {
+        String trimmed = line.trim();
+        return trimmed.startsWith("participant ") || trimmed.startsWith("actor ");
     }
 
 }

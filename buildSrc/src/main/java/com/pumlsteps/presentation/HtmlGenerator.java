@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,19 @@ public class HtmlGenerator {
         return TemplateLoader.processTemplate(template, data);
     }
 
+    private void sortStepFiles(File[] stepFiles) {
+        if (stepFiles == null) {
+            return;
+        }
+        Arrays.sort(stepFiles, Comparator.comparingInt(stepFile -> {
+            String stepIndex = stepFile.getName().replaceAll("[^0-9]", "");
+            if (stepIndex.isEmpty()) {
+                return 1;
+            }
+            return Integer.parseInt(stepIndex);
+        }));
+    }
+
     private String generateDiagramContent(SlideConfig slide) throws IOException {
         Map<String, Object> data = new HashMap<>();
         
@@ -66,6 +81,7 @@ public class HtmlGenerator {
             File diagramDir = new File("build/diagrams/" + diagramRef);
             File[] stepFiles = diagramDir.listFiles((dir, name) -> name.endsWith(".svg"));
             if (stepFiles != null) {
+                sortStepFiles(stepFiles);
                 totalStepsForCurrentDiagram.set(stepFiles.length);
             }
         }
@@ -128,6 +144,7 @@ public class HtmlGenerator {
         }
 
         if (stepFiles != null && stepFiles.length > 0) {
+            sortStepFiles(stepFiles);
             totalSteps = stepFiles.length;
             System.out.println("Found " + totalSteps + " SVG files for " + diagramRef);
             for (File stepFile : stepFiles) {
@@ -230,6 +247,7 @@ public class HtmlGenerator {
                     File[] stepFiles = diagramDir.listFiles((dir, name) -> name.endsWith(".svg"));
                     
                     if (stepFiles != null && stepFiles.length > 1) {
+                        sortStepFiles(stepFiles);
                         // Extract step number from filename
                         for (File stepFile : stepFiles) {
                             String stepName = stepFile.getName();

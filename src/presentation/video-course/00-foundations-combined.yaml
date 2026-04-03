@@ -1,5 +1,5 @@
-title: "Video Course Foundations: Saturation and Failures"
-description: "Combined presentation for the Little's Law and failures modules"
+title: "Video Course Foundations and Write-Ahead Log"
+description: "Combined presentation for why patterns, saturation, failures, and write-ahead log"
 icon: "fas fa-layer-group"
 category: "Video Course"
 
@@ -10,3 +10,8 @@ includes:
     path: "01-littles-law-and-saturation.yaml"
   - sectionTitle: "Failures and The Reality of Scale"
     path: "02-failures.yaml"
+  - sectionTitle: "Write-Ahead Log"
+    path: "04-write-ahead-log.yaml"
+  - sectionTitle: "Quorum Intersection"
+    path: "05-quorum.yaml"
+  

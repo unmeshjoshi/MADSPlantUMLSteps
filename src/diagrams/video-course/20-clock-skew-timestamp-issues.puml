@@ -1,0 +1,95 @@
+@startuml
+!include ../../style.puml
+
+title Clock Skew and Timestamp Issues
+
+actor Alice
+actor Bob
+actor Charlie
+
+participant "athens\nclock=200" as athens
+participant "byzantium\nclock=200" as byzantium
+participant "cyrene\nclock=100" as cyrene
+
+' [step1 {"name":"Clocks Differ"}]
+note over athens
+"title":"Microservices", time=100
+end note
+/ note over byzantium
+"title":"Microservices", time=100
+end note
+/ note over cyrene
+"title":"Microservices", time=100
+clock is behind
+end note
+' [/step1]
+
+' [step2 {"name":"Earlier Write Reaches a Quorum"}]
+Alice -> athens : set "title", "Distributed Systems"
+
+note over athens
+Earlier write
+"Distributed Systems", time=200
+end note
+
+athens -> byzantium : replicate "Distributed Systems", time=200
+athens <-- byzantium
+athens -[#red]>x cyrene : replicate "Distributed Systems", time=200
+
+note over byzantium
+"title":"Distributed Systems", time=200
+end note
+
+note over cyrene
+write missed the lagging node
+still "Microservices", time=100
+end note
+' [/step2]
+
+' [step3 {"name":"Later Write Gets Earlier Timestamp", "newPage":"true"}]
+Bob -> cyrene : set "title", "Microservices"
+
+note over cyrene
+Later write in real time
+"Microservices", time=110
+timestamp is earlier because
+cyrene's clock is behind
+end note
+
+cyrene -[#red]>x athens : replicate "Microservices", time=110
+cyrene -[#red]>x byzantium : replicate "Microservices", time=110
+
+note over athens, byzantium
+Ignored on other replicas because
+they already store time=200
+end note
+' [/step3]
+
+' [step4 {"name":"Read Repair Chooses the Wrong Value", "newPage":"true"}]
+Charlie -> athens : get "title"
+athens -> byzantium : get "title"
+athens <-- byzantium : "Distributed Systems", time=200
+athens -> cyrene : get "title"
+cyrene <-- athens : "Microservices", time=110
+
+note over athens
+Timestamp comparison says
+200 beats 110
+so quorum picks
+"Distributed Systems"
+end note
+' [/step4]
+
+' [step5 {"name":"Wrong Repair", "newPage":"true"}]
+athens --> cyrene : set "title", "Distributed Systems", time=200
+athens --> Charlie : "Distributed Systems"
+
+note bottom #FFE6E6
+**Problem**
+Bob's later write on the lagging node is lost.
+Basic quorum plus naive physical timestamps
+can repair the wrong value.
+end note
+' [/step5]
+
+@enduml

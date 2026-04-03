@@ -1,0 +1,19 @@
+@startuml
+!include ../../style.puml
+actor Bob
+participant athens
+participant byzantium
+participant cyrene
+
+Bob -> cyrene : set "title", "Distributed Systems"
+cyrene -> cyrene  : set "title", "Distributed Systems"
+note over cyrene
+"title":"Distributed Systems"
+end note
+cyrene -[#red]>x byzantium  : set "title", "Distributed Systems" \n<:fire:>
+cyrene -[#red]>x athens  : set "title", "Distributed Systems" \n<:fire:>
+
+cyrene -> cyrene : isQuorumReached
+cyrene -[#red]-> Bob : Error
+
+@enduml

@@ -1,0 +1,29 @@
+@startuml
+!include ../../style.puml
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+
+note over athens
+"title":"Distributed Systems", time=2
+end note
+/ note over byzantium
+"title":"Microservices", time=1
+end note
+/ note over cyrene
+"title":"Distributed Systems", time=2
+end note
+Alice -> athens : get "title"
+athens -> athens  : get "title"
+athens <-- athens: "Distributed Systems", time=2
+athens -> byzantium  : get "title"
+athens <-- byzantium: "Microservices", time=1
+athens -> cyrene  : get "title"
+cyrene <-- athens: "Distributed Systems", time=2
+athens -> athens : isQuorumReached
+athens -> athens : getNodesMissingLatestValues
+Alice <-- athens: Distributed Systems
+athens --> byzantium : set "title", "Distributed Systems", time=2
+athens <-- byzantium
+@enduml

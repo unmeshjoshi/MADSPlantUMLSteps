@@ -374,6 +374,65 @@ class StepParserTest {
         assertTrue(steps.get(2).getContent().contains("@startuml"));
     }
 
+    @Test
+    void shouldPreserveTopLevelActorsAndParticipantsAcrossNewPages() throws Exception {
+        var tempFile = createTempFile("""
+            @startuml
+            actor Alice
+            actor Bob
+            participant athens
+            participant byzantium
+            participant cyrene
+
+            ' [step1 {"name":"First Page"}]
+            Alice -> athens : First action
+            ' [/step1]
+
+            ' [step2 {"name":"Second Page", "newPage":true}]
+            Bob -> cyrene : Second action
+            ' [/step2]
+            @enduml
+        """);
+
+        ParsedPlantUmlFile parsedPlantUmlFile = parser.parse(tempFile);
+        List<Step> steps = parsedPlantUmlFile.getSteps();
+
+        Step step2 = steps.get(1);
+        assertTrue(step2.getContent().contains("actor Alice"));
+        assertTrue(step2.getContent().contains("actor Bob"));
+        assertTrue(step2.getContent().contains("participant athens"));
+        assertTrue(step2.getContent().contains("participant byzantium"));
+        assertTrue(step2.getContent().contains("participant cyrene"));
+        assertTrue(step2.getContent().contains("Bob -> cyrene : Second action"));
+    }
+
+    @Test
+    void shouldKeepLifelinesOnNoteOnlyStepWhenAccumulatedContentStillHasSequenceActivity() throws Exception {
+        var tempFile = createTempFile("""
+            @startuml
+            actor Clients
+            participant Queue
+
+            ' [step1 {"name":"Arrival"}]
+            Clients -> Queue : Write Requests
+            ' [/step1]
+
+            ' [step2 {"name":"Wait"}]
+            note over Queue : Requests wait in line
+            ' [/step2]
+            @enduml
+        """);
+
+        ParsedPlantUmlFile parsedPlantUmlFile = parser.parse(tempFile);
+        List<Step> steps = parsedPlantUmlFile.getSteps();
+
+        Step step2 = steps.get(1);
+        assertTrue(step2.getContent().contains("actor Clients"));
+        assertTrue(step2.getContent().contains("participant Queue"));
+        assertTrue(step2.getContent().contains("Clients -> Queue : Write Requests"));
+        assertTrue(step2.getContent().contains("note over Queue : Requests wait in line"));
+    }
+
 
     private PumlFile createTempFile(String content) throws Exception {
         var tempFile = File.createTempFile("temp", ".puml");

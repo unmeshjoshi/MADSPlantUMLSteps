@@ -1,0 +1,32 @@
+@startuml
+!include ../../style.puml
+
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+
+note over athens
+"title":"Microservices", time=1
+end note
+/ note over byzantium
+"title":"Microservices", time=1
+end note
+/ note over cyrene
+"title":"Microservices", time=1
+end note
+Alice -> athens : set "title", "Distributed Systems"
+athens -> athens  : set "title", "Distributed Systems", time=2
+note over athens
+"title":"Distributed Systems", time=2
+end note
+athens -[#red]>x byzantium  : set "title", "Distributed Systems" , time=2\n<:fire:>
+
+athens -> cyrene  : set "title", "Distributed Systems", time=2
+note over cyrene
+"title":"Distributed Systems", time=2
+end note
+athens -> athens : isQuorumReached
+athens --> Alice : Success
+
+@enduml

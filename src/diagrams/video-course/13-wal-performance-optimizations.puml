@@ -63,25 +63,12 @@ note right #E6FFE6
 end note
 ' [/step3]
 
-' [step4 {"name":"Sector Alignment Benefits", "newPage":"true"}]
-== Sector Alignment Optimization ==
-
-note over Storage #F0F8FF
-**Storage-Level Optimizations**
-• 512-byte sector alignment
-• Eliminates Read-Modify-Write cycles
-• Structured padding with markers
-• 3x performance improvement
-• Direct I/O for large sequential writes
-end note
-' [/step4]
-
-' [step5 {"name":"Combined Results"}]
+' [step4 {"name":"Combined Results"}]
 note bottom #E6FFE6
 **Combined Result**
 Batching, alignment, and sequential I/O
 make WAL fast enough for production use.
 end note
-' [/step5]
+' [/step4]
 
 @enduml

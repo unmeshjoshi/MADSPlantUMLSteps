@@ -1,0 +1,317 @@
+// [step1 {"name":"5-Node Cluster"}]
+digraph QuorumIntersectionCluster {
+  rankdir=TB;
+  bgcolor="white";
+  splines=false;
+  nodesep=0.45;
+  ranksep=0.75;
+
+  node [shape=box,
+        style="rounded,filled",
+        fontname="Helvetica",
+        fontsize=12,
+        width=1.1,
+        height=0.55,
+        fillcolor="#F7F8FE",
+        color="#4A5568",
+        penwidth=1.4];
+
+  edge [dir=none, color="#B8C2CC", penwidth=1.2];
+
+  subgraph cluster_all {
+    label="5 replicas";
+    color="#4A5568";
+    penwidth=2.0;
+    style="rounded";
+    margin=16;
+
+    { rank=same;
+      A [label="Athens"];
+      B [label="Byzantium"];
+      C [label="Cyrene"];
+      D [label="Delphi"];
+      E [label="Ephesus"];
+    }
+  }
+
+  A -> B -> C -> D -> E [style=invis];
+
+  note [shape=note,
+        style="filled",
+        fillcolor="#E8F4FF",
+        color="#4A5568",
+        fontname="Helvetica",
+        fontsize=11,
+        label="5 replicas\nMajority quorum = 3\nAny two majorities must intersect"];
+
+  C -> note [style=invis];
+}
+// [/step1]
+
+// [step2 {"name":"Write Quorum"}]
+digraph QuorumIntersectionWrite {
+  rankdir=TB;
+  bgcolor="white";
+  splines=false;
+  nodesep=0.45;
+  ranksep=0.75;
+
+  node [shape=box,
+        style="rounded,filled",
+        fontname="Helvetica",
+        fontsize=12,
+        width=1.1,
+        height=0.55,
+        color="#4A5568",
+        penwidth=1.4];
+
+  edge [dir=none, color="#B8C2CC", penwidth=1.2];
+
+  subgraph cluster_write {
+    label="Write quorum (3 of 5)";
+    color="#2F855A";
+    penwidth=2.4;
+    style="rounded";
+    margin=18;
+
+    { rank=same;
+      A [label="Athens", fillcolor="#C6F6D5"];
+      B [label="Byzantium", fillcolor="#C6F6D5"];
+      C [label="Cyrene", fillcolor="#C6F6D5"];
+    }
+  }
+
+  subgraph cluster_other {
+    label="Other replicas";
+    color="#CBD5E0";
+    penwidth=1.6;
+    style="rounded,dashed";
+    margin=16;
+
+    { rank=same;
+      D [label="Delphi", fillcolor="#EDF2F7"];
+      E [label="Ephesus", fillcolor="#EDF2F7"];
+    }
+  }
+
+  A -> B -> C [style=invis];
+  D -> E [style=invis];
+
+  note [shape=note,
+        style="filled",
+        fillcolor="#F0FFF4",
+        color="#2F855A",
+        fontname="Helvetica",
+        fontsize=11,
+        label="A write can complete after\nany 3 replicas acknowledge"];
+
+  C -> note [style=invis];
+}
+// [/step2]
+
+// [step3 {"name":"Read Quorum"}]
+digraph QuorumIntersectionRead {
+  rankdir=TB;
+  bgcolor="white";
+  splines=false;
+  nodesep=0.45;
+  ranksep=0.75;
+
+  node [shape=box,
+        style="rounded,filled",
+        fontname="Helvetica",
+        fontsize=12,
+        width=1.1,
+        height=0.55,
+        color="#4A5568",
+        penwidth=1.4];
+
+  edge [dir=none, color="#B8C2CC", penwidth=1.2];
+
+  subgraph cluster_other {
+    label="Other replicas";
+    color="#CBD5E0";
+    penwidth=1.6;
+    style="rounded,dashed";
+    margin=16;
+
+    { rank=same;
+      A [label="Athens", fillcolor="#EDF2F7"];
+      B [label="Byzantium", fillcolor="#EDF2F7"];
+    }
+  }
+
+  subgraph cluster_read {
+    label="Read quorum (3 of 5)";
+    color="#DD6B20";
+    penwidth=2.4;
+    style="rounded";
+    margin=18;
+
+    { rank=same;
+      C [label="Cyrene", fillcolor="#FEEBC8"];
+      D [label="Delphi", fillcolor="#FEEBC8"];
+      E [label="Ephesus", fillcolor="#FEEBC8"];
+    }
+  }
+
+  A -> B [style=invis];
+  C -> D -> E [style=invis];
+
+  note [shape=note,
+        style="filled",
+        fillcolor="#FFF7ED",
+        color="#DD6B20",
+        fontname="Helvetica",
+        fontsize=11,
+        label="A later read can also complete\nwith any other majority"];
+
+  C -> note [style=invis];
+}
+// [/step3]
+
+// [step4 {"name":"Intersection Witness"}]
+digraph QuorumIntersectionWitness {
+  rankdir=TB;
+  bgcolor="white";
+  splines=false;
+  nodesep=0.45;
+  ranksep=0.8;
+
+  node [shape=box,
+        style="rounded,filled",
+        fontname="Helvetica",
+        fontsize=12,
+        width=1.05,
+        height=0.5,
+        color="#4A5568",
+        penwidth=1.4];
+
+  edge [dir=none, color="#B8C2CC", penwidth=1.0];
+
+  subgraph cluster_top {
+    label="Write quorum";
+    color="#2F855A";
+    penwidth=2.2;
+    style="rounded";
+    margin=16;
+
+    A1 [label="Athens", group="A", fillcolor="#C6F6D5"];
+    B1 [label="Byzantium", group="B", fillcolor="#C6F6D5"];
+    C1 [label="Cyrene", group="C", fillcolor="#BEE3F8", color="#3182CE", penwidth=2.3];
+    { rank=same; A1; B1; C1; }
+  }
+
+  subgraph cluster_bottom {
+    label="Read quorum";
+    color="#DD6B20";
+    penwidth=2.2;
+    style="rounded";
+    margin=16;
+
+    C2 [label="Cyrene", group="C", fillcolor="#BEE3F8", color="#3182CE", penwidth=2.3];
+    D2 [label="Delphi", group="D", fillcolor="#FEEBC8"];
+    E2 [label="Ephesus", group="E", fillcolor="#FEEBC8"];
+    { rank=same; C2; D2; E2; }
+  }
+
+  A1 -> B1 -> C1 [style=invis];
+  C2 -> D2 -> E2 [style=invis];
+  C1 -> C2 [color="#3182CE", penwidth=2.2, style=dashed];
+
+  note [shape=note,
+        style="filled",
+        fillcolor="#EBF8FF",
+        color="#3182CE",
+        fontname="Helvetica",
+        fontsize=11,
+        label="Cyrene is the shared witness.\nAt least one replica must appear in both majorities."];
+
+  C2 -> note [style=invis];
+}
+// [/step4]
+
+// [step5 {"name":"Overlap Is Guaranteed"}]
+digraph QuorumIntersectionGuaranteed {
+  rankdir=TB;
+  bgcolor="white";
+  splines=false;
+  nodesep=0.45;
+  ranksep=0.75;
+
+  node [shape=box,
+        style="rounded,filled",
+        fontname="Helvetica",
+        fontsize=12,
+        width=1.1,
+        height=0.55,
+        color="#4A5568",
+        penwidth=1.4];
+
+  edge [dir=none, color="#B8C2CC", penwidth=1.2];
+
+  subgraph cluster_write {
+    label="Write quorum";
+    color="#2F855A";
+    penwidth=2.2;
+    style="rounded";
+    margin=16;
+
+    { rank=same;
+      A [label="Athens", fillcolor="#C6F6D5"];
+      B [label="Byzantium", fillcolor="#C6F6D5"];
+      C [label="Cyrene", fillcolor="#BEE3F8", color="#3182CE", penwidth=2.3];
+    }
+  }
+
+  subgraph cluster_read {
+    label="Read quorum";
+    color="#DD6B20";
+    penwidth=2.2;
+    style="rounded";
+    margin=16;
+
+    { rank=same;
+      C2 [label="Cyrene", fillcolor="#BEE3F8", color="#3182CE", penwidth=2.3];
+      D [label="Delphi", fillcolor="#FEEBC8"];
+      E [label="Ephesus", fillcolor="#FEEBC8"];
+    }
+  }
+
+  A -> B -> C [style=invis];
+  C2 -> D -> E [style=invis];
+  C -> C2 [color="#3182CE", penwidth=2.2, style=dashed];
+
+  note [shape=note,
+        style="filled",
+        fillcolor="#EBF8FF",
+        color="#3182CE",
+        fontname="Helvetica",
+        fontsize=11,
+        label="Green + blue nodes form one majority.\nOrange + blue nodes form another.\nThe blue node is the overlap."];
+
+  C2 -> note [style=invis];
+}
+// [/step5]
+
+// [step6 {"name":"Key Rule"}]
+digraph QuorumIntersectionRule {
+  rankdir=TB;
+  bgcolor="white";
+
+  rule [shape=note,
+        style="filled",
+        fillcolor="#F0FFF4",
+        color="#2F855A",
+        fontname="Helvetica",
+        fontsize=13,
+        label="Key rule\n\nIf N = 5 and a quorum is 3,\nany two quorums must share at least one node.\nThat shared node carries knowledge of the write forward."];
+
+  formula [shape=plaintext,
+           fontname="Helvetica-Bold",
+           fontsize=16,
+           label="Qw + Qr > N  =>  intersection"];
+
+  rule -> formula [style=invis];
+}
+// [/step6]

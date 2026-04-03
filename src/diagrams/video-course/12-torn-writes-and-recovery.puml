@@ -44,8 +44,8 @@ This is a torn write.
 end note
 ' [/step3]
 
-' [step4 {"name":"Recovery"}]
-== Recovery ==
+' [step4 {"name":"Validate WAL Tail"}]
+== Validate WAL Tail ==
 App -> FS: restart and recover
 FS -> Cache: read WAL tail
 Cache -> Dev: verify header, length, checksum
@@ -55,7 +55,10 @@ note over Cache #FFFFCC
 Checksum or length mismatch reveals
 that the tail is ambiguous.
 end note
+' [/step4]
 
+' [step5 {"name":"Truncate and Replay", "newPage":"true"}]
+== Truncate and Replay ==
 Cache -> FS: truncate to last valid record
 FS --> App: replay valid records only
 
@@ -67,6 +70,6 @@ note bottom #E6FFE6
 • Truncate ambiguous tails
 • Replay idempotently
 end note
-' [/step4]
+' [/step5]
 
 @enduml

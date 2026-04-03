@@ -1,17 +1,16 @@
 @startuml
 !include ../../style.puml
 
-title Little's Law: System Queuing Model
+actor Clients
 
-actor "Clients" as clients
 box "Disk" #LightCyan
   queue "Queue" as queue
   database "Storage" as disk
 end box
 
 ' [step1 {"name":"Arrival Rate (λ)"}]
-clients -> queue: Write Requests\nArrival Rate (λ)
-note right of clients: iostat: r/s + w/s
+Clients -> queue: Write Requests\nArrival Rate (λ)
+note right of Clients: iostat: r/s + w/s
 ' [/step1]
 
 ' [step2 {"name":"Queue Time (Wq)"}]
@@ -24,12 +23,12 @@ note over queue, disk: Service Time (S)\ne.g., 0.5ms/write\n(iostat: svctm)
 ' [/step3]
 
 ' [step4 {"name":"Throughput & Total Time"}]
-disk --> clients: Write Complete & Ack\nThroughput (X)
-note over clients, disk: Total Response Time (W) = Wq + S\n(iostat: await)
+disk --> Clients: Write Complete & Ack\nThroughput (X)
+note over Clients, disk: Total Response Time (W) = Wq + S\n(iostat: await)
 ' [/step4]
 
 ' [step5 {"name":"Little's Law Formula"}]
-note over clients, disk #E6F3FF
+note over Clients, disk #E6F3FF
   **Little's Law mapping to iostat**
   **L = λ x W**
   avgqu-sz (Total in System) = (r/s + w/s) x await

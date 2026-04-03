@@ -1,0 +1,128 @@
+title: "Quorum"
+description: "How quorum works, and why basic quorum still allows anomalies"
+icon: "fas fa-people-group"
+category: "Replication Patterns"
+
+sections:
+  - title: "Quorum and Quorum Anomalies"
+    slides:
+      - type: "text"
+        title: "Why Quorum?"
+        bullets:
+          - "Replication protects data from machine and network failures"
+          - "But waiting for every replica is often too slow or too fragile"
+          - "Quorum is the compromise: wait for enough replicas to preserve overlap"
+          - "The goal is to balance durability, availability, and latency"
+        notes: "Open with the motivation. Quorum exists because we need something stronger than one copy, but cheaper than waiting for all copies."
+
+      - type: "text"
+        title: "Majority Quorum"
+        bullets:
+          - "A quorum is the minimum number of replicas needed to treat an operation as accepted"
+          - "In a cluster of N nodes, a majority quorum is N/2 + 1"
+          - "The common rule of thumb is 2f + 1 replicas to tolerate f failures"
+          - "Read and write quorums are safe when they overlap"
+        notes: "Keep the math light. The key message is overlap."
+
+      - type: "diagram"
+        title: "Quorum Intersection Property"
+        diagramRef: "16-quorum-intersection"
+        bullets:
+          - "Any two majority quorums overlap in at least one node"
+          - "That overlap carries knowledge of accepted writes forward"
+          - "This is the mathematical foundation behind quorum safety"
+        notes: "This is the conceptual heart of quorum."
+
+      - type: "diagram"
+        title: "Quorum Write Example"
+        diagramRef: "17-quorum-write-example"
+        bullets:
+          - "A write succeeds after a majority of replicas acknowledge"
+          - "One replica can miss the update and the operation still returns success"
+          - "That is why quorum writes are resilient but not magically complete"
+        notes: "Use this to make quorum concrete."
+
+      - type: "diagram"
+        title: "Quorum Read Example"
+        diagramRef: "18-quorum-read-example"
+        bullets:
+          - "A read can also succeed after a majority responds"
+          - "Read and write overlap is what preserves continuity"
+          - "But some replicas may still be stale or unavailable"
+        notes: "Connect the read path back to intersection."
+
+      - type: "diagram"
+        title: "A Write Can Succeed While One Replica Misses It"
+        diagramRef: "21-quorum-missing-write"
+        bullets:
+          - "A coordinator can declare success after only a quorum acknowledges"
+          - "One replica may miss the write completely and remain stale"
+          - "That stale replica is why read repair and reconciliation become necessary"
+        notes: "This makes the partial-write caveat visible before we talk about client-visible anomalies."
+
+      - type: "text"
+        title: "Read Repair: Synchronous vs Asynchronous"
+        bullets:
+          - "Synchronous read repair fixes stale replicas before replying"
+          - "Asynchronous read repair replies first and repairs in the background"
+          - "Synchronous repair gives stronger guarantees but adds latency"
+          - "Asynchronous repair is faster but exposes a staleness window"
+        notes: "This is the operational consequence of stale replicas under basic quorum."
+
+      - type: "diagram"
+        title: "Selecting Latest Value with Timestamps"
+        diagramRef: "19-selecting-latest-value"
+        bullets:
+          - "A common strategy is to pick the value with the latest timestamp"
+          - "That can repair stale replicas and converge the system"
+          - "But now correctness depends on timestamp order being trustworthy"
+        notes: "This is the bridge from quorum to anomalies."
+
+      - type: "diagram"
+        title: "Clock Skew and Timestamp Issues"
+        diagramRef: "20-clock-skew-timestamp-issues"
+        bullets:
+          - "Later writes can receive earlier timestamps if clocks drift"
+          - "Timestamp-based reconciliation can then choose the wrong value"
+          - "A later real-world write can be overwritten by an earlier one"
+        notes: "This is the key quorum anomaly slide."
+
+      - type: "diagram"
+        title: "Failed Writes Can Leave the Cluster in an Ambiguous State"
+        diagramRef: "22-quorum-incomplete-write-alice"
+        bullets:
+          - "A client can see an error even though one replica was already updated"
+          - "Now the system contains partial state even though the write did not commit"
+          - "Retries and later reads must reason about that leftover state carefully"
+        notes: "Land the idea that failure does not always mean nothing happened."
+
+      - type: "diagram"
+        title: "A Later Failed Write Can Leave a Different Replica Ahead"
+        diagramRef: "23-quorum-incomplete-write-bob"
+        bullets:
+          - "A second failed write can update a different replica than the first"
+          - "Now replicas disagree about which value is latest"
+          - "Basic quorum alone does not tell us how to resolve the conflict safely"
+        notes: "This prepares the ground for stronger protocols and more disciplined version ordering."
+
+      - type: "text"
+        title: "Issues with Basic Quorum"
+        bullets:
+          - "Different clients can still observe different values"
+          - "A later read can return an older value than an earlier read"
+          - "Stale replicas, partial writes, and timestamp assumptions create ambiguity"
+          - "Quorum overlap alone does not provide full external consistency"
+        notes: "Summarize the caveats clearly before moving on to stronger protocols later."
+
+      - type: "diagram"
+        title: "A Later Read Can Return an Older Value"
+        diagramRef: "24-ddia-stale-read-anomaly"
+        notes: "Use this as the closing case study. The key point is not just stale replicas in the abstract, but a client-visible history where one reader sees the new value and a later reader still sees the old one through a different quorum."
+
+      - type: "text"
+        title: "Quorum Needs More Discipline"
+        bullets:
+          - "Quorum is an important building block, not the whole consistency story"
+          - "Real systems add read repair, versioning, logical time, or stronger agreement protocols"
+          - "The next step is understanding how to resolve the ambiguities quorum leaves behind"
+        notes: "Land the module by showing quorum as a foundation rather than a complete solution."

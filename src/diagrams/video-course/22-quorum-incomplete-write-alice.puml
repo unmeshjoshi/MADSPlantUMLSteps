@@ -1,0 +1,19 @@
+@startuml
+!include ../../style.puml
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+
+Alice -> athens : set "title", "Microservices"
+athens -> athens  : set "title", "Microservices"
+note over athens
+"title":"Microservices"
+end note
+athens -[#red]>x byzantium  : set "title", "Microservices" , time=2\n<:fire:>
+athens -[#red]>x cyrene  : set "title", "Microservices" , time=2\n<:fire:>
+
+athens -> athens : isQuorumReached
+athens -[#red]-> Alice : Error
+
+@enduml

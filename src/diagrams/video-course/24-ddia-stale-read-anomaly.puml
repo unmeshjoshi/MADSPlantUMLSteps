@@ -1,0 +1,104 @@
+@startuml
+!include ../../style.puml
+
+title A Later Read Can Return an Older Value
+
+actor Writer
+actor Alice
+actor Bob
+
+participant athens
+participant byzantium
+participant cyrene
+
+' [step1 {"name":"All Replicas Start at x=0"}]
+note over athens
+"order:1001" = "x=0", time=1
+end note
+/ note over byzantium
+"order:1001" = "x=0", time=1
+end note
+/ note over cyrene
+"order:1001" = "x=0", time=1
+end note
+' [/step1]
+
+' [step2 {"name":"New Write Is Delayed", "newPage":"true"}]
+Writer -> athens : set "order:1001", "x=1"
+athens -> athens : store "x=1", time=2
+athens -[#red]> byzantium : replicate "x=1", time=2\n(delayed)
+athens -[#red]> cyrene : replicate "x=1", time=2\n(delayed)
+
+note over athens
+"order:1001" = "x=1", time=2
+end note
+
+note over byzantium,cyrene
+Replication is still in flight,
+so both replicas still store "x=0".
+end note
+' [/step2]
+
+' [step3 {"name":"Alice Sees the New Value", "newPage":"true"}]
+Alice -> athens : get "order:1001"
+athens -> byzantium : get "order:1001"
+athens <-- byzantium : "x=0", time=1
+
+note over athens
+Read quorum includes one fresh replica,
+so the coordinator returns
+"x=1", time=2.
+end note
+
+athens --> Alice : "x=1"
+' [/step3]
+
+' [step4 {"name":"A Different Quorum Is Still Old", "newPage":"true"}]
+note over byzantium,athens #FFEEEE
+Temporary partition:
+byzantium cannot reach athens.
+end note
+
+note over byzantium,cyrene
+These two replicas still hold
+"order:1001" = "x=0", time=1.
+end note
+' [/step4]
+
+' [step5 {"name":"Bob Later Sees the Old Value", "newPage":"true"}]
+Bob -> byzantium : get "order:1001"
+byzantium -[#red]>x athens : get "order:1001"
+byzantium -> cyrene : get "order:1001"
+byzantium <-- cyrene : "x=0", time=1
+
+note over byzantium
+This quorum only sees old data,
+so it returns "x=0".
+end note
+
+byzantium --> Bob : "x=0"
+' [/step5]
+
+' [step6 {"name":"Replicas Eventually Converge", "newPage":"true"}]
+athens --> byzantium : delayed "x=1", time=2 arrives
+athens --> cyrene : delayed "x=1", time=2 arrives
+
+note over athens #E6FFE6
+"order:1001" = "x=1", time=2
+end note
+/ note over byzantium
+"order:1001" = "x=1", time=2
+end note
+/ note over cyrene
+"order:1001" = "x=1", time=2
+end note
+
+note bottom #FFE6E6
+**Quorum Anomaly**
+Alice saw "x=1", but Bob later saw "x=0".
+The system eventually converges, but the
+client-visible history is not linearizable.
+end note
+' [/step6]
+
+@enduml

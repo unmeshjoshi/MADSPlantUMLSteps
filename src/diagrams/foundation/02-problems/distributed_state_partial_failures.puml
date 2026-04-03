@@ -10,17 +10,17 @@ package "Application Services" {
 }
 
 database DB1 [
-DB1
+Replica1
 Active
 ]
 
 database DB2_failed [
-DB2
+Replica2
 <color:red><b>FAILED</b></color>
 ]
 
 database DB3 [
-DB3
+Replica3
 Active
 ]
 
@@ -34,9 +34,9 @@ AS3 --> DB3 : "<2ms"
 
 note right of AS2 #FFE6E6
 **Partial Failure Scenario:**
-- DB2 has failed
+- Replica2 has failed
 - System continues functioning
-- AS2 can failover to DB1 or DB3
+- AS2 can failover to Replica1 or Replica3
 - No complete system outage
 end note
 
