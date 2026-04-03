@@ -1,0 +1,110 @@
+title: "Write-Ahead Log"
+description: "Why durable systems write to a log before making state visible"
+icon: "fas fa-file-signature"
+category: "Storage Patterns"
+
+sections:
+  - title: "The Write-Ahead Log Pattern"
+    slides:
+      - type: "text"
+        title: "Why WAL?"
+        bullets:
+          - "Servers crash, power fails, and writes can be only partially persisted"
+          - "Flushing every in-memory structure on every change would be far too slow"
+          - "In-memory state can be rebuilt, but ambiguous durable state is dangerous"
+          - "We need a fast durable record of intent before making state visible"
+        notes: "Start with the problem. WAL exists because failure is normal and durable state updates are expensive."
+
+      - type: "text"
+        title: "Zoom Out: Where WAL Fits"
+        bullets:
+          - "Databases use WAL before updating tables, indexes, and in-memory structures"
+          - "Consensus and replication systems build replicated logs on the same basic idea"
+          - "Kafka and similar systems expose the append-only log as a core abstraction"
+          - "WAL is often the durability foundation underneath larger distributed-system patterns"
+        notes: "This is the zoomed-out systems view. WAL is not just a database trick; it is a foundational pattern across many systems."
+
+      - type: "text"
+        title: "The Core Rule"
+        bullets:
+          - "Append the change to the log first"
+          - "Make the log durable at the commit boundary"
+          - "Only then update in-memory or derived structures"
+          - "On restart, replay the log to rebuild safe state"
+        notes: "This is the single most important idea in the module: durability before visibility."
+
+      - type: "diagram"
+        title: "Write-Ahead Log Operation"
+        diagramRef: "11-write-ahead-log-operation"
+        bullets:
+          - "Client sends an update"
+          - "The server appends and fsyncs the WAL first"
+          - "Only after that does the new value become visible"
+          - "A crash after the WAL append is recoverable"
+        notes: "Walk slowly through the order of operations. This is the core mechanism."
+
+      - type: "text"
+        title: "Zoom In: WAL Technical Implementation Details"
+        bullets:
+          - "Each record needs a monotonic sequence number or log index"
+          - "A useful format is something like [length | type | sequence | payload | checksum]"
+          - "The log is append-only and ordered by that sequence"
+          - "fsync or group commit defines the durability boundary"
+          - "Implementations often keep in-memory indexes and buffers to speed lookup and flushing"
+        notes: "This is the zoomed-in view. Move from the big idea to the concrete mechanics that make a WAL dependable."
+
+      - type: "diagram"
+        title: "WAL Performance Optimizations"
+        diagramRef: "13-wal-performance-optimizations"
+        bullets:
+          - "Naive fsync on every write is correct but expensive"
+          - "Batching and group commit reduce syscall and flush overhead"
+          - "Larger sequential writes help the storage layer work efficiently"
+          - "WAL performance depends heavily on write path design"
+        notes: "This slide explains why WAL can be both safe and fast in practice."
+
+      - type: "text"
+        title: "WAL Storage Sector Alignment"
+        bullets:
+          - "Storage devices write complete sectors atomically"
+          - "Unaligned writes force extra read-modify-write work"
+          - "Padding or alignment avoids crossing awkward boundaries"
+          - "This matters because WAL is an append-heavy sequential workload"
+        notes: "Keep this short and practical. The big idea is that physical storage boundaries still matter to software performance."
+
+      - type: "text"
+        title: "WAL Direct I/O vs Page Cache"
+        bullets:
+          - "Page cache is simpler, but latency can vary and writes may be less predictable"
+          - "Direct I/O often fits WAL well because appends are large and sequential"
+          - "Direct I/O reduces cache pollution and extra copying"
+          - "The trade-off is stricter alignment and more application complexity"
+        notes: "Treat this as an engineering trade-off slide, not a universal rule."
+
+      - type: "diagram"
+        title: "Torn Writes and Recovery"
+        diagramRef: "12-torn-writes-and-recovery"
+        bullets:
+          - "A power loss may persist only part of a record"
+          - "The WAL tail may contain mixed old and new bytes"
+          - "Checksums and framing detect the ambiguous tail"
+          - "Recovery truncates to the last valid record and replays forward"
+        notes: "This is the failure mode WAL is designed to survive cleanly."
+
+      - type: "text"
+        title: "WAL Recovery Process"
+        bullets:
+          - "On startup, read the WAL sequentially from the last checkpoint or known good position"
+          - "Replay valid records in order to rebuild in-memory or derived state"
+          - "Stop at the first corrupted or incomplete tail record"
+          - "Truncate ambiguous data rather than trusting it"
+          - "Recovery works because the WAL is ordered, framed, and durable"
+        notes: "Keep the recovery logic simple and high-signal. The key idea is safe replay up to the last valid record."
+
+      - type: "text"
+        title: "Summary: Write-Ahead Log"
+        bullets:
+          - "WAL turns crashes into recoverable events"
+          - "It separates durable intent from faster in-memory state"
+          - "It is a foundational pattern in databases, message logs, and replicated systems"
+        notes: "Land the message cleanly. WAL is one of the core patterns underneath many larger systems."

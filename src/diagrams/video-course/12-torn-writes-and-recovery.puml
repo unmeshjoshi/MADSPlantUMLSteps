@@ -1,0 +1,72 @@
+@startuml
+!include ../../style.puml
+
+title Torn Writes and Recovery
+
+actor Application as App
+box "OS Layer" #LightBlue
+participant "File System" as FS
+participant "OS Page Cache\n(4KB pages)" as Cache
+end box
+box "Storage Layer" #LightGray
+participant "Block Layer" as Block
+participant "Block Device" as Dev
+database "Stable Media" as Media
+end box
+
+' [step1 {"name":"Write Intent"}]
+== Write Intent ==
+App -> FS: write(record[8KB])
+FS -> Cache: copy to dirty pages
+FS --> App: return success
+' [/step1]
+
+' [step2 {"name":"Flush to Disk"}]
+== Flush to Disk ==
+App -> FS: fsync(fd)
+FS -> Cache: select dirty pages
+Cache -> Block: submit writes
+Block -> Dev: write logical blocks
+
+note over Dev
+An 8KB record spans many device blocks.
+Persistence may happen a block at a time.
+end note
+' [/step2]
+
+' [step3 {"name":"Power Loss", "newPage":"true"}]
+== Power Loss ==
+Dev -> Media: persist only a prefix of blocks
+note over Dev,Media #FFEEEE
+Only part of the intended record reached stable media.
+The tail now contains mixed old and new bytes.
+This is a torn write.
+end note
+' [/step3]
+
+' [step4 {"name":"Recovery"}]
+== Recovery ==
+App -> FS: restart and recover
+FS -> Cache: read WAL tail
+Cache -> Dev: verify header, length, checksum
+Dev -> Cache: return mixed bytes
+
+note over Cache #FFFFCC
+Checksum or length mismatch reveals
+that the tail is ambiguous.
+end note
+
+Cache -> FS: truncate to last valid record
+FS --> App: replay valid records only
+
+note bottom #E6FFE6
+**WAL Guardrails**
+• Frame each record
+• Add checksums
+• fsync at commit boundaries
+• Truncate ambiguous tails
+• Replay idempotently
+end note
+' [/step4]
+
+@enduml

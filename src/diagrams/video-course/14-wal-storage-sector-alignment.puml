@@ -1,0 +1,37 @@
+@startuml
+
+title WAL Storage Sector Alignment
+
+note as UnalignedIssue #FFE6E6
+**Unaligned Write Problem**
+• A write starts in the middle of a sector
+• It spans partial 512-byte boundaries
+• Storage must do Read-Modify-Write cycles
+• Existing bytes must be read before writing
+• Throughput drops sharply
+end note
+
+note as AlignedSolution #E6FFE6
+**Aligned Write Solution**
+• Start the write at a sector boundary
+• Overwrite complete sectors only
+• No Read-Modify-Write needed
+• Hardware can write directly
+• Performance becomes more predictable
+end note
+
+note as PaddingStrategy #F0F8FF
+**Padding Strategy**
+• Add structured padding to reach boundaries
+• Use markers and lengths so recovery can detect padding
+• Tiny space overhead buys large performance gains
+• Especially valuable for append-only WAL workloads
+end note
+
+note bottom #FFFFCC
+**Storage Fundamental**
+Disks and SSDs write complete sectors atomically.
+WAL design works better when append boundaries respect that reality.
+end note
+
+@enduml

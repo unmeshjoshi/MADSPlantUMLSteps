@@ -1,0 +1,73 @@
+@startuml
+!include ../../style.puml
+
+title Write-Ahead Log Operation
+
+' [step1 {"name":"Initial State"}]
+actor Client
+participant "KVStore Server" as KVStore
+database "Write-Ahead Log\nwal.log" as WAL
+database "In-Memory State" as MemStore
+
+note over WAL #E6F3FF
+**Existing Log Entries**
+Set(K1,V1) - Index 1
+Set(K2,V2) - Index 2
+Set(K3,V3) - Index 3
+end note
+
+note over MemStore #E6F3FF
+**Current Visible State**
+Key1: Value1
+Key2: Value2
+Key3: Value3
+end note
+' [/step1]
+
+' [step2 {"name":"Client Write Request"}]
+Client -> KVStore : Set(K4,V4)
+activate KVStore
+
+note over KVStore #FFFFCC
+**Core Rule**
+Durability before visibility
+end note
+' [/step2]
+
+' [step3 {"name":"Append to WAL", "newPage":"true"}]
+KVStore -> WAL : 1. Append Set(K4,V4) with Index 4
+activate WAL
+note right of WAL #FFE6E6
+**Durability Step**
+• Append to the log
+• Force fsync() to disk
+end note
+WAL --> KVStore : Append confirmed
+deactivate WAL
+' [/step3]
+
+' [step4 {"name":"Update Memory"}]
+KVStore -> MemStore : 2. Update K4 = V4
+activate MemStore
+note right of MemStore #E6FFE6
+**Visibility Step**
+• Update in-memory state
+• Key4 is now visible
+• Safe because WAL is durable
+end note
+MemStore --> KVStore : Update confirmed
+deactivate MemStore
+' [/step4]
+
+' [step5 {"name":"Success Response"}]
+KVStore --> Client : Success
+deactivate KVStore
+
+note over KVStore, MemStore #E6F3FF
+**Recovery Guarantee**
+If the server crashes after the WAL write but before the memory update,
+the operation can be replayed during startup recovery.
+end note
+' [/step5]
+
+@enduml

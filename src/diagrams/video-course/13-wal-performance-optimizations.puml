@@ -1,0 +1,87 @@
+@startuml
+!include ../../style.puml
+
+title WAL Performance Optimizations
+
+participant "Client Requests" as Clients
+participant "WAL Buffer Manager" as Buffer
+participant "Batch Processor" as Batch
+participant "Storage Layer" as Storage
+
+note over Clients, Storage #E6F3FF
+**WAL Optimization Strategy: Group Writes + Batching**
+end note
+
+' [step1 {"name":"Unoptimized WAL - Individual Writes"}]
+== Unoptimized WAL (Baseline) ==
+
+loop Individual Writes
+  Clients -> Buffer : Write Entry 1
+  Buffer -> Storage : fsync() - 1ms
+  Clients -> Buffer : Write Entry 2
+  Buffer -> Storage : fsync() - 1ms
+  Clients -> Buffer : Write Entry 3
+  Buffer -> Storage : fsync() - 1ms
+end
+
+note right #FFE6E6
+**Performance**
+• 50 MB/s throughput
+• 100ms P99 latency
+• 50K system calls/sec
+• 60% CPU usage
+end note
+' [/step1]
+
+' [step2 {"name":"Optimized WAL - Group Writes", "newPage":"true"}]
+== Optimized WAL (Group Writes + Batching) ==
+
+Clients -> Buffer : Entry 1 (accumulate)
+Clients -> Buffer : Entry 2 (accumulate)
+Clients -> Buffer : Entry 3 (accumulate)
+
+note over Buffer #FFFFCC
+**Buffer Strategy**
+• 64KB write buffer
+• 2ms max batch wait
+• Adaptive batch sizing
+• Off-heap memory
+end note
+' [/step2]
+
+' [step3 {"name":"Batch Processing"}]
+Buffer -> Batch : Trigger batch (size/time)
+Batch -> Storage : Single large write (64KB)
+Storage -> Storage : Single fsync() call
+
+note right #E6FFE6
+**Optimized Performance**
+• 400+ MB/s throughput
+• <10ms P99 latency
+• 5K system calls/sec
+• 25% CPU usage
+end note
+' [/step3]
+
+' [step4 {"name":"Sector Alignment Benefits", "newPage":"true"}]
+== Sector Alignment Optimization ==
+
+note over Storage #F0F8FF
+**Storage-Level Optimizations**
+• 512-byte sector alignment
+• Eliminates Read-Modify-Write cycles
+• Structured padding with markers
+• 3x performance improvement
+• Direct I/O for large sequential writes
+end note
+' [/step4]
+
+' [step5 {"name":"Combined Results"}]
+note bottom #E6FFE6
+**Combined Result**
+Batching, alignment, and sequential I/O
+make WAL fast enough for production use.
+end note
+' [/step5]
+
+@enduml

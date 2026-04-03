@@ -1,0 +1,51 @@
+@startuml
+
+title WAL Direct I/O vs Page Cache
+
+note as PageCacheChar #FFFFCC
+**Page Cache**
+• Kernel buffers writes in memory
+• Good for general-purpose workloads
+• Can have variable latency
+• May add extra copies and cache pollution
+• Write timing is less predictable
+end note
+
+note as DirectIOChar #E6FFE6
+**Direct I/O**
+• Bypasses the kernel page cache
+• Fewer copies and less cache interference
+• Better for large sequential WAL appends
+• More predictable latency
+• Usually needs alignment discipline
+end note
+
+note as AlignmentReqs #FFE6E6
+**Direct I/O Requirements**
+• Buffer address must be aligned
+• Buffer size must be aligned
+• File offset must be aligned
+• The application must manage this complexity
+end note
+
+note as UsageGuidance #F0F8FF
+**When to Use Each**
+
+**Direct I/O is best for**
+• Large sequential writes
+• Predictable append-only WAL workloads
+• Avoiding page cache pollution
+
+**Page Cache is best for**
+• Small random I/O
+• Frequently re-read data
+• Simpler application code
+end note
+
+note bottom #E6FFE6
+**Key Insight**
+WAL is often a great fit for Direct I/O because
+it is append-heavy and values predictable latency.
+end note
+
+@enduml
