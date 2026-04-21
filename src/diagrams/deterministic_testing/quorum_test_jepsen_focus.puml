@@ -1,0 +1,34 @@
+@startuml
+!include ../../style.puml
+
+title Jepsen Checks Client-Visible Correctness
+
+actor Alice
+actor Bob
+participant athens
+participant byzantium
+participant cyrene
+participant Nemesis
+participant Checker
+
+Alice -> athens : set("title", "After Dawn")
+activate athens
+athens -> byzantium : replicate write
+byzantium --> athens : ack
+athens ->x cyrene : replicate write
+athens --> Alice : success
+deactivate athens
+
+Nemesis -> athens : partition / pause / delay
+Bob -> cyrene : get("title")
+cyrene --> Bob : "Before Dawn" ?
+Bob -> Checker : observed read history
+Alice -> Checker : observed write history
+
+note bottom #E6F3FF
+Focus:
+what value did clients observe,
+and is that history still correct?
+end note
+
+@enduml

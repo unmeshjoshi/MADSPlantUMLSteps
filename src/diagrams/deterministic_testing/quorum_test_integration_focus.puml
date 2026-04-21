@@ -1,0 +1,32 @@
+@startuml
+!include ../../style.puml
+
+title Integration Tests Check Replica Interaction
+
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+
+Alice -> athens : set("title", "Microservices")
+activate athens
+par Replicate to followers
+  athens -> byzantium : set("title", "Microservices")
+  activate byzantium
+  byzantium --> athens : ack
+  deactivate byzantium
+else
+  athens -> cyrene : set("title", "Microservices")
+  activate cyrene
+  cyrene --> athens : ack
+  deactivate cyrene
+end
+athens --> Alice : success
+deactivate athens
+
+note bottom #E6F3FF
+Focus:
+do the real nodes coordinate correctly?
+end note
+
+@enduml

@@ -1,0 +1,129 @@
+title: "Deterministic Simulation Testing: Why tick() Matters"
+description: "A presentation on why client-visible correctness needs fault-focused testing, why nondeterminism makes failures hard to reproduce, and why an explicit tick() method is the right testing primitive."
+icon: "fas fa-vial"
+category: "Distributed Systems"
+sections:
+  - title: "The Need For Deterministic Simulation Testing"
+    slides:
+      - type: "text"
+        title: "Different Tests Answer Different Questions"
+        bullets:
+          - "We will use the same quorum write example and ask a different question at each test level."
+        notes: "Introduce the running example. The rest of the deck uses one quorum write scenario on a three-node KV store. The value of the testing ladder is not that every test uses a different system, but that each test asks a different question about the same system."
+
+      - type: "diagram"
+        title: "A quick recap - What is a quorum write?"
+        diagramRef: "17-quorum-write-example"
+        notes: ""
+    
+      - type: "diagram"
+        title: "A quick recap - What is a quorum read?"
+        diagramRef: "18-quorum-read-example"
+        notes: ""
+
+      - type: "diagram"
+        title: "Unit Tests Check Local Decision Logic"
+        diagramRef: "quorum_test_unit_focus"
+        bullets:
+          - "In our quorum write, the unit test checks the coordinator's majority decision logic."
+        notes: "This is the narrowest test. We are not proving network behavior or storage behavior. We are only testing that the coordinator decides correctly when two acknowledgements out of three are enough."
+
+      - type: "diagram"
+        title: "Component Tests Check One Node In Context"
+        diagramRef: "quorum_test_component_focus"
+        bullets:
+          - "Here the coordinator runs with controlled collaborators and controlled failures."
+        notes: "This is one node in context. The collaborators may be test doubles or tightly controlled components, but the test is still scoped to one bounded subsystem."
+
+      - type: "diagram"
+        title: "Integration Tests Check Replica Interaction"
+        diagramRef: "quorum_test_integration_focus"
+        bullets:
+          - "Now we test whether the replicas actually coordinate to form a quorum."
+        notes: "This is the first place we rely on actual interaction between multiple nodes. The question is not whether the quorum formula is right. The question is whether the write path works across the nodes."
+
+      - type: "diagram"
+        title: "Chaos Engineering Tests Resilience Under Fault"
+        diagramRef: "quorum_test_chaos_focus"
+        bullets:
+          - "The write still has to succeed and recover when one node disappears."
+        notes: "Use this slide to distinguish resilience from correctness. Chaos Monkey is the narrow instance-kill version of this idea. Chaos engineering generalizes it to node loss, latency, partitions, pauses, and more."
+
+      - type: "text"
+        title: "Availability Is Not The Same As Correctness"
+        bullets:
+          - "A system can stay up, stay fast, and still return the wrong result."
+        notes: "This is the pivot. A system can restart pods, keep serving traffic, and stay inside latency limits while still violating the semantics the client depends on."
+
+      - type: "text"
+        title: "Feature And Performance Testing Are Not Enough"
+        bullets:
+          - "They do not prove what clients observe during partial failure."
+        notes: "Open by separating three concerns: features, performance, and correctness under failure. The key point is that a distributed system can pass feature tests and hit its SLOs while still returning the wrong value to a client."
+
+      - type: "text"
+        title: "Partial Failures Make Distributed Systems Hard"
+        bullets:
+          - "Failures overlap with live traffic instead of stopping the whole system at once."
+        notes: "Stress that distributed systems are hard because failure is partial. Everything does not stop at once. Some parts keep running, some are slow, and clients continue sending requests throughout."
+
+      - type: "diagram"
+        title: "Jepsen Checks Client-Visible Correctness"
+        diagramRef: "quorum_test_jepsen_focus"
+        bullets:
+          - "The checker cares about the client-visible history, not just whether the cluster stayed alive."
+        notes: "Define Jepsen in one sentence: live workload, live faults, client-visible history, checker. This slide keeps the same quorum example but shifts the question from survival to the semantics that clients actually experienced."
+
+      - type: "text"
+        title: "Why Jepsen Tests A Running System"
+        bullets:
+          - "Correctness is challenged while requests are in flight when partial failures happen."
+        notes: "This is the reason for faulting a live system. We are not interested in whether a node can crash in the abstract. We care about what happens to real client operations while the system is under stress."
+
+      - type: "text"
+        title: "Nondeterminism Makes Failures Hard To Reproduce"
+        bullets:
+          - "The same fault schedule rarely produces the same execution trace twice."
+        notes: "This slide explains the pain after Jepsen finds something interesting. Even if you know which fault happened, rerunning the same scenario may not recreate the same internal ordering."
+
+  - title: "Designing for Determinism"
+    slides:
+
+      - type: "diagram"
+        title: "The Same Injected Faults Can Still Produce Different Executions"
+        diagramRef: "deterministic_runs_vary"
+        bullets:
+          - "Small timing shifts can change the order that clients and nodes observe."
+        notes: "Walk the audience through the two runs. The code is unchanged. The test intent is unchanged. But network readiness and disk completion move around just enough to alter the execution trace."
+
+      - type: "diagram"
+        title: "Hidden Progress Sources Drive Real Execution"
+        diagramRef: "real_system_progress_tick"
+        bullets:
+          - "Real execution advances because multiple subsystems keep progressing underneath the software."
+        notes: "Use this slide to make the core analogy. Real systems progress because multiple subsystems keep moving forward underneath the software. Those progress mechanisms are hidden and not directly controlled by the test."
+
+      - type: "diagram"
+        title: "tick() Makes Progress Explicit"
+        diagramRef: "simulation_tick_explicit"
+        bullets:
+          - "The test now controls when the whole simulated system is allowed to move forward."
+        notes: "This is the thesis slide for the tick method. The simulator replaces hidden background progression with one explicit testing primitive. The point is not one business action per tick. The point is explicit, test-controlled progress."
+
+      - type: "text"
+        title: "tick() Turns Time Into A Test Input"
+        bullets:
+          - "Timeouts, retries, and heartbeats stop depending on sleeps and wall-clock waiting."
+        notes: "This slide should feel practical. Once tick exists, timeouts and retries are no longer awkward integration tests built out of sleeps. They become ordinary deterministic test steps."
+
+      - type: "text"
+        title: "Same Inputs Plus Same Ticks Give The Same Trace"
+        bullets:
+          - "A failing scenario becomes replayable instead of folklore."
+        notes: "Give the strong payoff: a failure is no longer folklore. It becomes a replayable execution. That changes how quickly we can debug and how confidently we can explain a bug."
+
+      - type: "text"
+        title: "Deterministic Testing Requires A Different Architecture"
+        bullets:
+          - "The software must be designed so progress can be controlled, not merely observed."
+        notes: "Close by making the architectural claim. Deterministic testing is not a wrapper around existing code. The system has to be structured so progress can be driven explicitly."

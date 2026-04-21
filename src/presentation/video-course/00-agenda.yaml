@@ -7,6 +7,7 @@ slides:
   - type: "image"
     title: |
       Patterns Of Distributed Systems
+      based on
       - Unmesh Joshi
     imagePath: "patternsbook.jpg"
     notes: "Use this as the opening title card for the course before setup and agenda."

@@ -1,0 +1,29 @@
+@startuml
+!include ../../style.puml
+
+title Chaos Engineering Tests Resilience Under Fault
+
+actor Alice
+participant athens
+participant byzantium
+participant cyrene
+participant Nemesis
+
+Alice -> athens : set("title", "Microservices")
+activate athens
+Nemesis ->x cyrene : kill node / cut network
+athens -> byzantium : replicate write
+activate byzantium
+byzantium --> athens : ack
+deactivate byzantium
+athens ->x cyrene : replicate write
+athens --> Alice : success
+deactivate athens
+
+note bottom #E6F3FF
+Focus:
+does the system stay available
+and recover under fault?
+end note
+
+@enduml

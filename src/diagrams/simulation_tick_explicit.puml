@@ -1,0 +1,34 @@
+@startuml
+!include ../style.puml
+
+title tick() Makes Progress Explicit
+
+participant "Test" as Test
+participant "Simulator" as Sim
+participant "athens" as Athens
+participant "byzantium" as Byzantium
+participant "cyrene" as Cyrene
+participant "Client History" as History
+
+Test -> Sim : tick()
+Sim -> Athens : accept client write
+Sim -> History : record invocation
+Test -> Sim : assert write started
+
+Test -> Sim : tick()
+Sim -> Byzantium : deliver replicate write
+Sim -> Cyrene : drop / delay replicate write
+Test -> Sim : assert one replica has progressed
+
+Test -> Sim : tick()
+Sim -> Athens : deliver follower ack
+Sim -> Athens : mark quorum reached
+Sim -> History : record success response
+Test -> Sim : assert client-visible outcome
+
+note across #E6F3FF
+Same inputs plus the same tick sequence
+produce the same execution trace.
+end note
+
+@enduml
