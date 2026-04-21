@@ -22,20 +22,6 @@ sections:
         notes: ""
 
       - type: "diagram"
-        title: "Unit Tests Check Local Decision Logic"
-        diagramRef: "quorum_test_unit_focus"
-        bullets:
-          - "In our quorum write, the unit test checks the coordinator's majority decision logic."
-        notes: "This is the narrowest test. We are not proving network behavior or storage behavior. We are only testing that the coordinator decides correctly when two acknowledgements out of three are enough."
-
-      - type: "diagram"
-        title: "Component Tests Check One Node In Context"
-        diagramRef: "quorum_test_component_focus"
-        bullets:
-          - "Here the coordinator runs with controlled collaborators and controlled failures."
-        notes: "This is one node in context. The collaborators may be test doubles or tightly controlled components, but the test is still scoped to one bounded subsystem."
-
-      - type: "diagram"
         title: "Integration Tests Check Replica Interaction"
         diagramRef: "quorum_test_integration_focus"
         bullets:
