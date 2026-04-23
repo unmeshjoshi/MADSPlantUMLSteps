@@ -72,7 +72,7 @@ sections:
           - "The same fault schedule rarely produces the same execution trace twice."
         notes: "This slide explains the pain after Jepsen finds something interesting. Even if you know which fault happened, rerunning the same scenario may not recreate the same internal ordering."
 
-  - title: "Designing for Determinism"
+  - title: "Why Reproduction Is Hard"
     slides:
 
       - type: "diagram"
@@ -81,6 +81,39 @@ sections:
         bullets:
           - "Small timing shifts can change the order that clients and nodes observe."
         notes: "Walk the audience through the two runs. The code is unchanged. The test intent is unchanged. But network readiness and disk completion move around just enough to alter the execution trace."
+
+  - title: "Sources of Nondeterminism"
+    slides:
+      - type: "diagram"
+        title: "Clocks And Time"
+        diagramRef: "nondeterminism_clock_time"
+        bullets:
+          - "Timeouts, retries, and timestamps can cross different thresholds on different runs."
+        notes: "Use this slide to explain that time affects behavior, not just measurement. A retry may fire before an acknowledgement in one run and after it in another."
+
+      - type: "diagram"
+        title: "Thread Scheduling"
+        diagramRef: "nondeterminism_thread_scheduling"
+        bullets:
+          - "The same threads can be scheduled in a different order each time the program runs."
+        notes: "This is the classic source of nondeterminism in concurrent code. The logic is the same, but the scheduler changes which work becomes visible first."
+
+      - type: "diagram"
+        title: "Network Timing"
+        diagramRef: "nondeterminism_network_timing"
+        bullets:
+          - "Delays, buffering, retransmission, and delivery order change when messages are observed."
+        notes: "Connect this to the quorum example. The same message can arrive early in one run and late in another, even when the injected partition or loss pattern is the same."
+
+      - type: "diagram"
+        title: "Disk Timing"
+        diagramRef: "nondeterminism_disk_timing"
+        bullets:
+          - "Flush and completion timing change when writes appear durable to the system."
+        notes: "This is easy to miss in high-level discussions. Storage timing affects when a write is considered persisted, acknowledged, or visible after recovery."
+
+  - title: "Designing for Determinism"
+    slides:
 
       - type: "diagram"
         title: "Hidden Progress Sources Drive Real Execution"

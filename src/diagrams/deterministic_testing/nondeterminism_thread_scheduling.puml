@@ -1,0 +1,39 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequenceMessageAlign center
+
+actor "Alice" as Alice
+actor "Bob" as Bob
+participant "<&list> Scheduler" as Scheduler
+participant "Write Handler" as WriteHandler
+participant "Read Handler" as ReadHandler
+participant "Replica State" as State
+
+== Run 1 ==
+Alice -> WriteHandler : write \"After Dawn\"
+Bob -> ReadHandler : read \"title\"
+
+Scheduler -> WriteHandler : run first
+WriteHandler -> State : store \"After Dawn\"
+
+Scheduler -> ReadHandler : run next
+ReadHandler -> State : read current value
+ReadHandler -[#green]> Bob : \"After Dawn\"
+
+== Run 2 ==
+Alice -> WriteHandler : write \"After Dawn\"
+Bob -> ReadHandler : read \"title\"
+
+Scheduler -> ReadHandler : run first
+ReadHandler -> State : read current value
+ReadHandler -[#red]> Bob : \"Before Dawn\"
+
+Scheduler -> WriteHandler : run next
+WriteHandler -> State : store \"After Dawn\"
+
+note over Alice, Bob
+The same requests can produce different results
+when handlers are scheduled in a different order.
+end note
+@enduml

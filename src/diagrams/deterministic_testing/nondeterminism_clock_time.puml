@@ -1,0 +1,26 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequenceMessageAlign center
+
+participant "Client" as Client
+participant "<&clock> Timer" as Timer
+participant "Coordinator" as Coord
+
+== Run 1 ==
+Client -> Coord : start write
+note over Timer : timeout boundary at T
+Coord -> Coord : quorum ack arrives at T - small delta
+Coord -[#green]> Client : success
+
+== Run 2 ==
+Client -> Coord : start write
+note over Timer : timeout boundary at T
+Coord -> Coord : quorum ack arrives at T + small delta
+Timer -> Coord : timeout fires
+Coord -[#red]x Client : timeout failure
+
+note over Client, Coord
+A tiny shift in timing can change which branch executes.
+end note
+@enduml

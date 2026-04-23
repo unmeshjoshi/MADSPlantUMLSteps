@@ -1,0 +1,31 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequenceMessageAlign center
+
+actor "Alice" as Alice
+participant "Coordinator" as Coord
+participant "<&hard-drive> Disk" as Disk
+participant "Recovery" as Recovery
+
+== Run 1 ==
+Alice -> Coord : write "After Dawn"
+Coord -> Disk : flush write
+Disk -> Disk : persist
+Coord -[#red]x Coord : crash
+Recovery -> Disk : recover state
+Disk -[#green]> Recovery : "After Dawn" present
+
+== Run 2 ==
+Alice -> Coord : write "After Dawn"
+Coord -> Disk : flush write
+Coord -[#red]x Coord : crash
+Disk -> Disk : flush not completed
+Recovery -> Disk : recover state
+Disk -[#red]> Recovery : "After Dawn" missing
+
+note over Alice, Recovery
+The same crash can produce different recovered state
+depending on whether the write reached durable storage.
+end note
+@enduml

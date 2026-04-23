@@ -1,0 +1,27 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequenceMessageAlign center
+
+participant "Coordinator" as Coord
+participant "<&cloud> Network" as Net
+participant "Read Replica" as Replica
+actor "Bob" as Bob
+
+== Run 1 ==
+Coord -> Net : replicate \"After Dawn\"
+Net -> Replica : deliver early
+Bob -> Replica : read \"title\"
+Replica -[#green]> Bob : \"After Dawn\"
+
+== Run 2 ==
+Coord -> Net : replicate \"After Dawn\"
+Bob -> Replica : read \"title\"
+Replica -[#red]> Bob : \"Before Dawn\"
+Net -> Replica : deliver later
+
+note over Coord, Bob
+The same message can become visible at a different moment
+depending on network timing.
+end note
+@enduml
