@@ -1,0 +1,25 @@
+@startuml
+!include ../../style.puml
+actor Alice
+box "Cluster" #E6F3FF
+participant athens
+participant byzantium
+participant cyrene
+end box
+
+Alice -> athens : set "title", "Microservices"
+athens -> athens  : set "title", "Microservices"
+note over athens
+"title":"Microservices"
+end note
+athens -[#red]>x byzantium  : <:fire:> set "title", "Microservices"
+note over byzantium
+end note
+athens -> cyrene  : set "title", "Microservices"
+note over cyrene
+"title":"Microservices"
+end note
+athens -> athens : isQuorumReached
+athens --> Alice : Success
+
+@enduml

@@ -1,31 +1,59 @@
 @startuml
 !include ../../style.puml
 
-title Jepsen Checks Client-Visible Correctness
-
 actor Alice
 actor Bob
+box "Cluster" #E6F3FF
 participant athens
 participant byzantium
 participant cyrene
+end box
 participant Nemesis
 participant Checker
 
+' [step1 {"name":"Client Write Starts"}]
 Alice -> athens : set("title", "After Dawn")
 activate athens
+' [/step1]
+
+' [step2 {"name":"Write Reaches Majority"}]
 athens -> byzantium : replicate write
+' [/step2]
+
+' [step3 {"name":"Majority Ack"}]
 byzantium --> athens : ack
+' [/step3]
+
+' [step4 {"name":"Minority Misses Write"}]
 athens ->x cyrene : replicate write
+' [/step4]
+
+' [step5 {"name":"Client Sees Success"}]
 athens --> Alice : success
 deactivate athens
+' [/step5]
 
+' [step6 {"name":"Fault Is Injected"}]
 Nemesis -> athens : partition / pause / delay
-Bob -> cyrene : get("title")
-cyrene --> Bob : "Before Dawn" ?
-Bob -> Checker : observed read history
-Alice -> Checker : observed write history
+' [/step6]
 
-note bottom #E6F3FF
+' [step7 {"name":"Another Client Reads"}]
+Bob -> cyrene : get("title")
+' [/step7]
+
+' [step8 {"name":"Client Sees Old Value"}]
+cyrene --> Bob : "Before Dawn" ?
+' [/step8]
+
+' [step9 {"name":"Checker Sees Read History"}]
+Bob -> Checker : observed read history
+' [/step9]
+
+' [step10 {"name":"Checker Sees Write History"}]
+Alice -> Checker : observed write history
+' [/step10]
+
+note over cyrene, Checker #35b004ff
 Focus:
 what value did clients observe,
 and is that history still correct?

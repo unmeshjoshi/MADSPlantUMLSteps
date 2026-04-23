@@ -13,21 +13,21 @@ sections:
 
       - type: "diagram"
         title: "A quick recap - What is a quorum write?"
-        diagramRef: "17-quorum-write-example"
+        diagramRef: "quorum_write_recap"
         notes: ""
     
       - type: "diagram"
         title: "A quick recap - What is a quorum read?"
-        diagramRef: "18-quorum-read-example"
+        diagramRef: "quorum_read_recap"
         notes: ""
-
-      - type: "diagram"
-        title: "Integration Tests Check Replica Interaction"
-        diagramRef: "quorum_test_integration_focus"
+      
+      - type: "text"
+        title: "Partial Failures Make Distributed Systems Hard"
         bullets:
-          - "Now we test whether the replicas actually coordinate to form a quorum."
-        notes: "This is the first place we rely on actual interaction between multiple nodes. The question is not whether the quorum formula is right. The question is whether the write path works across the nodes."
+          - "Failures overlap with live traffic instead of stopping the whole system at once."
+        notes: "Stress that distributed systems are hard because failure is partial. Everything does not stop at once. Some parts keep running, some are slow, and clients continue sending requests throughout."
 
+      
       - type: "diagram"
         title: "Chaos Engineering Tests Resilience Under Fault"
         diagramRef: "quorum_test_chaos_focus"
@@ -46,12 +46,6 @@ sections:
         bullets:
           - "They do not prove what clients observe during partial failure."
         notes: "Open by separating three concerns: features, performance, and correctness under failure. The key point is that a distributed system can pass feature tests and hit its SLOs while still returning the wrong value to a client."
-
-      - type: "text"
-        title: "Partial Failures Make Distributed Systems Hard"
-        bullets:
-          - "Failures overlap with live traffic instead of stopping the whole system at once."
-        notes: "Stress that distributed systems are hard because failure is partial. Everything does not stop at once. Some parts keep running, some are slow, and clients continue sending requests throughout."
 
       - type: "diagram"
         title: "Jepsen Checks Client-Visible Correctness"

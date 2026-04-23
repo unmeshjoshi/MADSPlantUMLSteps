@@ -1,26 +1,43 @@
 @startuml
 !include ../../style.puml
 
-title Chaos Engineering Tests Resilience Under Fault
-
 actor Alice
+box "Cluster" #E6F3FF
 participant athens
 participant byzantium
 participant cyrene
+end box
 participant Nemesis
 
+' [step1 {"name":"Client Write"}]
 Alice -> athens : set("title", "Microservices")
 activate athens
-Nemesis ->x cyrene : kill node / cut network
+' [/step1]
+
+' [step2 {"name":"Fault Injection"}]
+Nemesis -[#red]>x cyrene : kill node / cut network
+' [/step2]
+
+' [step3 {"name":"Write Reaches Majority"}]
 athens -> byzantium : replicate write
 activate byzantium
+' [/step3]
+
+' [step4 {"name":"Majority Ack"}]
 byzantium --> athens : ack
 deactivate byzantium
+' [/step4]
+
+' [step5 {"name":"Minority Replica Fails"}]
 athens ->x cyrene : replicate write
+' [/step5]
+
+' [step6 {"name":"Client Still Succeeds"}]
 athens --> Alice : success
 deactivate athens
+' [/step6]
 
-note bottom #E6F3FF
+note over athens, cyrene #E6F3FF
 Focus:
 does the system stay available
 and recover under fault?

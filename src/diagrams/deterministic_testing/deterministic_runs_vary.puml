@@ -1,12 +1,14 @@
 @startuml
-!include ../style.puml
+!include ../../style.puml
 
 title The Same Injected Faults Can Still Produce Different Executions
 
 actor Alice
+box "Cluster" #E6F3FF
 participant athens
 participant byzantium
 participant cyrene
+end box
 
 == Run 1 ==
 Alice -> athens : set("title", "Microservices")

@@ -1,0 +1,29 @@
+@startuml
+!include ../../style.puml
+actor Alice
+box "Cluster" #E6F3FF
+participant athens
+participant byzantium
+participant cyrene
+end box
+
+note over athens
+"title":"Microservices"
+end note
+/ note over cyrene
+"title":"Microservices"
+end note
+
+Alice -> athens : get "title"
+athens -> athens  : get "title"
+athens <-- athens : "Microservices"
+
+athens -> byzantium  : get "title"
+athens <-- byzantium : ""
+
+athens -[#red]>x cyrene  : <:fire:> get "title"
+
+athens -> athens : isQuorumReached
+athens --> Alice : Microservices
+
+@enduml

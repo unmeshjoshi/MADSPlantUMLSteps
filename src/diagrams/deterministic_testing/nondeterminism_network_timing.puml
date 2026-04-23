@@ -1,4 +1,6 @@
 @startuml
+!include ../../style.puml
+
 skinparam shadowing false
 skinparam defaultFontName Arial
 skinparam sequenceMessageAlign center

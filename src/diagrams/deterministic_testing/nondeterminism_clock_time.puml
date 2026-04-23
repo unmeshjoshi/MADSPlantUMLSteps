@@ -1,4 +1,6 @@
 @startuml
+!include ../../style.puml
+
 skinparam shadowing false
 skinparam defaultFontName Arial
 skinparam sequenceMessageAlign center
@@ -9,18 +11,18 @@ participant "Coordinator" as Coord
 
 == Run 1 ==
 Client -> Coord : start write
-note over Timer : timeout boundary at T
-Coord -> Coord : quorum ack arrives at T - small delta
+Timer -> Timer : local time advances slowly
+Coord -> Coord : quorum ack still within timeout window
 Coord -[#green]> Client : success
 
 == Run 2 ==
 Client -> Coord : start write
-note over Timer : timeout boundary at T
-Coord -> Coord : quorum ack arrives at T + small delta
+Timer -> Timer : local time advances faster
 Timer -> Coord : timeout fires
 Coord -[#red]x Client : timeout failure
 
 note over Client, Coord
-A tiny shift in timing can change which branch executes.
+The same operation can cross a timeout boundary differently
+because timeout decisions depend on local clock behavior.
 end note
 @enduml

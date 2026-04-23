@@ -1,13 +1,15 @@
 @startuml
-!include ../style.puml
+!include ../../style.puml
 
 title tick() Makes Progress Explicit
 
 participant "Test" as Test
 participant "Simulator" as Sim
+box "Cluster" #E6F3FF
 participant "athens" as Athens
 participant "byzantium" as Byzantium
 participant "cyrene" as Cyrene
+end box
 participant "Client History" as History
 
 Test -> Sim : tick()

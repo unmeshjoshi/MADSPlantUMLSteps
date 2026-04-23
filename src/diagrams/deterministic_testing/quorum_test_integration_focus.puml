@@ -4,9 +4,11 @@
 title Integration Tests Check Replica Interaction
 
 actor Alice
+box "Cluster" #E6F3FF
 participant athens
 participant byzantium
 participant cyrene
+end box
 
 Alice -> athens : set("title", "Microservices")
 activate athens
