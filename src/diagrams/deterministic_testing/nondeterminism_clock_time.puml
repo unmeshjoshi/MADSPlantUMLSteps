@@ -9,17 +9,39 @@ participant "Client" as Client
 participant "<&clock> Timer" as Timer
 participant "Coordinator" as Coord
 
+' [step1 {"name":"Run 1: Start Write"}]
 == Run 1 ==
 Client -> Coord : start write
-Timer -> Timer : local time advances slowly
-Coord -> Coord : quorum ack still within timeout window
-Coord -[#green]> Client : success
+' [/step1]
 
+' [step2 {"name":"Run 1: Clock Advances"}]
+Timer -> Timer : local time advances slowly
+' [/step2]
+
+' [step3 {"name":"Run 1: Ack Still In Window"}]
+Coord -> Coord : quorum ack still within timeout window
+' [/step3]
+
+' [step4 {"name":"Run 1: Success"}]
+Coord -[#green]> Client : success
+' [/step4]
+
+' [step5 {"name":"Run 2: Start Write", "newPage":"true"}]
 == Run 2 ==
 Client -> Coord : start write
+' [/step5]
+
+' [step6 {"name":"Run 2: Clock Advances Faster"}]
 Timer -> Timer : local time advances faster
+' [/step6]
+
+' [step7 {"name":"Run 2: Timeout Fires"}]
 Timer -> Coord : timeout fires
+' [/step7]
+
+' [step8 {"name":"Run 2: Timeout Failure"}]
 Coord -[#red]x Client : timeout failure
+' [/step8]
 
 note over Client, Coord
 The same operation can cross a timeout boundary differently

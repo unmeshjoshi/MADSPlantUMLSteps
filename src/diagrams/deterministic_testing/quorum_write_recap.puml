@@ -7,17 +7,17 @@ participant byzantium
 participant cyrene
 end box
 
-Alice -> athens : set "title", "Microservices"
-athens -> athens  : set "title", "Microservices"
+Alice -> athens : set "title", "After Dawn"
+athens -> athens  : set "title", "After Dawn"
 note over athens
-"title":"Microservices"
+"title":"After Dawn"
 end note
-athens -[#red]>x byzantium  : <:fire:> set "title", "Microservices"
+athens -[#red]>x byzantium  : <:fire:> set "title", "After Dawn"
 note over byzantium
 end note
-athens -> cyrene  : set "title", "Microservices"
+athens -> cyrene  : set "title", "After Dawn"
 note over cyrene
-"title":"Microservices"
+"title":"After Dawn"
 end note
 athens -> athens : isQuorumReached
 athens --> Alice : Success

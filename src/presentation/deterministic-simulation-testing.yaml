@@ -47,6 +47,14 @@ sections:
           - "They do not prove what clients observe during partial failure."
         notes: "Open by separating three concerns: features, performance, and correctness under failure. The key point is that a distributed system can pass feature tests and hit its SLOs while still returning the wrong value to a client."
 
+      - type: "text"
+        title: "Jepsen: A Framework For Verifying Distributed Systems Under Faults"
+        bullets:
+          - "Jepsen runs a live system, injects faults, records client-visible history, and checks whether that history is correct."
+          - "[github.com/jepsen-io/jepsen](https://github.com/jepsen-io/jepsen)"
+        notes: "Use this slide to define Jepsen clearly before showing the Jepsen-style quorum scenario. The important idea is that Jepsen is a framework for running fault-injected distributed system tests and validating the client-visible history."
+
+
       - type: "diagram"
         title: "Jepsen Checks Client-Visible Correctness"
         diagramRef: "quorum_test_jepsen_focus"
@@ -63,11 +71,8 @@ sections:
       - type: "text"
         title: "Nondeterminism Makes Failures Hard To Reproduce"
         bullets:
-          - "The same fault schedule rarely produces the same execution trace twice."
+          - "The same fault schedule does not necessarily produce the same execution trace twice."
         notes: "This slide explains the pain after Jepsen finds something interesting. Even if you know which fault happened, rerunning the same scenario may not recreate the same internal ordering."
-
-  - title: "Why Reproduction Is Hard"
-    slides:
 
       - type: "diagram"
         title: "The Same Injected Faults Can Still Produce Different Executions"

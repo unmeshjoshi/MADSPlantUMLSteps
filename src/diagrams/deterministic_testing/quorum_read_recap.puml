@@ -8,15 +8,15 @@ participant cyrene
 end box
 
 note over athens
-"title":"Microservices"
+"title":"After Dawn"
 end note
 / note over cyrene
-"title":"Microservices"
+"title":"After Dawn"
 end note
 
 Alice -> athens : get "title"
 athens -> athens  : get "title"
-athens <-- athens : "Microservices"
+athens <-- athens : "After Dawn"
 
 athens -> byzantium  : get "title"
 athens <-- byzantium : ""
@@ -24,6 +24,6 @@ athens <-- byzantium : ""
 athens -[#red]>x cyrene  : <:fire:> get "title"
 
 athens -> athens : isQuorumReached
-athens --> Alice : Microservices
+athens --> Alice : After Dawn
 
 @enduml

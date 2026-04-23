@@ -10,7 +10,7 @@ end box
 participant Nemesis
 
 ' [step1 {"name":"Client Write"}]
-Alice -> athens : set("title", "Microservices")
+Alice -> athens : set("title", "After Dawn")
 activate athens
 ' [/step1]
 
@@ -37,7 +37,7 @@ athens --> Alice : success
 deactivate athens
 ' [/step6]
 
-note over athens, cyrene #E6F3FF
+note over athens, cyrene
 Focus:
 does the system stay available
 and recover under fault?

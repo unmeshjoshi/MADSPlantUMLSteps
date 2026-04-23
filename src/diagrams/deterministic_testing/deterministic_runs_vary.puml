@@ -10,20 +10,24 @@ participant byzantium
 participant cyrene
 end box
 
+' [step1 {"name":"Run 1"}]
 == Run 1 ==
-Alice -> athens : set("title", "Microservices")
+Alice -> athens : set("title", "After Dawn")
 athens -> byzantium : replicate write
 byzantium --> athens : ack arrives early
 athens ->x cyrene : message lost
 athens --> Alice : success
+' [/step1]
 
+' [step2 {"name":"Run 2", "newPage":"true"}]
 == Run 2 ==
-Alice -> athens : set("title", "Microservices")
+Alice -> athens : set("title", "After Dawn")
 athens -> byzantium : replicate write
 athens ->x cyrene : message lost
 ... ack delayed ...
 byzantium --> athens : ack arrives later
 athens -> athens : timeout / retry path differs
+' [/step2]
 
 note over athens,cyrene #FFF2CC
 Same injected fault and same write can still lead to a different execution trace

@@ -10,15 +10,15 @@ participant byzantium
 participant cyrene
 end box
 
-Alice -> athens : set("title", "Microservices")
+Alice -> athens : set("title", "After Dawn")
 activate athens
 par Replicate to followers
-  athens -> byzantium : set("title", "Microservices")
+  athens -> byzantium : set("title", "After Dawn")
   activate byzantium
   byzantium --> athens : ack
   deactivate byzantium
 else
-  athens -> cyrene : set("title", "Microservices")
+  athens -> cyrene : set("title", "After Dawn")
   activate cyrene
   cyrene --> athens : ack
   deactivate cyrene

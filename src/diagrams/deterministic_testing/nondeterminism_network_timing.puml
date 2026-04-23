@@ -11,15 +11,15 @@ participant "Read Replica" as Replica
 actor "Bob" as Bob
 
 == Run 1 ==
-Coord -> Net : replicate \"After Dawn\"
+Coord -> Net : replicate "After Dawn"
 Net -> Replica : deliver early
-Bob -> Replica : read \"title\"
-Replica -[#green]> Bob : \"After Dawn\"
+Bob -> Replica : read "title"
+Replica -[#green]> Bob : "After Dawn"
 
 == Run 2 ==
-Coord -> Net : replicate \"After Dawn\"
-Bob -> Replica : read \"title\"
-Replica -[#red]> Bob : \"Before Dawn\"
+Coord -> Net : replicate "After Dawn"
+Bob -> Replica : read "title"
+Replica -[#red]> Bob : "Before Dawn"
 Net -> Replica : deliver later
 
 note over Coord, Bob

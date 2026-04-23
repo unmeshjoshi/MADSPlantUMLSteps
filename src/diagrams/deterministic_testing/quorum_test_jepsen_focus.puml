@@ -11,6 +11,11 @@ end box
 participant Nemesis
 participant Checker
 
+note over athens, cyrene
+  **Inital State**
+  | title | Before Dawn |
+end note
+
 ' [step1 {"name":"Client Write Starts"}]
 Alice -> athens : set("title", "After Dawn")
 activate athens
@@ -53,7 +58,7 @@ Bob -> Checker : observed read history
 Alice -> Checker : observed write history
 ' [/step10]
 
-note over cyrene, Checker #35b004ff
+note over cyrene, Checker
 Focus:
 what value did clients observe,
 and is that history still correct?

@@ -12,27 +12,57 @@ participant "Write Handler" as WriteHandler
 participant "Read Handler" as ReadHandler
 participant "Replica State" as State
 
+' [step1 {"name":"Run 1: Alice Writes"}]
 == Run 1 ==
-Alice -> WriteHandler : write \"After Dawn\"
-Bob -> ReadHandler : read \"title\"
+Alice -> WriteHandler : write "After Dawn"
+' [/step1]
 
+' [step2 {"name":"Run 1: Bob Reads"}]
+Bob -> ReadHandler : read "title"
+' [/step2]
+
+' [step3 {"name":"Run 1: Scheduler Runs Write"}]
 Scheduler -> WriteHandler : run first
-WriteHandler -> State : store \"After Dawn\"
+' [/step3]
 
+' [step4 {"name":"Run 1: State Is Updated"}]
+WriteHandler -> State : store "After Dawn"
+' [/step4]
+
+' [step5 {"name":"Run 1: Scheduler Runs Read"}]
 Scheduler -> ReadHandler : run next
-ReadHandler -> State : read current value
-ReadHandler -[#green]> Bob : \"After Dawn\"
+' [/step5]
 
+' [step6 {"name":"Run 1: Bob Sees New Value"}]
+ReadHandler -> State : read current value
+ReadHandler -[#green]> Bob : "After Dawn"
+' [/step6]
+
+' [step7 {"name":"Run 2: Alice Writes", "newPage":"true"}]
 == Run 2 ==
-Alice -> WriteHandler : write \"After Dawn\"
-Bob -> ReadHandler : read \"title\"
+Alice -> WriteHandler : write "After Dawn"
+' [/step7]
 
+' [step8 {"name":"Run 2: Bob Reads"}]
+Bob -> ReadHandler : read "title"
+' [/step8]
+
+' [step9 {"name":"Run 2: Scheduler Runs Read"}]
 Scheduler -> ReadHandler : run first
-ReadHandler -> State : read current value
-ReadHandler -[#red]> Bob : \"Before Dawn\"
+' [/step9]
 
+' [step10 {"name":"Run 2: Bob Sees Old Value"}]
+ReadHandler -> State : read current value
+ReadHandler -[#red]> Bob : "Before Dawn"
+' [/step10]
+
+' [step11 {"name":"Run 2: Scheduler Runs Write"}]
 Scheduler -> WriteHandler : run next
-WriteHandler -> State : store \"After Dawn\"
+' [/step11]
+
+' [step12 {"name":"Run 2: State Updates Later"}]
+WriteHandler -> State : store "After Dawn"
+' [/step12]
 
 note over Alice, Bob
 The same requests can produce different results

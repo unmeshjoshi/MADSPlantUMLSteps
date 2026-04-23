@@ -1,13 +1,21 @@
 @startuml
 !include ../../style.puml
 
+box "CPU Subsystem" #E6F3FF
 participant "CPU Clock" as CPUClock
 participant "CPU" as CPU
 participant "Thread" as Thread
+end box
+
+box "NIC Subsystem" #e6f3ffff
 participant "NIC Controller" as NICClock
 participant "NIC" as NIC
+end box
+
+box "Disk Subsystem" #e6faffff
 participant "Disk Controller" as DiskClock
 participant "Disk" as Disk
+end box
 
 ' [step1 {"name":"CPU Issues Work"}]
 CPUClock -> CPU : tick
