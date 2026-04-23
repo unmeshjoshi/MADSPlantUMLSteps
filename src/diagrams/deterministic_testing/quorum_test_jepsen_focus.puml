@@ -1,6 +1,7 @@
 @startuml
 !include ../../style.puml
 
+' [common]
 actor Alice
 actor Bob
 box "Cluster" #E6F3FF
@@ -10,7 +11,7 @@ participant cyrene
 end box
 participant Nemesis
 participant Checker
-
+'[/common]
 note over athens, cyrene
   **Inital State**
   | title | Before Dawn |

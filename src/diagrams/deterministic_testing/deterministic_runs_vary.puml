@@ -1,14 +1,14 @@
 @startuml
 !include ../../style.puml
 
-title The Same Injected Faults Can Still Produce Different Executions
-
+'[common]
 actor Alice
 box "Cluster" #E6F3FF
 participant athens
 participant byzantium
 participant cyrene
 end box
+'[/common]
 
 ' [step1 {"name":"Run 1"}]
 == Run 1 ==
