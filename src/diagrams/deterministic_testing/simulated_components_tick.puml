@@ -1,0 +1,25 @@
+@startuml
+!include ../../style.puml
+
+participant "Test" as Test
+participant "Process" as Process
+participant "Simulated Network" as Network
+participant "Simulated Disk" as Disk
+
+' [step1 {"name":"Process Issues Work"}]
+Test --> Process : tick
+Process --> Network : send
+Process --> Disk : read / write
+' [/step1]
+
+' [step2 {"name":"Network Progress"}]
+Test --> Network : tick
+Network --> Process : deliver
+' [/step2]
+
+' [step3 {"name":"Disk Progress"}]
+Test --> Disk : tick
+Disk --> Process : complete
+' [/step3]
+
+@enduml

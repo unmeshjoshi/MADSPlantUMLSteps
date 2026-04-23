@@ -23,19 +23,18 @@ sections:
         title: "A quick recap - What is a quorum write?"
         diagramRef: "quorum_write_recap"
         notes: ""
-    
+
       - type: "diagram"
         title: "A quick recap - What is a quorum read?"
         diagramRef: "quorum_read_recap"
         notes: ""
-      
+
       - type: "text"
         title: "Partial Failures Make Distributed Systems Hard"
         bullets:
           - "Failures overlap with live traffic instead of stopping the whole system at once."
         notes: "Stress that distributed systems are hard because failure is partial. Everything does not stop at once. Some parts keep running, some are slow, and clients continue sending requests throughout."
 
-      
       - type: "diagram"
         title: "Chaos Engineering Tests Resilience Under Fault"
         diagramRef: "quorum_test_chaos_focus"
@@ -61,7 +60,6 @@ sections:
           - "Jepsen runs a live system, injects faults, records client-visible history, and checks whether that history is correct."
           - "https://github.com/jepsen-io/jepsen"
         notes: "Use this slide to define Jepsen clearly before showing the Jepsen-style quorum scenario. The important idea is that Jepsen is a framework for running fault-injected distributed system tests and validating the client-visible history."
-
 
       - type: "diagram"
         title: "Jepsen Checks Client-Visible Correctness"
@@ -130,7 +128,6 @@ sections:
 
   - title: "Designing for Determinism"
     slides:
-
       - type: "diagram"
         title: "Hidden Progress Sources Drive Real Execution"
         diagramRef: "real_system_progress_tick"
@@ -138,27 +135,41 @@ sections:
           - "Real execution advances because multiple subsystems keep progressing underneath the software."
         notes: "Use this slide to make the core analogy. Real systems progress because multiple subsystems keep moving forward underneath the software. Those progress mechanisms are hidden and not directly controlled by the test."
 
+      - type: "text"
+        title: "We Need To Control When Components Make Progress"
+        bullets:
+          - "To replay an execution, we must decide when compute, network, and storage are allowed to advance."
+        notes: "This is the bridge from hidden progress to deterministic design. If progress happens in the background, we cannot replay a failure precisely. The test needs control over when the important parts of the system move forward."
+
+      - type: "text"
+        title: "Three Things Must Become Controllable"
+        bullets:
+          - "Process execution"
+          - "Network delivery"
+          - "Disk persistence"
+        notes: "Keep this slide simple and concrete. These are the three major sources of progression the simulator must model explicitly if we want a replayable execution trace."
+
+      - type: "text"
+        title: "We Simulate What We Cannot Control"
+        bullets:
+          - "Instead of real clocks, sockets, and disks, tests run against simulated time, network, and storage."
+        notes: "The point here is not mocking for convenience. It is replacing uncontrolled physical components with deterministic simulated components that the test can drive explicitly."
+
       - type: "diagram"
-        title: "tick() Makes Progress Explicit"
-        diagramRef: "simulation_tick_explicit"
+        title: "Simulation Makes Progress Explicit"
+        diagramRef: "simulated_components_tick"
         bullets:
-          - "The test now controls when the whole simulated system is allowed to move forward."
-        notes: "This is the thesis slide for the tick method. The simulator replaces hidden background progression with one explicit testing primitive. The point is not one business action per tick. The point is explicit, test-controlled progress."
+          - "The test advances the process, network, and disk explicitly instead of using real components."
+        notes: "Use this slide to show the control surface clearly. The process initiates work, but the test decides when the simulated network and disk progress and when their results become visible."
 
       - type: "text"
-        title: "tick() Turns Time Into A Test Input"
+        title: "A Single Thread And Event-Driven I/O Make Determinism Possible"
         bullets:
-          - "Timeouts, retries, and heartbeats stop depending on sleeps and wall-clock waiting."
-        notes: "This slide should feel practical. Once tick exists, timeouts and retries are no longer awkward integration tests built out of sleeps. They become ordinary deterministic test steps."
+          - "One main execution thread removes scheduler nondeterminism, and event-driven I/O avoids blocking it."
+        notes: "This is the architecture slide. We avoid ordinary thread scheduling by running logical progress on one main thread, and we avoid blocking that thread by making I/O event-driven."
 
       - type: "text"
-        title: "Same Inputs Plus Same Ticks Give The Same Trace"
+        title: "Tickloom Demo"
         bullets:
-          - "A failing scenario becomes replayable instead of folklore."
-        notes: "Give the strong payoff: a failure is no longer folklore. It becomes a replayable execution. That changes how quickly we can debug and how confidently we can explain a bug."
-
-      - type: "text"
-        title: "Deterministic Testing Requires A Different Architecture"
-        bullets:
-          - "The software must be designed so progress can be controlled, not merely observed."
-        notes: "Close by making the architectural claim. Deterministic testing is not a wrapper around existing code. The system has to be structured so progress can be driven explicitly."
+            - https://github.com/unmeshjoshi/tickloom
+        notes: "Show the Tickloom demo here."
