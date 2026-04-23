@@ -1,15 +1,23 @@
-title: "Deterministic Simulation Testing: Why tick() Matters"
+title: "Deterministic Simulation Testing"
 description: "A presentation on why client-visible correctness needs fault-focused testing, why nondeterminism makes failures hard to reproduce, and why an explicit tick() method is the right testing primitive."
 icon: "fas fa-vial"
 category: "Distributed Systems"
 sections:
-  - title: "The Need For Deterministic Simulation Testing"
+  - title: "Deterministic Simulation Testing"
     slides:
       - type: "text"
-        title: "Different Tests Answer Different Questions"
+        title: "Deterministic Simulation Testing Sits Beside Other Test Types"
         bullets:
-          - "We will use the same quorum write example and ask a different question at each test level."
-        notes: "Introduce the running example. The rest of the deck uses one quorum write scenario on a three-node KV store. The value of the testing ladder is not that every test uses a different system, but that each test asks a different question about the same system."
+          - "Unit tests validate local logic"
+          - "Integration tests validate interactions"
+          - "Fault-focused tests validate client-visible correctness under failure"
+        notes: "Open by positioning deterministic simulation testing among the other test types the audience already knows. The key idea is not to replace unit or integration tests, but to add a way to test correctness under faults and timing variation."
+
+      - type: "text"
+        title: "A quorum read/write example"
+        bullets:
+          - "We will be using a quorum read/write example throughout this talk"
+        notes: "Bridge into the concrete example. Tell the audience that from this point on the talk reuses one quorum scenario so they can focus on what changes between test styles rather than re-learning a new system on every slide."
 
       - type: "diagram"
         title: "A quick recap - What is a quorum write?"
@@ -51,7 +59,7 @@ sections:
         title: "Jepsen: A Framework For Verifying Distributed Systems Under Faults"
         bullets:
           - "Jepsen runs a live system, injects faults, records client-visible history, and checks whether that history is correct."
-          - "[github.com/jepsen-io/jepsen](https://github.com/jepsen-io/jepsen)"
+          - "https://github.com/jepsen-io/jepsen"
         notes: "Use this slide to define Jepsen clearly before showing the Jepsen-style quorum scenario. The important idea is that Jepsen is a framework for running fault-injected distributed system tests and validating the client-visible history."
 
 
@@ -83,6 +91,15 @@ sections:
 
   - title: "Sources of Nondeterminism"
     slides:
+      - type: "text"
+        title: "Sources of Nondeterminism"
+        bullets:
+          - "1. System Clock"
+          - "2. Thread Scheduling"
+          - "3. Network"
+          - "4. Disk"
+        notes: "Use this as a quick inventory slide before diving into each source. The goal is to show that real execution is shaped by several hidden progress sources, not just one vague idea of timing."
+
       - type: "diagram"
         title: "Clocks And Time"
         diagramRef: "nondeterminism_clock_time"

@@ -30,34 +30,38 @@ athens -> byzantium : replicate write
 byzantium --> athens : ack
 ' [/step3]
 
-' [step4 {"name":"Minority Misses Write"}]
-athens ->x cyrene : replicate write
+' [step4 {"name":"Nemisis crashes cyrene"}]
+Nemesis -[#red]>x cyrene : partition / crash
 ' [/step4]
 
-' [step5 {"name":"Client Sees Success"}]
-athens --> Alice : success
-deactivate athens
+' [step5 {"name":"Minority Misses Write"}]
+athens -[#red]>x cyrene : <:fire:>replicate write
 ' [/step5]
 
-' [step6 {"name":"Fault Is Injected"}]
-Nemesis -> athens : partition / pause / delay
+' [step6 {"name":"Client Sees Success"}]
+athens --> Alice : success
+deactivate athens
 ' [/step6]
 
-' [step7 {"name":"Another Client Reads"}]
-Bob -> cyrene : get("title")
+' [step7 {"name":"Fault Is Injected"}]
+Nemesis -[#red]> athens : partition / pause / delay
 ' [/step7]
 
-' [step8 {"name":"Client Sees Old Value"}]
-cyrene --> Bob : "Before Dawn" ?
+' [step8 {"name":"Another Client Reads"}]
+Bob -> cyrene : get("title")
 ' [/step8]
 
-' [step9 {"name":"Checker Sees Read History"}]
-Bob -> Checker : observed read history
+' [step9 {"name":"Client Sees Old Value"}]
+cyrene --> Bob : "Before Dawn" ?
 ' [/step9]
 
-' [step10 {"name":"Checker Sees Write History"}]
-Alice -> Checker : observed write history
+' [step10 {"name":"Checker Sees Read History"}]
+Bob -> Checker : observed read history
 ' [/step10]
+
+' [step11 {"name":"Checker Sees Write History"}]
+Alice -> Checker : observed write history
+' [/step11]
 
 note over cyrene, Checker
 Focus:

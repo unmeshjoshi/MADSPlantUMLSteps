@@ -14,8 +14,12 @@ end box
 == Run 1 ==
 Alice -> athens : set("title", "After Dawn")
 athens -> byzantium : replicate write
-byzantium --> athens : ack arrives early
-athens ->x cyrene : message lost
+byzantium -[#blue]-> athens : ack arrives early
+athens -[#red]>x cyrene : message lost
+note over cyrene #FFCCBC
+Cyrene crashed or isolated
+before receiving the message
+end note
 athens --> Alice : success
 ' [/step1]
 
@@ -25,8 +29,12 @@ Alice -> athens : set("title", "After Dawn")
 athens -> byzantium : replicate write
 athens ->x cyrene : message lost
 ... ack delayed ...
-byzantium --> athens : ack arrives later
-athens -> athens : timeout / retry path differs
+byzantium -[#blue]-> athens : ack arrives later 
+athens -[#red]>x athens : timeout / retry path differs
+note over cyrene #FFCCBC
+Cyrene crashed or isolated 
+before receiving the message
+end note
 ' [/step2]
 
 note over athens,cyrene #FFF2CC
