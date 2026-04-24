@@ -187,6 +187,14 @@ sections:
         notes: "This is the architecture slide. We avoid ordinary thread scheduling by running logical progress on one main thread, and we avoid blocking that thread by making I/O event-driven."
 
       - type: "text"
+        title: "Determinism Does Not Mean One Core"
+        bullets:
+          - "Core state changes stay single-threaded."
+          - "I/O and background work can still run concurrently."
+          - "Horizontal scaling comes from adding more processes and shards."
+        notes: "Use this slide to answer the natural multicore question before the demo. The key idea is that deterministic execution applies to authoritative state mutation inside one execution domain, not to the whole machine. Concurrency can still exist around the state machine, and more cores are used by running more deterministic processes or shards."
+
+      - type: "text"
         title: "Tickloom Demo"
         bullets:
             - https://github.com/unmeshjoshi/tickloom
