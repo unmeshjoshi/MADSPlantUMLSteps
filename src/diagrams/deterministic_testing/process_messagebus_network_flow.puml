@@ -1,0 +1,66 @@
+@startuml
+!include ../../style.puml
+
+participant "Driver" as Driver
+participant "Process" as Process
+participant "MessageBus" as Bus
+participant "Network" as Network
+
+note over Driver
+Can be a main() method
+or a test harness
+that drives the tick loop
+end note
+
+/note over Process
+Responsibilities
+--
+onTick: advance timeouts / waiting logic
+onMessage: handle message
+update local state
+emit messages
+end note
+
+/note over Bus
+Responsibilities
+--
+register process handlers
+send messages to network
+route delivered messages
+invoke handlers
+handle self-messages
+end note
+
+/note over Network
+Responsibilities
+--
+register dispatcher
+queue messages
+delay or drop messages
+deliver on tick()
+end note
+
+== Initialization ==
+Driver -> Process : create
+Process -> Bus : register handler
+Bus -> Network : register dispatcher
+
+== main driver loop ==
+loop while (simulation not done)
+Driver -> Process : tick()
+Driver -> Network : tick()
+end loop
+
+
+== Runtime behavior on each tick() ==
+Process -> Process : advance timeouts / waiting logic
+Process -> Bus : send(message)
+Bus -> Network : send(message)
+Network -> Network: queue(message)
+Network -> Network: sendQueuedMessages()
+Network -> Network: receiveMessages()
+Network -> Bus : dispatch(message)
+Bus -> Process : route to handler
+Process -> Process : handle message
+
+@enduml

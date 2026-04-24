@@ -172,6 +172,11 @@ sections:
         notes: "Use this slide to show the control surface clearly. The process initiates work, but the test decides when the simulated network and disk progress and when their results become visible."
 
       - type: "diagram"
+        title: "Tickloom Design"
+        diagramRef: "process_messagebus_network_flow"
+        notes: "Schematic of tickloom's design"
+
+      - type: "diagram"
         title: "A Seeded Pseudorandom Generator Makes Fault Injection Replayable"
         diagramRef: "seeded_fault_injection"
         bullets:
