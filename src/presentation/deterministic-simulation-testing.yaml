@@ -150,12 +150,13 @@ sections:
         notes: "This is the bridge from hidden progress to deterministic design. If progress happens in the background, we cannot replay a failure precisely. The test needs control over when the important parts of the system move forward."
 
       - type: "text"
-        title: "Three Things Must Become Controllable"
+        title: "Four Things Must Become Controllable"
         bullets:
+          - "System clock"
           - "Process execution"
           - "Network delivery"
           - "Disk persistence"
-        notes: "Keep this slide simple and concrete. These are the three major sources of progression the simulator must model explicitly if we want a replayable execution trace."
+        notes: "Keep this slide simple and concrete. These are the four major sources of progression the simulator must model explicitly if we want a replayable execution trace."
 
       - type: "text"
         title: "We Simulate What We Cannot Control"
