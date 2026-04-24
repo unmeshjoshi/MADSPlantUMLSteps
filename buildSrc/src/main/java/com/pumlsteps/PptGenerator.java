@@ -1,5 +1,6 @@
 package com.pumlsteps;
 
+import org.apache.poi.sl.usermodel.Placeholder;
 import org.apache.poi.sl.usermodel.PictureData;
 import org.apache.poi.sl.usermodel.ShapeType;
 import org.apache.poi.sl.usermodel.VerticalAlignment;
@@ -23,6 +24,8 @@ import java.util.Locale;
 public class PptGenerator {
     private XMLSlideShow ppt;
     private File pngDirectory;
+    private static final String SLIDE_TITLE_FONT_FAMILY = "Arial";
+    private static final double SLIDE_TITLE_FONT_SIZE = 32.0;
     
     // Professional color scheme
     private static final class ColorScheme {
@@ -53,6 +56,99 @@ public class PptGenerator {
         ppt = new XMLSlideShow();
         // Set to 16:9 aspect ratio with zero gutters (TODO D-5)
         ppt.setPageSize(new Dimension(1920, 1080));
+    }
+
+    private void applyStandardSlideTitleStyle(XSLFTextRun titleRun, java.awt.Color color) {
+        titleRun.setFontFamily(SLIDE_TITLE_FONT_FAMILY);
+        titleRun.setFontSize(SLIDE_TITLE_FONT_SIZE);
+        titleRun.setBold(true);
+        titleRun.setFontColor(color);
+    }
+
+    private XSLFSlide createStandardContentSlide() {
+        XSLFSlideLayout layout = findPreferredContentLayout();
+        if (layout != null) {
+            return ppt.createSlide(layout);
+        }
+        return ppt.createSlide();
+    }
+
+    private XSLFSlideLayout findPreferredContentLayout() {
+        for (XSLFSlideMaster master : ppt.getSlideMasters()) {
+            XSLFSlideLayout titleOnly = master.getLayout(SlideLayout.TITLE_ONLY);
+            if (titleOnly != null) {
+                return titleOnly;
+            }
+
+            XSLFSlideLayout titleAndContent = master.getLayout(SlideLayout.TITLE_AND_CONTENT);
+            if (titleAndContent != null) {
+                return titleAndContent;
+            }
+        }
+        return null;
+    }
+
+    private XSLFTextShape findTitlePlaceholder(XSLFSlide slide) {
+        XSLFSimpleShape titleShape = slide.getPlaceholder(Placeholder.TITLE);
+        if (titleShape instanceof XSLFTextShape textShape) {
+            return textShape;
+        }
+
+        XSLFSimpleShape centeredTitleShape = slide.getPlaceholder(Placeholder.CENTERED_TITLE);
+        if (centeredTitleShape instanceof XSLFTextShape textShape) {
+            return textShape;
+        }
+
+        XSLFTextShape placeholderByIndex = slide.getPlaceholder(0);
+        if (placeholderByIndex != null) {
+            return placeholderByIndex;
+        }
+
+        return null;
+    }
+
+    private XSLFTextShape addSlideTitle(XSLFSlide slide, String title, Rectangle anchor, java.awt.Color color) {
+        XSLFTextShape titleShape = findTitlePlaceholder(slide);
+        if (titleShape != null) {
+            titleShape.setAnchor(anchor);
+            titleShape.clearText();
+            titleShape.setLeftInset(0);
+            titleShape.setRightInset(0);
+            titleShape.setTopInset(0);
+            titleShape.setBottomInset(0);
+            titleShape.setWordWrap(true);
+            titleShape.setText(title);
+
+            for (XSLFTextParagraph paragraph : titleShape.getTextParagraphs()) {
+                paragraph.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.LEFT);
+                paragraph.setSpaceBefore(0.0);
+                paragraph.setSpaceAfter(0.0);
+                for (XSLFTextRun run : paragraph.getTextRuns()) {
+                    applyStandardSlideTitleStyle(run, color);
+                }
+            }
+        }
+
+        // Always add a visible title textbox as well, because some PowerPoint viewers
+        // do not reliably render the generated placeholder-backed title.
+        XSLFTextBox visibleTitle = slide.createTextBox();
+        visibleTitle.setAnchor(anchor);
+        visibleTitle.setLeftInset(0);
+        visibleTitle.setRightInset(0);
+        visibleTitle.setTopInset(0);
+        visibleTitle.setBottomInset(0);
+        visibleTitle.setWordWrap(true);
+
+        XSLFTextParagraph titlePara = visibleTitle.addNewTextParagraph();
+        titlePara.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.LEFT);
+        titlePara.setSpaceBefore(0.0);
+        titlePara.setSpaceAfter(0.0);
+
+        XSLFTextRun titleRun = titlePara.addNewTextRun();
+        titleRun.setText(title);
+        applyStandardSlideTitleStyle(titleRun, color);
+
+        return visibleTitle;
     }
     
     /**
@@ -206,20 +302,9 @@ public class PptGenerator {
             }
 
             // Create a new slide
-            XSLFSlide slide = ppt.createSlide();
+            XSLFSlide slide = createStandardContentSlide();
 
-            // Add the title with zero gutters (TODO D-5)
-            XSLFTextBox titleBox = slide.createTextBox();
-            titleBox.setAnchor(new Rectangle(0, 0, slideWidth, 80));
-            titleBox.setHorizontalCentered(true);
-
-            // Create a text run to set font properties
-            XSLFTextRun titleRun = titleBox.addNewTextParagraph().addNewTextRun();
-            titleRun.setText(title);
-            titleRun.setFontFamily("Calibri");
-            titleRun.setFontSize(32.0); // Larger font for 16:9 format
-            titleRun.setBold(true);
-            titleRun.setFontColor(ColorScheme.TEXT_DARK);
+            addSlideTitle(slide, title, new Rectangle(60, 24, slideWidth - 120, 60), ColorScheme.TEXT_DARK);
 
             // Check if the file is an SVG file
             boolean isSvg = imageFile.getName().toLowerCase(Locale.ROOT).endsWith(".svg");
@@ -433,20 +518,9 @@ public class PptGenerator {
             }
 
             // Create a new slide
-            XSLFSlide slide = ppt.createSlide();
+            XSLFSlide slide = createStandardContentSlide();
 
-            // Add the title with zero gutters (TODO D-5)
-            XSLFTextBox titleBox = slide.createTextBox();
-            titleBox.setAnchor(new Rectangle(0, 0, slideWidth, 80));
-            titleBox.setHorizontalCentered(true);
-
-            // Create a text run to set font properties
-            XSLFTextRun titleRun = titleBox.addNewTextParagraph().addNewTextRun();
-            titleRun.setText(title);
-            titleRun.setFontFamily("Calibri");
-            titleRun.setFontSize(32.0); // Larger font for 16:9 format
-            titleRun.setBold(true);
-            titleRun.setFontColor(ColorScheme.TEXT_DARK);
+            addSlideTitle(slide, title, new Rectangle(60, 24, slideWidth - 120, 60), ColorScheme.TEXT_DARK);
 
             // Read the PNG for dimension calculation
             BufferedImage image = ImageIO.read(pngFile);
@@ -536,20 +610,9 @@ public class PptGenerator {
                 }
 
                 // Create a new slide
-                XSLFSlide slide = ppt.createSlide();
+                XSLFSlide slide = createStandardContentSlide();
 
-                // Add the title with zero gutters (TODO D-5)
-                XSLFTextBox titleBox = slide.createTextBox();
-                titleBox.setAnchor(new Rectangle(0, 0, slideWidth, 80));
-                titleBox.setHorizontalCentered(true);
-
-                // Create a text run to set font properties
-                XSLFTextRun titleRun = titleBox.addNewTextParagraph().addNewTextRun();
-                titleRun.setText(title);
-                titleRun.setFontFamily("Calibri");
-                titleRun.setFontSize(32.0); // Larger font for 16:9 format
-                titleRun.setBold(true);
-                titleRun.setFontColor(ColorScheme.TEXT_DARK);
+                addSlideTitle(slide, title, new Rectangle(60, 24, slideWidth - 120, 60), ColorScheme.TEXT_DARK);
 
                 // Read the PNG for dimension calculation
                 BufferedImage image = null;
@@ -698,7 +761,7 @@ public class PptGenerator {
      */
     public void addTextSlide(String title, List<String> bullets, String notes) {
         try {
-            XSLFSlide slide = ppt.createSlide();
+            XSLFSlide slide = createStandardContentSlide();
             
             // Get slide dimensions
             int slideWidth = ppt.getPageSize().width;
@@ -713,19 +776,8 @@ public class PptGenerator {
             topAccent.setAnchor(new Rectangle(0, 0, slideWidth, 12));
             topAccent.setFillColor(ColorScheme.PRIMARY);
             
-            // Add title with improved styling
-            XSLFTextBox titleBox = slide.createTextBox();
-            titleBox.setAnchor(new Rectangle(60, 30, slideWidth - 120, 80));
-            
-            // Create a text run with enhanced font properties
-            XSLFTextParagraph titlePara = titleBox.addNewTextParagraph();
-            titlePara.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.LEFT);
-            XSLFTextRun titleRun = titlePara.addNewTextRun();
-            titleRun.setText(title);
-            titleRun.setFontFamily("Calibri Light"); // More professional font
-            titleRun.setFontSize(48.0); // Larger font size for better readability
-            titleRun.setBold(true); // Make title bold
-            titleRun.setFontColor(ColorScheme.PRIMARY); // Use primary color for title
+            // Add title using an actual title placeholder when available
+            addSlideTitle(slide, title, new Rectangle(60, 30, slideWidth - 120, 60), ColorScheme.TEXT_DARK);
             
             // Add a small accent line under the title
             XSLFAutoShape titleUnderline = slide.createAutoShape();
@@ -884,7 +936,7 @@ public class PptGenerator {
             }
 
             // Create a new slide with the standard background
-            XSLFSlide slide = ppt.createSlide();
+            XSLFSlide slide = createStandardContentSlide();
             addSlideBackground(slide);
             
             // Add top accent bar for consistency with text slides
@@ -893,19 +945,7 @@ public class PptGenerator {
             topAccent.setAnchor(new Rectangle(0, 0, slideWidth, 12));
             topAccent.setFillColor(ColorScheme.PRIMARY);
 
-            // Add the title with zero gutters (TODO D-5)
-            XSLFTextBox titleBox = slide.createTextBox();
-            titleBox.setAnchor(new Rectangle(0, 0, slideWidth, 80));
-            titleBox.setHorizontalCentered(true);
-            
-            XSLFTextParagraph titlePara = titleBox.addNewTextParagraph();
-            titlePara.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.LEFT);
-            XSLFTextRun titleRun = titlePara.addNewTextRun();
-            titleRun.setText(title);
-            titleRun.setFontFamily("Calibri");
-            titleRun.setFontSize(32.0); // Larger font for 16:9 format
-            titleRun.setBold(true);
-            titleRun.setFontColor(ColorScheme.TEXT_DARK);
+            addSlideTitle(slide, title, new Rectangle(60, 30, slideWidth - 120, 60), ColorScheme.TEXT_DARK);
             
             // Add a small accent line under the title
             XSLFAutoShape titleUnderline = slide.createAutoShape();

@@ -13,6 +13,14 @@ sections:
           - "Fault-focused tests validate client-visible correctness under failure"
         notes: "Open by positioning deterministic simulation testing among the other test types the audience already knows. The key idea is not to replace unit or integration tests, but to add a way to test correctness under faults and timing variation."
 
+      - type: "image"
+        title: |
+          Who Am I
+          - Unmesh Joshi
+          - Author, Patterns Of Distributed Systems
+        imagePath: "video-course/patternsbook.jpg"
+        notes: "Keep this slide brief. Introduce yourself, connect your background to distributed systems, and let the book cover do most of the visual work."
+
       - type: "text"
         title: "A quorum read/write example"
         bullets:
@@ -132,7 +140,7 @@ sections:
         title: "Hidden Progress Sources Drive Real Execution"
         diagramRef: "real_system_progress_tick"
         bullets:
-          - "Real execution advances because multiple subsystems keep progressing underneath the software."
+          - "Real execution advances because multiple subsystems keep progressing through their own internal steps."
         notes: "Use this slide to make the core analogy. Real systems progress because multiple subsystems keep moving forward underneath the software. Those progress mechanisms are hidden and not directly controlled by the test."
 
       - type: "text"
@@ -162,6 +170,16 @@ sections:
           - "The test advances the process, network, and disk explicitly instead of using real components."
         notes: "Use this slide to show the control surface clearly. The process initiates work, but the test decides when the simulated network and disk progress and when their results become visible."
 
+      - type: "diagram"
+        title: "A Seeded Pseudorandom Generator Makes Fault Injection Replayable"
+        diagramRef: "seeded_fault_injection"
+        bullets:
+          - "Random faults explore more scenarios."
+          - "True randomness is hard to reproduce."
+          - "A seed makes the fault schedule repeatable."
+          - "Deterministic execution makes the scenario replayable."
+        notes: "Use this slide to separate fault schedule reproduction from execution reproduction. The seed makes the injected failures replayable, and deterministic execution makes the resulting trace replayable."
+
       - type: "text"
         title: "A Single Thread And Event-Driven I/O Make Determinism Possible"
         bullets:
@@ -173,3 +191,9 @@ sections:
         bullets:
             - https://github.com/unmeshjoshi/tickloom
         notes: "Show the Tickloom demo here."
+
+      - type: "text"
+        title: "Questions?"
+        bullets:
+            - Questions
+        notes: "Q/A slide"  

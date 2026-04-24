@@ -1,0 +1,34 @@
+@startuml
+!include ../../style.puml
+
+participant "Test" as Test
+participant "Seeded PRNG" as PRNG
+participant "Fault Injector" as Faults
+participant "Simulated Network" as Network
+participant "Process" as Process
+
+' [step1 {"name":"Seed Generator"}]
+Test -> PRNG : seed(12345)
+' [/step1]
+
+' [step2 {"name":"Choose Fault"}]
+Test -> PRNG : next()
+PRNG --> Faults : drop / delay / pause
+' [/step2]
+
+' [step3 {"name":"Inject Fault"}]
+Faults -> Network : apply fault
+' [/step3]
+
+' [step4 {"name":"Advance Execution"}]
+Test -> Process : tick
+Process -> Network : send
+Test -> Network : tick
+Network --> Process : deliver or drop
+' [/step4]
+
+note across
+A fixed seed makes the fault schedule reproducible.
+end note
+
+@enduml
