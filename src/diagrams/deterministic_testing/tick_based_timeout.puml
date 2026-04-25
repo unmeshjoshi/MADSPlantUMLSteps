@@ -1,0 +1,56 @@
+@startuml
+!include ../../style.puml
+
+participant "Driver" as Driver
+participant "Process" as Process
+participant "Timeout" as Timeout
+
+note over Driver
+The driver can be a test
+or a main loop.
+end note
+
+note over Timeout
+Timeouts advance only
+when Process.tick() is called.
+end note
+
+' [step1 {"name":"Register Timeout"}]
+Process -> Timeout : start timeout(3 ticks)
+' [/step1]
+
+' [step2 {"name":"Tick 1"}]
+Driver -> Process : tick()
+Process -> Timeout : tick()
+Timeout -> Timeout : remaining = 2
+' [/step2]
+
+' [step3 {"name":"Tick 2"}]
+Driver -> Process : tick()
+Process -> Timeout : tick()
+Timeout -> Timeout : remaining = 1
+' [/step3]
+
+' [step4 {"name":"Tick 3"}]
+Driver -> Process : tick()
+Process -> Timeout : tick()
+Timeout -> Timeout : remaining = 0
+' [/step4]
+
+' [step5 {"name":"Timeout Fires"}]
+Process --> Timeout : isFired()
+Process -> Process : handle timeout error
+note over Process
+On timeout the process can either return
+error response to client or do 
+operations like re-election, marking nodes
+as down etc.
+end note
+' [/step5]
+
+note over Process, Timeout
+Time does not advance on its own.
+The timeout fires only after enough explicit ticks.
+end note
+
+@enduml

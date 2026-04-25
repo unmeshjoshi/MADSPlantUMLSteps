@@ -210,4 +210,20 @@ sections:
         title: "Questions?"
         bullets:
             - Questions
-        notes: "Q/A slide"  
+        notes: "Q/A slide"
+
+  - title: "Appendix"
+    slides:
+      - type: "diagram"
+        title: "Timeouts Advance On Ticks"
+        diagramRef: "tick_based_timeout"
+        bullets:
+          - "A timeout fires only after enough explicit ticks have advanced it."
+        notes: "Use this appendix slide if someone asks how a timeout becomes deterministic. The answer is that it is not tied to wall-clock time; it advances only when the process is ticked."
+
+      - type: "diagram"
+        title: "RequestWaitingList Uses Tick-Based Timeouts"
+        diagramRef: "request_waiting_list_timeout"
+        bullets:
+          - "The waiting list tracks in-flight requests use tick based timeout."
+        notes: "Use this appendix slide to explain how request timeouts are implemented in practice. The process registers the request, the waiting list advances on process ticks, and either a response completes the request or the timeout path fires."

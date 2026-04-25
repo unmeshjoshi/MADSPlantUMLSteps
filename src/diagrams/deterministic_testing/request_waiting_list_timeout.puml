@@ -1,0 +1,52 @@
+@startuml
+!include ../../style.puml
+
+participant "Client" as Client
+participant "Process" as Process
+participant "RequestWaitingList" as WaitingList
+participant "Network" as Network
+
+note over WaitingList
+Tracks in-flight requests
+by correlation id and timeout ticks.
+end note
+
+' [step1 {"name":"Client Starts Request"}]
+Client -> Process : start request
+' [/step1]
+
+' [step2 {"name":"Register Waiting Request"}]
+Process -> WaitingList : add(correlationId, timeout=3)
+' [/step2]
+
+' [step3 {"name":"Send Message"}]
+Process -> Network : send(request)
+' [/step3]
+
+' [step4 {"name":"Tick Waiting List"}]
+Process -> Process : tick()
+Process -> WaitingList : tick()
+WaitingList -> WaitingList : decrement timeout
+' [/step4]
+
+' [step5 {"name":"Response Arrives"}]
+Network --> Process : response(correlationId)
+' [/step5]
+
+' [step6 {"name":"Complete And Remove"}]
+Process -> WaitingList : complete(correlationId)
+WaitingList --> Process : remove pending request
+Process --> Client : success
+' [/step6]
+
+' [step7 {"name":"If No Response Arrives", "newPage":"true"}]
+Process -> WaitingList : tick() ... tick() ... tick()
+WaitingList --> Process : timeout(correlationId)
+Process --> Client : timeout / fail
+' [/step7]
+
+note over Process, WaitingList
+The waiting list tracks in-flight requests use tick based timeout.
+end note
+
+@enduml
