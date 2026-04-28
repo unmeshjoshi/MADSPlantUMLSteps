@@ -1,0 +1,54 @@
+@startuml
+skinparam handwritten false
+skinparam monochrome true
+skinparam class {
+    BackgroundColor White
+    ArrowColor Black
+    BorderColor Black
+}
+
+class TickCompletableFuture<T> {
+  == Chaining & Callbacks ==
+  + thenApply(Function<T, U> fn)
+  + thenCompose(Function<T, TickCompletableFuture<U>> fn)
+  + whenComplete(BiConsumer<T, Throwable> callback)
+  == Resolution ==
+  + complete(T result)
+  + fail(Throwable exception)
+  == State Checking ==
+  + isPending() : boolean
+  + isCompleted() : boolean
+  + isFailed() : boolean
+}
+
+note right of TickCompletableFuture::thenApply
+  Transforms the result without blocking, 
+  returning a new future.
+end note
+
+note right of TickCompletableFuture::thenCompose
+  Chains another asynchronous operation, 
+  flattening nested futures.
+end note
+
+note right of TickCompletableFuture::whenComplete
+  Registers a callback to handle both 
+  success and failure cases sequentially.
+end note
+
+note left of TickCompletableFuture::complete
+  Deterministically resolves the future
+  and triggers callbacks on the same thread.
+end note
+
+note left of TickCompletableFuture::fail
+  Deterministically fails the future
+  and triggers callbacks on the same thread.
+end note
+
+note bottom of TickCompletableFuture
+  **Core Guarantee:** Callbacks execute synchronously 
+  within the tick loop when complete() or fail() is called.
+end note
+
+@enduml

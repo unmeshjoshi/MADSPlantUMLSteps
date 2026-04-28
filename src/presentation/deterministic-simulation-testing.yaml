@@ -193,6 +193,21 @@ sections:
         notes: "This is the architecture slide. We avoid ordinary thread scheduling by running logical progress on one main thread, and we avoid blocking that thread by making I/O event-driven."
 
       - type: "text"
+        title: "Why TickCompletableFuture Over CompletableFuture?"
+        bullets:
+          - "CompletableFuture defaults to multi-threading (ForkJoinPool.commonPool), breaking determinism."
+          - "TickCompletableFuture strictly executes callbacks within the single-threaded tick loop."
+        notes: "Explain that standard Java futures introduce non-determinism via thread pools. Tickloom uses a custom TickCompletableFuture to ensure that all asynchronous continuations and state transitions happen predictably on the main deterministic event loop without data races."
+
+      - type: "diagram"
+        title: "TickCompletableFuture Key Methods"
+        diagramRef: "listenable_future_methods"
+        bullets:
+          - "Provides standard asynchronous ergonomics."
+          - "Guarantees callbacks run sequentially within the tick loop."
+        notes: "Walk through the key methods of TickCompletableFuture. Emphasize that these methods provide standard asynchronous ergonomics while ensuring all callbacks run sequentially within the tick loop without spawning background threads."
+
+      - type: "text"
         title: "Determinism Does Not Mean One Core"
         bullets:
           - "Core state changes stay single-threaded."
