@@ -1,12 +1,17 @@
 @startuml
 !include ../../style.puml
 
+
+' [common]
+box "Single Main Thread" #F9F9F9
 participant "Driver" as Driver
 participant "Client" as client
 participant "Process" as Process
 participant "TickCompletableFuture" as Future
 participant "Network" as Network
 participant "RequestWaitingList" as WaitingList
+end box
+' [/common]
 
 ' [step {"name": "Tick N: Issuing the Request", "newPage": true}]
 == Tick N: Issuing the Request ==
