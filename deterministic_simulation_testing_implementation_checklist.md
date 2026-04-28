@@ -225,6 +225,11 @@ This ordering is not mandatory, but it must be chosen once, documented, and kept
 - [ ] Allow async I/O and background work around the edges if needed.
 - [ ] Do not let background threads race on authoritative process state.
 - [ ] If using channels, queues, futures, or actors, drain them only at deterministic driver boundaries.
+- [ ] Ensure all network and storage operations (send, read, flush) are strictly non-blocking.
+- [ ] Never use `Thread.sleep()`, blocking locks, or blocking `Future.get()` inside the core process logic.
+- [ ] Represent I/O completions as events (using callbacks, continuations, or `TickCompletableFuture`).
+- [ ] Push real-world non-deterministic I/O (like NIO selectors or background disk writes) to the absolute edges of the architecture.
+- [ ] Drain I/O completion events back into the process only at deterministic boundaries (the tick).
 
 
 ### Rule of thumb

@@ -193,6 +193,16 @@ sections:
         notes: "This is the architecture slide. We avoid ordinary thread scheduling by running logical progress on one main thread, and we avoid blocking that thread by making I/O event-driven."
 
       - type: "text"
+        title: "Adopting Async and Event-Driven I/O"
+        bullets:
+          - "Ensure all network and storage operations (send, read, flush) are strictly non-blocking."
+          - "Never use Thread.sleep(), blocking locks, or blocking Future.get() inside the core process logic."
+          - "Represent I/O completions as events (using callbacks, continuations, or TickCompletableFuture)."
+          - "Push real-world non-deterministic I/O (like NIO selectors or background disk writes) to the absolute edges of the architecture."
+          - "Drain I/O completion events back into the process only at deterministic boundaries (the tick)."
+        notes: "Explain that because DST forces a single-threaded state machine, blocking is fatal. We must use event-driven I/O to handle concurrency without threads and decouple progress from the OS."
+
+      - type: "text"
         title: "Why TickCompletableFuture Over CompletableFuture?"
         bullets:
           - "CompletableFuture defaults to multi-threading (ForkJoinPool.commonPool), breaking determinism."
@@ -206,6 +216,15 @@ sections:
           - "Provides standard asynchronous ergonomics."
           - "Guarantees callbacks run sequentially within the tick loop."
         notes: "Walk through the key methods of TickCompletableFuture. Emphasize that these methods provide standard asynchronous ergonomics while ensuring all callbacks run sequentially within the tick loop without spawning background threads."
+
+      - type: "diagram"
+        title: "TickCompletableFuture Execution Flow"
+        diagramRef: "tick_future_network_sequence"
+        bullets:
+          - "The process initiates work and yields control."
+          - "Network delivery occurs independently of the process."
+          - "Callbacks execute synchronously upon completion by the driver tick."
+        notes: "Step through the sequence. Point out that the Driver ticks the Process, the Process returns the Future, and yields. Ticks advance independently. Finally, the Driver ticks the Network which delivers the response and completes the future on the main thread."
 
       - type: "text"
         title: "Determinism Does Not Mean One Core"

@@ -1,0 +1,71 @@
+@startuml
+!include ../../style.puml
+
+participant "Driver" as Driver
+participant "Client" as client
+participant "Process" as Process
+participant "TickCompletableFuture" as Future
+participant "Network" as Network
+participant "RequestWaitingList" as WaitingList
+
+' [step {"name": "Tick N: Issuing the Request", "newPage": true}]
+== Tick N: Issuing the Request ==
+
+Driver -> client : request
+' [step]
+
+client -> Network : send(r1)
+' [step]
+
+client -> WaitingList: register(r1, callback):Future
+' [step]
+
+Driver <-- client: Future
+' [step]
+
+Driver -> Network : tick()
+' [step]
+
+Network -> Network: scheduleForDelivery (tick N + 1)
+' [step]
+
+Driver -> Process: tick()
+
+' [step {"name": "Tick N+1: Handling the Request", "newPage": true}]
+== Tick N + 1: Handling the request ==
+
+Driver -> Network: tick()
+' [step]
+
+Network -> Process: Deliver r1
+' [step]
+
+Process -> Process: handle(r1)
+' [step]
+
+Process -> Network:send(r1-response)
+' [step]
+
+Network -> Network:scheduleForDelivery(tick N + 2)
+
+' [step {"name": "Tick N+2: Handling the Response", "newPage": true}]
+== Tick N + 2: Handling the response ==
+
+Driver -> Network: tick()
+' [step]
+
+Network -> client:r1_response
+' [step]
+
+client -> client:handle(r1_response)
+' [step]
+
+client -> WaitingList : complete(r1, r1_response)
+' [step]
+
+WaitingList -> Future : complete(r1_response)
+' [step]
+
+Driver -> Future : get():r1_response
+
+@enduml
