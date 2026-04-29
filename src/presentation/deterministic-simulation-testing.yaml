@@ -240,6 +240,74 @@ sections:
             - https://github.com/unmeshjoshi/tickloom
         notes: "Show the Tickloom demo here."
 
+  - title: "Fast Forward Execution"
+    slides:
+      - type: "text"
+        title: "Time Is Abstracted Into Ticks"
+        bullets:
+          - "Protocol logic does not depend on physical time"
+          - "Heartbeats, timeouts, retries, message delays, and disk delays are ticks"
+          - "The state machine reasons in logical steps, not wall-clock seconds"
+        notes: "Open this section by separating protocol time from physical time. The important idea is that time-based behavior is expressed in logical ticks. Physical time is an external pacing decision, not something the protocol logic depends on directly."
+
+      - type: "text"
+        title: "Ticks Are Just Counters"
+        bullets:
+          - "A heartbeat interval can be configured as 10 ticks"
+          - "A request timeout can be configured as 100 ticks"
+          - "Those are counts of how many times tick() is invoked"
+        notes: "Make this concrete. A tick is not magic. It is an integer counter advancing inside a component. The component asks: have enough ticks elapsed for this timeout, retry, heartbeat, or delay to fire?"
+
+      - type: "text"
+        title: "Production Maps Ticks To The Wall Clock"
+        bullets:
+          - "Production chooses a scaling factor, such as tick_ms = 10 ms"
+          - "10 ticks become 100 ms for a heartbeat"
+          - "100 ticks become 1 full second for a timeout"
+        notes: "Explain the production mapping. If the driver, event loop, or timer pacing causes tick() to be invoked every 10 milliseconds, then logical tick counts become physical durations. This is necessary for real deployments, where clients and networks live in wall-clock time."
+
+      - type: "text"
+        title: "Physical Clusters Are Bound By Physics"
+        bullets:
+          - "A live cluster must obey the wall-clock duration behind each tick"
+          - "A 100-tick timeout paced at 10 ms per tick really takes 1 second"
+          - "The cluster must live through the time it is testing"
+        notes: "This is the pivot. In a real cluster, time cannot be skipped. If we want the timeout to fire, physical time has to pass. If we delay a message by 200 milliseconds, the message actually waits."
+
+      - type: "text"
+        title: "Chaos Testing Is Bottlenecked By Waiting"
+        bullets:
+          - "Fault injection in a running cluster still pays wall-clock cost"
+          - "To force a 1-second timeout, the test waits 1 real second"
+          - "Every delayed message, retry, and recovery interval adds elapsed time"
+        notes: "Connect this to Jepsen-style testing without diminishing Jepsen. Jepsen is powerful because it tests a real system, but a real system has to pay real time. Every timeout scenario consumes physical time before the interesting behavior even appears."
+
+      - type: "text"
+        title: "Exhaustive Fault Testing Takes Years"
+        bullets:
+          - "Fault testing explores permutations of delays, crashes, recoveries, and requests"
+          - "Tens of thousands of schedules can already mean days of cluster runtime"
+          - "Millions of combinations push physical testing into years"
+        notes: "Use simple arithmetic here. If one schedule needs 10 seconds of behavior, 50,000 schedules take almost six days on a real cluster. If each schedule needs a minute, it is about 35 days. If each needs an hour, it is about 5.7 years."
+
+      - type: "text"
+        title: "DST Eliminates Physical Time"
+        bullets:
+          - "The state machine still waits for elapsed ticks"
+          - "But there is no sleep between tick() invocations"
+          - "A 100-tick timeout is just 100 loop iterations in the driver"
+        notes: "This is the payoff. The protocol logic has not changed. The timeout is still 100 ticks. But in simulation, the driver can call tick() in a tight loop. Time is advanced by computation rather than by waiting for the wall clock."
+
+      - type: "text"
+        title: "Speeding Up Time"
+        bullets:
+          - "DST fast-forwards through time-dependent executions"
+          - "Rare combinations of delays, failures, retries, and timeouts appear sooner"
+          - "Scenarios that take years physically can execute in minutes in simulation"
+        notes: "Land the section with the main message. DST is not only deterministic replay after a bug is found. It is deterministic fast-forward before the bug is found. The acceleration is time-to-bug compression, not database throughput."
+
+  - title: "Q&A"
+    slides:
       - type: "text"
         title: "Questions?"
         bullets:
