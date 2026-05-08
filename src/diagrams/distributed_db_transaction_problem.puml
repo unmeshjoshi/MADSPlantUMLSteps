@@ -1,0 +1,25 @@
+@startuml
+!include ../style.puml
+
+actor "Client Alice" as Alice
+participant "Node 1\n(Partition 1)" as P1
+participant "Node 2\n(Partition 2)" as P2
+
+note over Alice: Transaction Goal:\n1. Deduct $100 from Account1 (P1)\n2. Add $100 to Account2 (P2)
+
+'[step {"name": "Step 1: Write to Partition 1"}]
+== Step 1: Write to Partition 1 ==
+Alice -> P1: Update Account1 (-$100)
+'[step {"name": "Step 1: Gets Success"}]
+P1 --> Alice: Success
+
+'[step {"name": "Step 2: Write to Partition 2"}]
+
+== Step 2: Write to Partition 2 ==
+Alice -> P2: Update Account2 (+$100)
+'[step {"name": "Step 2: Gets Error / Timeout"}]
+note right of P2: Node 2 crashes or\nnetwork times out
+Alice x-- P2: Error / Timeout
+
+note over Alice, P2: SYSTEM IS INCONSISTENT:\nAccount1 lost $100, but Account2 didn't get it.\n(Atomicity is broken)
+@enduml

@@ -14,39 +14,107 @@ sections:
           - "What to implement, what to observe, and what each module adds"
         notes: "This version of the talk is both conceptual and hands-on. Keep reminding the audience that every major idea maps to a concrete module or test in distrib-txn-db."
 
-  - title: "Workshop Framing"
+  - title: "Distribution and the need for transaction"
     slides:
-      - type: "text"
-        title: "Workshop Repository: distrib-txn-db"
+      - type: "diagram"
+        title: "A Database Cluster"
+        diagramRef: "distributed_db_topology_cluster"
         bullets:
-          - "A workshop-style Java project that builds a distributed transactional key-value store step by step"
-          - "Starts with Hybrid Logical Clocks and MVCC, then adds routing, intents, uncertainty handling, and serializable validation"
-          - "The code is intentionally split into small modules so each concept can be learned in isolation"
-          - "This deck will now connect each time-related idea to the module where participants implement or observe it"
-        notes: "Anchor the rest of the deck in the repo. This is not a generic database talk anymore; it is the conceptual guide for the workshop implementation."
+          - "To handle massive load, modern databases span multiple nodes."
+          - "The cluster appears as a single logical database to the client."
+        notes: "Start simple: we have a cluster. To scale beyond a single machine, we add more machines."
 
       - type: "diagram"
-        title: "Workshop Module Roadmap"
-        diagramRef: "workshop_module_roadmap"
+        title: "Sharding / Partitioning Data"
+        diagramRef: "distributed_db_topology_partitions"
         bullets:
-          - "01-hybrid-clock introduces HybridClock and HybridTimestamp"
-          - "02-versioned-kv adds MVCC key encoding and versioned reads"
-          - "03-distrib-versioned-kv adds hash-based routing and timestamp propagation"
-          - "04-distrib-txn-kv adds intents, snapshot reads, commit, and resolve"
-          - "05-clock-uncertainty-and-read-restart fixes skewed snapshot reads"
-          - "06-serializable-txn prevents write skew using read provisional records"
-        notes: "This slide is the map for the whole workshop. Refer back to it often."
+          - "Data is split into partitions (shards)."
+          - "Each node is responsible for a different subset of keys."
+          - "This allows horizontal scaling of storage and write throughput."
+        notes: "Explain that node 1 doesn't have everything. We partition the data. Keys A-H live here, I-Q live there."
+
+      - type: "diagram"
+        title: "Replication for High Availability"
+        diagramRef: "distributed_db_topology_replication"
+        bullets:
+          - "Each partition is replicated across multiple nodes using consensus (like Raft)."
+          - "One node acts as the Leader for a partition, others are Followers."
+          - "If a node crashes, the Followers elect a new Leader."
+        notes: "Now introduce High Availability. Every node is a leader for some data, and a follower for other data. This is how Spanner, Cockroach, and Yugabyte work."
+
+      - type: "diagram"
+        title: "The Problem: Cross-Partition Writes"
+        diagramRef: "distributed_db_transaction_problem"
+        bullets:
+          - "What happens when a single logical transaction touches multiple partitions?"
+          - "If Alice tries to manage atomicity from the client, partial failures are catastrophic."
+          - "The system is left in an inconsistent state."
+        notes: "This is the core motivation for this entire workshop. If independent writes fail halfway, atomicity is broken. We need a Distributed Transaction Protocol."
 
       - type: "text"
-        title: "Recommended Learning Path"
+        title: "Real-World Distributed Transactions"
         bullets:
-          - "Module 01: understand how local HLC timestamps move forward"
-          - "Module 02: understand how MVCC stores multiple committed versions"
-          - "Module 03: understand how HLC timestamps move across RPC boundaries"
-          - "Module 04: build snapshot isolation with intents and transaction records"
-          - "Module 05: see why clock uncertainty breaks naive snapshot reads, then fix it"
-          - "Module 06: learn why a safe snapshot still does not guarantee serializability"
-        notes: "This is a useful orientation slide before diving into theory."
+          - "Kafka (KIP-98): Atomic 'consume-transform-produce' executed in its entirety across multiple topics and partitions."
+          - "Spanner, CockroachDB, YugabyteDB: Distributed Two-Phase Commit (2PC) for cross-partition, multi-row writes."
+          - "MongoDB: Multi-document distributed transactions across replica sets."
+        notes: "Every modern distributed data system needs a protocol (usually a variant of 2PC) to guarantee atomicity when a single logical operation touches multiple independent partitions."
+
+  - title: "Transaction Isolation"
+    slides:
+      - type: "text"
+        title: "What is Transaction Isolation?"
+        bullets:
+          - "Atomicity handles partial failures, but isolation handles concurrent transactions."
+          - "Without isolation, concurrent operations could see partial updates or overwrite each other."
+          - "Databases offer different isolation levels, balancing strict correctness against concurrency and performance."
+        notes: "Define isolation. It defines how and when the changes made by one transaction become visible to others."
+
+      - type: "diagram"
+        title: "Snapshot Isolation"
+        diagramRef: "snapshot_isolation"
+        bullets:
+          - "A popular isolation level where each transaction reads from a consistent snapshot of the database at a specific timestamp."
+          - "Readers do not block writers, and writers do not block readers."
+          - "Provides strong consistency for most applications, avoiding dirty reads and non-repeatable reads."
+        notes: "This introduces the idea of reading at a specific timestamp, which requires Multi-Version Concurrency Control (MVCC) and is central to the workshop."
+
+      - type: "text"
+        title: "Snapshot Isolation Guarantees"
+        bullets:
+          - "Consistent Snapshot: Reads see the database exactly as it looked when the transaction started."
+          - "Read-Your-Own-Writes: A transaction can see its own uncommitted updates."
+          - "First-Committer-Wins: If two transactions update the same key, the first to commit wins."
+          - "Lock-Free Reads: Readers never block writers, and writers never block readers."
+          - "Write Skew: Protects against most anomalies, but still vulnerable to 'Write Skew'."
+        notes: "This slide sets the stage for the workshop. We build MVCC to get snapshots, and later add a Serializable layer (Module 06) specifically to fix Write Skew."
+
+      - type: "text"
+        title: "The Need for Ordered Versions"
+        bullets:
+          - "To provide Snapshot Isolation, the database cannot simply overwrite old data in place."
+          - "Every write must be saved as a new version (Multi-Version Concurrency Control)."
+          - "We need to definitively know the order of writes: which write happened before which?"
+          - "Snapshot Isolation specifically requires Causal Monotonicity: if operation A triggers operation B, B's version must be higher."
+        notes: "Explain that MVCC requires versions, and those versions must have a strict causal order to build a coherent point-in-time snapshot."
+
+      - type: "text"
+        title: "Sourcing Monotonic Versions"
+        bullets:
+          - "Single-node DBs (like Postgres): Use a simple logical counter (Transaction ID)."
+          - "Centralized Architecture: Use a single 'Timestamp Oracle' node to hand out versions (bottleneck risk)."
+          - "Physical Time (Google Spanner): Uses TrueTime (atomic clocks/GPS) for strict global monotonicity."
+          - "Decentralized Logical Time: We build Hybrid Logical Clocks (HLC) to provide causal monotonicity."
+        notes: "This is the bridge to the next major section about clocks. Single nodes are easy, distributed systems require a strategy. The rest of the workshop builds on the decentralized HLC strategy."
+
+      - type: "text"
+        title: "Using Timestamp as Version"
+        bullets:
+          - "User-Meaningful: Timestamps allow for 'Time Travel' or 'AS OF' queries using human-understandable time rather than arbitrary transaction IDs."
+          - "Decentralized Generation: Unlike a global logical counter, physical time can be read locally on any node without network coordination."
+          - "Natural Expiration: It makes garbage collection simple (e.g., 'delete all versions older than 7 days')."
+          - "External Correlation: Makes it easy to map application events (like a user action) directly to a database state."
+        notes: "Timestamps bridge the gap between the database's internal need for ordering and the user's external expectation of time."
+
 
   - title: "The Problem: Physical Clock Drift"
     slides:

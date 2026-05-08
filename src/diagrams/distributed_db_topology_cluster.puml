@@ -1,0 +1,14 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+skinparam nodesep 50
+
+node "Database Cluster" {
+    component "Node 1" as N1
+    component "Node 2" as N2
+    component "Node 3" as N3
+    
+    N1 -[hidden]right- N2
+    N2 -[hidden]right- N3
+}
+@enduml

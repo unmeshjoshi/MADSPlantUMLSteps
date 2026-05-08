@@ -1,0 +1,29 @@
+@startuml
+!theme plain
+skinparam componentStyle rectangle
+skinparam nodesep 40
+
+node "Database Cluster" {
+    component "Node 1" as N1 {
+        rectangle "Partition 1\n(Leader)" as P1_L #LightGreen
+        rectangle "Partition 2\n(Follower)" as P2_F1
+        rectangle "Partition 3\n(Follower)" as P3_F1
+    }
+    
+    component "Node 2" as N2 {
+        rectangle "Partition 1\n(Follower)" as P1_F2
+        rectangle "Partition 2\n(Leader)" as P2_L #LightGreen
+        rectangle "Partition 3\n(Follower)" as P3_F2
+    }
+    
+    component "Node 3" as N3 {
+        rectangle "Partition 1\n(Follower)" as P1_F3
+        rectangle "Partition 2\n(Follower)" as P2_F3
+        rectangle "Partition 3\n(Leader)" as P3_L #LightGreen
+    }
+    
+    ' Show replication for just Partition 1
+    P1_L -[#green,thickness=2]-> P1_F2 : Replicate
+    P1_L -[#green,thickness=2]-> P1_F3 : Replicate
+}
+@enduml
