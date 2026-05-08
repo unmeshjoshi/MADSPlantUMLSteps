@@ -156,6 +156,7 @@ public class PresentationConfigResolver {
             if (slide.getBullets() != null) {
                 copy.setBullets(new ArrayList<>(slide.getBullets()));
             }
+            copy.setShowBullets(slide.isShowBullets());
             copies.add(copy);
         }
         return copies;

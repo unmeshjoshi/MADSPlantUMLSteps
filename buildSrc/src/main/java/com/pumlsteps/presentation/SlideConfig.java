@@ -1,14 +1,29 @@
 package com.pumlsteps.presentation;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public class SlideConfig {
-    private String title;
-    private String type;  // "text", "diagram", etc.
-    private List<String> bullets;
-    private String diagramRef;
-    private String imagePath;
-    private String notes;
+    @JsonProperty("title")
+    public String title;
+    
+    @JsonProperty("type")
+    public String type;  // "text", "diagram", etc.
+    
+    @JsonProperty("bullets")
+    public List<String> bullets;
+    
+    @JsonProperty("diagramRef")
+    public String diagramRef;
+    
+    @JsonProperty("imagePath")
+    public String imagePath;
+    
+    @JsonProperty("notes")
+    public String notes;
+    
+    @JsonProperty("showBullets")
+    public boolean showBullets = true;
 
     public String getTitle() {
         return title;
@@ -56,5 +71,13 @@ public class SlideConfig {
     
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public boolean isShowBullets() {
+        return showBullets;
+    }
+
+    public void setShowBullets(boolean showBullets) {
+        this.showBullets = showBullets;
     }
 }

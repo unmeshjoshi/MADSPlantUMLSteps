@@ -242,6 +242,7 @@ sections:
       - type: "diagram"
         title: "Snapshot Isolation with HLC: Complete Transaction Flow"
         diagramRef: "snapshot_isolation_hybrid_clock_detailed"
+        showBullets: false
         bullets:
           - "BEGIN establishes transaction context and read timestamp"
           - "READ sees one stable snapshot"

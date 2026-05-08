@@ -24,29 +24,35 @@ import java.util.Locale;
 public class PptGenerator {
     private XMLSlideShow ppt;
     private File pngDirectory;
-    private static final String SLIDE_TITLE_FONT_FAMILY = "Arial";
-    private static final double SLIDE_TITLE_FONT_SIZE = 32.0;
+    private static final String SLIDE_TITLE_FONT_FAMILY = "Segoe UI Semibold";
+    private static final String BODY_FONT_FAMILY = "Segoe UI";
+    private static final double SLIDE_TITLE_FONT_SIZE = 36.0;
     
-    // Professional color scheme
+    // Thoughtworks brand color scheme
     private static final class ColorScheme {
-        // Primary colors
-        static final java.awt.Color PRIMARY = new java.awt.Color(0, 90, 156);      // Deep blue
-        static final java.awt.Color SECONDARY = new java.awt.Color(242, 105, 36);  // Orange accent
-        static final java.awt.Color TERTIARY = new java.awt.Color(64, 64, 64);     // Dark gray
+        // Primary brand colors
+        static final java.awt.Color TW_PRIMARY = new java.awt.Color(0, 61, 79);      // Dark teal
+        static final java.awt.Color TW_PRIMARY_LIGHT = new java.awt.Color(26, 82, 102);
+        static final java.awt.Color TW_CORAL = new java.awt.Color(242, 97, 122);    // Accent color
         
-        // Background colors
-        static final java.awt.Color BACKGROUND_LIGHT = new java.awt.Color(250, 250, 250);
-        static final java.awt.Color BACKGROUND_DARK = new java.awt.Color(27, 38, 59);
+        // Secondary brand colors
+        static final java.awt.Color TW_GOLD = new java.awt.Color(204, 133, 10);
+        static final java.awt.Color TW_GREEN = new java.awt.Color(107, 158, 120);
+        static final java.awt.Color TW_TEAL = new java.awt.Color(71, 161, 173);
+        static final java.awt.Color TW_PURPLE = new java.awt.Color(99, 79, 125);
         
-        // Text colors
-        static final java.awt.Color TEXT_DARK = new java.awt.Color(33, 33, 33);
-        static final java.awt.Color TEXT_LIGHT = new java.awt.Color(250, 250, 250);
+        // Neutrals
+        static final java.awt.Color TW_BLACK = new java.awt.Color(26, 35, 41);
+        static final java.awt.Color TW_WHITE = new java.awt.Color(255, 255, 255);
+        static final java.awt.Color TW_GRAY_100 = new java.awt.Color(237, 241, 243);
         
-        // Accent colors for charts and highlights
-        static final java.awt.Color ACCENT1 = new java.awt.Color(77, 166, 255);
-        static final java.awt.Color ACCENT2 = new java.awt.Color(255, 190, 77);
-        static final java.awt.Color ACCENT3 = new java.awt.Color(145, 211, 79);
-        static final java.awt.Color ACCENT4 = new java.awt.Color(255, 128, 128);
+        // Semantic aliases
+        static final java.awt.Color PRIMARY = TW_PRIMARY;
+        static final java.awt.Color SECONDARY = TW_CORAL;
+        static final java.awt.Color BACKGROUND_LIGHT = TW_WHITE;
+        static final java.awt.Color BACKGROUND_DARK = TW_PRIMARY;
+        static final java.awt.Color TEXT_DARK = TW_BLACK;
+        static final java.awt.Color TEXT_LIGHT = TW_WHITE;
     }
 
     /**
@@ -148,7 +154,24 @@ public class PptGenerator {
         titleRun.setText(title);
         applyStandardSlideTitleStyle(titleRun, color);
 
+        // Add branding footer to every content slide
+        addBrandingFooter(slide);
+
         return visibleTitle;
+    }
+
+    private void addBrandingFooter(XSLFSlide slide) {
+        int slideWidth = ppt.getPageSize().width;
+        int slideHeight = ppt.getPageSize().height;
+        
+        XSLFTextBox footer = slide.createTextBox();
+        footer.setAnchor(new Rectangle(60, slideHeight - 60, 300, 30));
+        XSLFTextParagraph p = footer.addNewTextParagraph();
+        XSLFTextRun r = p.addNewTextRun();
+        r.setText("Thoughtworks");
+        r.setFontFamily("Segoe UI Bold");
+        r.setFontSize(14.0);
+        r.setFontColor(new java.awt.Color(0, 61, 79, 100)); // Faded dark teal
     }
     
     /**
@@ -231,54 +254,105 @@ public class PptGenerator {
     }
 
     /**
-     * Adds a separator slide for a section.
+     * Adds a cover slide for the presentation.
      *
-     * @param sectionName The name of the section.
+     * @param title       The main title.
+     * @param description The subtitle or description.
      */
-    private void addSeparatorSlide(String sectionName) {
+    public void addCoverSlide(String title, String description) {
         try {
             XSLFSlide slide = ppt.createSlide();
             int slideWidth = ppt.getPageSize().width;
             int slideHeight = ppt.getPageSize().height;
             
-            // Create a gradient background for a more professional look
+            // Dark teal gradient background
             XSLFAutoShape bgShape = slide.createAutoShape();
             bgShape.setShapeType(ShapeType.RECT);
             bgShape.setAnchor(new Rectangle(0, 0, slideWidth, slideHeight));
-            bgShape.setFillColor(ColorScheme.BACKGROUND_DARK);
+            bgShape.setFillColor(ColorScheme.TW_PRIMARY);
             
-            // Add a subtle accent bar on the left side
+            // Add a subtle accent (top-right)
+            XSLFAutoShape accent = slide.createAutoShape();
+            accent.setShapeType(ShapeType.ELLIPSE);
+            accent.setAnchor(new Rectangle(slideWidth - 600, -200, 800, 800));
+            accent.setFillColor(new java.awt.Color(242, 97, 122, 40)); // Semi-transparent coral
+            accent.setLineColor(null);
+
+            // Title
+            XSLFTextBox titleBox = slide.createTextBox();
+            titleBox.setAnchor(new Rectangle(120, slideHeight/2 - 180, slideWidth - 240, 200));
+            XSLFTextParagraph titlePara = titleBox.addNewTextParagraph();
+            XSLFTextRun titleRun = titlePara.addNewTextRun();
+            titleRun.setText(title);
+            titleRun.setFontFamily("Segoe UI Bold");
+            titleRun.setFontSize(82.0);
+            titleRun.setFontColor(ColorScheme.TEXT_LIGHT);
+            
+            // Subtitle / Description
+            if (description != null && !description.isEmpty()) {
+                XSLFTextBox descBox = slide.createTextBox();
+                descBox.setAnchor(new Rectangle(120, slideHeight/2 + 40, slideWidth - 400, 120));
+                XSLFTextParagraph descPara = descBox.addNewTextParagraph();
+                XSLFTextRun descRun = descPara.addNewTextRun();
+                descRun.setText(description);
+                descRun.setFontFamily("Segoe UI Light");
+                descRun.setFontSize(32.0);
+                descRun.setFontColor(new java.awt.Color(255, 255, 255, 180));
+            }
+            
+            // Branding footer
+            XSLFTextBox footerBox = slide.createTextBox();
+            footerBox.setAnchor(new Rectangle(120, slideHeight - 120, 300, 60));
+            XSLFTextParagraph footerPara = footerBox.addNewTextParagraph();
+            XSLFTextRun brandRun = footerPara.addNewTextRun();
+            brandRun.setText("Thoughtworks");
+            brandRun.setFontFamily("Segoe UI Bold");
+            brandRun.setFontSize(24.0);
+            brandRun.setFontColor(ColorScheme.TEXT_LIGHT);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error adding cover slide: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Adds a separator slide for a section.
+     *
+     * @param sectionName The name of the section.
+     */
+    public void addSeparatorSlide(String sectionName) {
+        try {
+            XSLFSlide slide = ppt.createSlide();
+            int slideWidth = ppt.getPageSize().width;
+            int slideHeight = ppt.getPageSize().height;
+            
+            // Branded dark teal background
+            XSLFAutoShape bgShape = slide.createAutoShape();
+            bgShape.setShapeType(ShapeType.RECT);
+            bgShape.setAnchor(new Rectangle(0, 0, slideWidth, slideHeight));
+            bgShape.setFillColor(ColorScheme.TW_PRIMARY);
+            
+            // Vertical accent bar on the left
             XSLFAutoShape accentBar = slide.createAutoShape();
             accentBar.setShapeType(ShapeType.RECT);
-            accentBar.setAnchor(new Rectangle(0, 0, 20, slideHeight));
-            accentBar.setFillColor(ColorScheme.SECONDARY);
+            accentBar.setAnchor(new Rectangle(80, slideHeight/4, 8, slideHeight/2));
+            accentBar.setFillColor(ColorScheme.TW_CORAL);
+            accentBar.setLineColor(null);
             
-            // Create a text box with enhanced styling
+            // Section title text box
             XSLFTextBox textBox = slide.createTextBox();
-            textBox.setAnchor(new Rectangle(80, slideHeight/2 - 120, slideWidth - 160, 240));
-            textBox.setHorizontalCentered(true);
+            textBox.setAnchor(new Rectangle(140, slideHeight/4, slideWidth - 280, slideHeight/2));
             textBox.setVerticalAlignment(VerticalAlignment.MIDDLE);
             
-            // Create a paragraph with proper styling
             XSLFTextParagraph paragraph = textBox.addNewTextParagraph();
-            paragraph.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.CENTER);
-            
-            // Create a text run with enhanced styling
             XSLFTextRun run = paragraph.addNewTextRun();
-            run.setText(sectionName.toUpperCase()); // Use uppercase for section names
-            run.setFontFamily("Calibri Light"); // Use a lighter font weight for modern look
-            run.setFontSize(52.0); // Larger font for section title
-            run.setBold(true);
+            run.setText(sectionName);
+            run.setFontFamily("Segoe UI Semibold");
+            run.setFontSize(64.0);
             run.setFontColor(ColorScheme.TEXT_LIGHT);
             
-            // Add a small decorative line under the text
-            XSLFAutoShape underline = slide.createAutoShape();
-            underline.setShapeType(ShapeType.RECT);
-            int lineWidth = Math.min(600, sectionName.length() * 25); // Scale with text length
-            underline.setAnchor(new Rectangle((slideWidth - lineWidth)/2, slideHeight/2 + 80, lineWidth, 5));
-            underline.setFillColor(ColorScheme.SECONDARY);
         } catch (Exception e) {
-            throw new RuntimeException("Error adding separator slide: " + e.getMessage(), e);
+            throw new RuntimeException("Error adding section separator slide: " + e.getMessage(), e);
         }
     }
 
@@ -815,7 +889,7 @@ public class PptGenerator {
                     }
                     
                     XSLFTextRun run = para.addNewTextRun();
-                    run.setFontFamily("Calibri"); // Match title font for consistency
+                    run.setFontFamily(BODY_FONT_FAMILY); // Match body font
                     run.setText(bullet);
                     run.setFontSize(fontSize); // Appropriate font size
                     run.setFontColor(ColorScheme.TEXT_DARK); // Better contrast
@@ -863,9 +937,9 @@ public class PptGenerator {
         slideNumPara.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.RIGHT);
         XSLFTextRun slideNumRun = slideNumPara.addNewTextRun();
         slideNumRun.setText(String.format("%d", slideNumber));
-        slideNumRun.setFontFamily("Calibri");
+        slideNumRun.setFontFamily(BODY_FONT_FAMILY);
         slideNumRun.setFontSize(12.0);
-        slideNumRun.setFontColor(ColorScheme.TERTIARY);
+        slideNumRun.setFontColor(ColorScheme.TEXT_DARK);
     }
     
     /**
@@ -875,15 +949,15 @@ public class PptGenerator {
      * @return The recommended font size
      */
     private double calculateIdealFontSize(int bulletCount) {
-        // Increased base font sizes for better on-screen readability
+        // Optimized font sizes for a more professional look
         if (bulletCount <= 3) {
-            return 55.0;
+            return 36.0; // Reduced from 55.0
         } else if (bulletCount <= 5) {
-            return 48.0;
+            return 32.0; // Reduced from 48.0
         } else if (bulletCount <= 8) {
-            return 40.0;
+            return 26.0; // Reduced from 40.0
         } else {
-            return 32.0; // Minimum size even for many bullets
+            return 22.0; // Minimum size for many bullets
         }
     }
     
@@ -991,23 +1065,15 @@ public class PptGenerator {
             }
             int imgY = 110 + (slideHeight - 200 - scaledHeight) / 2;
 
-            // Create a background frame for the image
-            XSLFAutoShape imageFrame = slide.createAutoShape();
-            imageFrame.setShapeType(ShapeType.RECT);
-            int frameMargin = 10;
-            imageFrame.setAnchor(new Rectangle(imgX - frameMargin, imgY - frameMargin, 
-                                              scaledWidth + (frameMargin * 2), 
-                                              scaledHeight + (frameMargin * 2)));
-            imageFrame.setFillColor(java.awt.Color.WHITE);
-            
-            // Add a subtle shadow or border to the frame
-            imageFrame.setLineColor(new java.awt.Color(230, 230, 230));
-            imageFrame.setLineWidth(1.5);
-
-            // Add the image to the slide, positioned above the frame
+            // Add the image to the slide
             XSLFPictureData pictureData = ppt.addPicture(pngFile, PictureData.PictureType.PNG);
             XSLFPictureShape picture = slide.createPicture(pictureData);
             picture.setAnchor(new Rectangle(imgX, imgY, scaledWidth, scaledHeight));
+            
+            System.out.println("Successfully added PNG image to slide: " + title + 
+                             (hasBullets ? " with " + bullets.size() + " bullets" : "") +
+                             (notes != null ? " with notes" : ""));
+            System.out.println("Image dimensions: " + imgWidth + "x" + imgHeight + " | Scaled to: " + scaledWidth + "x" + scaledHeight + " | Pos: (" + imgX + "," + imgY + ")");
             
             // Add bullet points if present - simplified approach
             if (hasBullets) {
@@ -1029,7 +1095,7 @@ public class PptGenerator {
                     para.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.LEFT);
                     
                     XSLFTextRun run = para.addNewTextRun();
-                    run.setFontFamily("Calibri");
+                    run.setFontFamily(BODY_FONT_FAMILY);
                     run.setText(bullet);
                     run.setFontSize(fontSize);
                     run.setFontColor(ColorScheme.TEXT_DARK);
@@ -1086,10 +1152,9 @@ public class PptGenerator {
             XSLFTextParagraph paragraph = textBox.addNewTextParagraph();
             paragraph.setTextAlign(org.apache.poi.sl.usermodel.TextParagraph.TextAlign.CENTER);
             
-            // Create a text run with enhanced styling
             XSLFTextRun run = paragraph.addNewTextRun();
             run.setText(sectionTitle.toUpperCase()); // Use uppercase for section names
-            run.setFontFamily("Calibri Light"); // Use a lighter font weight for modern look
+            run.setFontFamily(SLIDE_TITLE_FONT_FAMILY); // Use brand title font
             run.setFontSize(52.0); // Larger font for section title
             run.setBold(true);
             run.setFontColor(ColorScheme.TEXT_LIGHT);

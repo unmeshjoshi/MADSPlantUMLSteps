@@ -65,6 +65,10 @@ public class YamlPresentationProcessor {
             // Create PPT
             PptGenerator generator = new PptGenerator();
             generator.setPngDirectory(centralPngDir);
+            
+            // Add cover slide using root metadata
+            generator.addCoverSlide(config.getTitle(), config.getDescription());
+            
             // Process slides
             processSlides(config, generator);
 
@@ -95,7 +99,7 @@ public class YamlPresentationProcessor {
     private void processSectionSlides(SectionConfig section, PptGenerator generator) {
         // Add section separator slide
         if (section.getTitle() != null && !section.getTitle().trim().isEmpty()) {
-            generator.addSectionSeparatorSlide(section.getTitle());
+            generator.addSeparatorSlide(section.getTitle());
         }
         
         // Process each slide in the section
@@ -123,7 +127,8 @@ public class YamlPresentationProcessor {
     }
 
     private void createTextSlide(SlideConfig slide, PptGenerator generator) {
-        generator.addTextSlide(slide.getTitle(), slide.getBullets(), slide.getNotes());
+        List<String> bullets = slide.isShowBullets() ? slide.getBullets() : null;
+        generator.addTextSlide(slide.getTitle(), bullets, slide.getNotes());
     }
 
     private void createDiagramSlide(SlideConfig slide, PptGenerator generator) {
@@ -200,7 +205,8 @@ public class YamlPresentationProcessor {
                             // Verify the PNG is valid before adding to slide
                             BufferedImage testImage = ImageIO.read(pngFile);
                             if (testImage != null) {
-                                generator.addImageSlide(slideTitle, pngFile, slide.getBullets(), slide.getNotes());
+                                List<String> bullets = slide.isShowBullets() ? slide.getBullets() : null;
+                                generator.addImageSlide(slideTitle, pngFile, bullets, slide.getNotes());
                                 System.out.println("Successfully added PNG image to slide: " + slideTitle);
                             } else {
                                 System.err.println("WARNING: Invalid PNG file, creating placeholder: " + pngFile.getAbsolutePath());
@@ -219,7 +225,8 @@ public class YamlPresentationProcessor {
                         // Verify the PNG is valid before adding to slide
                         BufferedImage testImage = ImageIO.read(chartFile);
                         if (testImage != null) {
-                            generator.addImageSlide(slideTitle, chartFile, slide.getBullets(), slide.getNotes());
+                            List<String> bullets = slide.isShowBullets() ? slide.getBullets() : null;
+                            generator.addImageSlide(slideTitle, chartFile, bullets, slide.getNotes());
                             System.out.println("Successfully added chart PNG to slide: " + slideTitle);
                         } else {
                             System.err.println("WARNING: Invalid chart PNG file, creating placeholder: " + chartFile.getAbsolutePath());
