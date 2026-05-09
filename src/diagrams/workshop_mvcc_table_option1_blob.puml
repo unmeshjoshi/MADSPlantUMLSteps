@@ -1,0 +1,21 @@
+@startuml
+!include ../style.puml
+
+participant "Client" as Client
+participant "KV Store" as Store
+
+note over Store
+  **Physical Keys (Option 1: Entire Row as a Blob Value)**
+  [User1_row @ 100] -> '{"name":"Alice", "status":"Active"}'
+end note
+
+Client -> Store: Update status to "Inactive" (t=200)
+
+note over Store
+  **Massive Duplication!**
+  The entire row must be read, updated, and rewritten.
+  
+  [User1_row @ 200] -> '{"name":"Alice", "status":"Inactive"}'
+  [User1_row @ 100] -> '{"name":"Alice", "status":"Active"}'
+end note
+@enduml

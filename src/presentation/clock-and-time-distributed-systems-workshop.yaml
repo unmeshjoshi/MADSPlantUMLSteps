@@ -208,13 +208,80 @@ sections:
         notes: "Explain the rule slowly. This is foundational."
 
       - type: "text"
-        title: "Module 01: What Participants Implement"
+        title: "Exercise: Hybrid Logical Clock (HLC)"
         bullets:
-          - "Module 01 asks participants to implement HybridClock.now()"
-          - "If physical time does not advance, keep the same wall time and increment ticks"
-          - "If physical time advances, move to the new wall time and reset ticks to 0"
-          - "This makes the HLC monotonic without central coordination"
+          - "Implement HybridClock.now()"
         notes: "Tie the abstract HLC rule directly to the first exercise in the workshop."
+  
+  - title: "Versioned Storage"
+    slides:
+      - type: "text"
+        title: "Modules 02 and 03: Where HLC Becomes Storage"
+        bullets:
+          - "Module 02 stores multiple committed versions under MVCC keys"
+          - "Reads ask: what version was visible at timestamp T?"
+          - "Module 03 routes keys to storage nodes using hash(key)"
+          - "Clients and replicas propagate HLC timestamps on every request and response"
+        notes: "This is the bridge from time to versioned distributed storage."
+
+      - type: "diagram"
+        title: "MVCC Version Chains: The Logical Model"
+        diagramRef: "workshop_mvcc_logical_version_ordering"
+        bullets:
+          - "A single logical key has many committed versions over time"
+          - "The visibility rule is: return the latest version whose timestamp is <= read timestamp"
+          - "readAt(MAX_TIMESTAMP) returns the latest value"
+          - "readAt(T) returns the historical snapshot visible at time T"
+        notes: "Start with the simple logical model from the storage notes before dropping to byte encodings. One key, multiple versions, latest visible version wins."
+
+      - type: "text"
+        title: "RocksDB Forces Us To Think In Bytes"
+        bullets:
+          - "The logical MVCC rule is simple, but RocksDB only stores byte-array keys and values"
+          - "Comparison is lexicographic, essentially memcmp-style unsigned byte ordering"
+          - "So the physical key format must preserve the access pattern we want"
+          - "That is why the workshop's codec is a core part of the storage design, not just a serialization detail"
+        notes: "This is the conceptual bridge from the PDF page into OrderPreservingCodec. The storage engine sees bytes, not logical tuples."
+
+      - type: "diagram"
+        title: "Physical MVCC Key Layout In RocksDB"
+        diagramRef: "workshop_mvcc_physical_key_encoding"
+        bullets:
+          - "Workshop format: [LogicalKeyBytes] + [0x00] + [InvertedWallClock] + [InvertedTicks]"
+          - "The 0x00 separator creates a hard boundary between the user key and timestamp suffix"
+          - "Timestamp bytes are inverted so newer versions sort before older ones"
+          - "That means an ascending RocksDB iterator sees the newest version of one logical key first"
+        notes: "Connect this slide directly to OrderPreservingCodec.encodeMVCCKey. The separator is crucial, especially when keys share prefixes like User and User1."
+
+      - type: "diagram"
+        title: "How Prefix Seek And As-Of Reads Exploit The Encoding"
+        diagramRef: "workshop_mvcc_rocksdb_seek_behavior"
+        bullets:
+          - "All versions of one logical key stay contiguous in byte order"
+          - "Seeking to the logical key prefix lands on the newest version first"
+          - "Seeking with an as-of timestamp lands on the newest version visible at that time"
+          - "This lets RocksDB-backed MVCC implement the same visibility rule as the in-memory model efficiently"
+        notes: "This is the payoff. The encoding is not arbitrary; it exists so prefix scans and as-of reads become simple iterator operations."
+
+      - type: "diagram"
+        title: "Anatomy of a Table: The JSON Blob Anti-Pattern"
+        diagramRef: "workshop_mvcc_table_option1_blob"
+        bullets:
+          - "Option 1 serializes the entire row into a single value (e.g., JSON blob) under one RowKey."
+          - "Every single-column update forces a new version of the entire row."
+          - "This causes massive data duplication and storage bloat in an MVCC system."
+        notes: "We didn't choose this option. It's too expensive for partial updates."
+
+      - type: "diagram"
+        title: "Why Per-Column Keys Win in MVCC"
+        diagramRef: "workshop_mvcc_table_option2_wide"
+        bullets:
+          - "Option 2 (Wide-Column) stores each column separately with a common key prefix."
+          - "Efficient Partial Updates: Only the changed field gets a new version."
+          - "Row Reconstruction: getRow() runs a prefix scan to dynamically gather the latest visible columns."
+          - "Production systems like YugabyteDB use this exact pattern (DocKey)."
+        notes: "Connect this back to the workshop code. This is exactly how Table.java works."
+
 
       - type: "diagram"
         title: "How Hybrid Timestamps Flow Through The Workshop"

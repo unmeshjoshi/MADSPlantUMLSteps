@@ -1,0 +1,24 @@
+@startuml
+!include ../style.puml
+
+participant "Client\nreadAt(100)" as Client
+participant "Logical KV Store\n(Key: 'Account1')" as Store
+
+note over Store
+  **Logical Version Chain**
+  [Account1 @ 110] -> Value: "$200"
+  [Account1 @ 90]  -> Value: "$150"
+  [Account1 @ 50]  -> Value: "$100"
+end note
+
+Client -> Store: read(key="Account1", readTs=100)
+note right of Store
+  Search for newest version 
+  where timestamp <= 100
+  
+  110 <= 100 ? (No)
+  90  <= 100 ? (Yes!) -> Return "$150"
+end note
+
+Store --> Client: "$150"
+@enduml

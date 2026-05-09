@@ -1,0 +1,22 @@
+@startuml
+!include ../style.puml
+
+node "RocksDB Physical Keys" {
+  map "Key 'Account1'" as k1 {
+    "Account1\\x00<InvTs:110>" => "$200"
+    "Account1\\x00<InvTs:90>" => "$150"
+    "Account1\\x00<InvTs:50>" => "$100"
+  }
+}
+
+note right of k1
+  **Encoding Structure:**
+  1. **Logical Key:** "Account1"
+  2. **Separator:** 0x00 byte
+  3. **Inverted Timestamp:** (Max_Long - WallClock)
+  
+  *Because RocksDB sorts lexicographically, 
+  inverted timestamps ensure the newest 
+  version appears first!*
+end note
+@enduml

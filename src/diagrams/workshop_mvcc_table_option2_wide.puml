@@ -1,0 +1,29 @@
+@startuml
+!include ../style.puml
+
+participant "Client" as Client
+participant "KV Store" as Store
+
+note over Store
+  **Physical Keys (Option 2: Wide-Column)**
+  [User1_name @ 100]   -> "Alice"
+  [User1_status @ 100] -> "Active"
+end note
+
+Client -> Store: Update status to "Inactive" (t=200)
+
+note over Store
+  **Efficient Partial Update**
+  Only the specific column gets a new version!
+  
+  [User1_name @ 100]   -> "Alice"
+  [User1_status @ 200] -> "Inactive"
+  [User1_status @ 100] -> "Active"
+end note
+
+note right of Store
+  **Row Reconstruction (getRow)**
+  Prefix Scan: "User1_*" @ AsOf(200)
+  => Returns (name="Alice", status="Inactive")
+end note
+@enduml

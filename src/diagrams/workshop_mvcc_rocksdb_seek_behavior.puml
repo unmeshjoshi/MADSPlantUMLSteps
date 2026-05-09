@@ -1,0 +1,27 @@
+@startuml
+!include ../style.puml
+
+participant Client
+participant "RocksDB Iterator" as Iter
+
+note over Iter
+  **Sorted Keys in DB**
+  1. Account1\\x00<InvTs:110> -> "$200"
+  2. Account1\\x00<InvTs:90>  -> "$150"
+  3. Account1\\x00<InvTs:50>  -> "$100"
+  <color:gray>4. Account2\\x00<InvTs:120> -> "$500"</color>
+end note
+
+Client -> Iter: seek("Account1\\x00" + Inverted(100))
+note right of Iter
+  Iterator jumps to the first key 
+  that is >= the seek target.
+  
+  Target = Account1\\x00<InvTs:100>
+  
+  Key 1 (InvTs:110) < Target (skip)
+  Key 2 (InvTs:90) >= Target! (land here)
+end note
+
+Iter --> Client: Iter.value() = "$150"
+@enduml
