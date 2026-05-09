@@ -3,43 +3,52 @@
 
 participant Client
 note over Client: HybridClock: (1000, 0)
+/ note over Blue: HybridClock: (1000, 0)
 
+'[step]
 Client -> Blue: write("name", "Alice", "timestamp=(1000,0)")
-note over Blue: HybridClock: (1000, 0)
-Blue -> Blue: tick((1000,0))
+'[step]
+Blue -> Blue: merge((1000,0))
 note right of Blue
   Read local clock: now = 1000
-  newWallTime = max(1000, 1000, 1000) = 1000
-  Check: newWallTime > local.wallTime AND newWallTime > received.wallTime?
-  → 1000 > 1000 AND 1000 > 1000? = FALSE
-  Else: newLogical = max(0, 0) + 1 = 1
+  Pick largest of request timestamp or local clock
+  If same as previous latestTime, increment 
+  logical counter
   Result: (1000, 1)
 end note
+'[step]
 note over Blue 
 HybridClock: (1000, 1)
 key: "name@(1000,1)"
 value: "Alice"
 end note
+'[step]
 Client <-- Blue: writtenAt (1000, 1)
+'[step]
 note over Client: HybridClock: (1000, 1)
-
+'[step]
 note over Green: HybridClock: (1005, 0)
+'[step]
 Client -> Green: write("title", "Microservices", "timestamp=(1000,1)")
-Green -> Green: tick((1000,1))
+'[step]
+Green -> Green: merge((1000,1))
+'[step]
 note right of Green
   Read local clock: now = 1005
-  newWallTime = max(1005, 1005, 1000) = 1005
-  newWallTime > local.wallTime AND newWallTime > received.wallTime
+  Pick largest of request timestamp or local clock
   → newLogical = 0
   Result: (1005, 0)
 end note
+'[step]
 note over Green 
 HybridClock: (1005, 0)
 key: "title@(1005,0)"
 value: "Microservices"
 end note
+'[step]
 Client <-- Green: writtenAt (1005, 0)
 note over Client: HybridClock: (1005, 0)
+'[step]
 
 @enduml
 
