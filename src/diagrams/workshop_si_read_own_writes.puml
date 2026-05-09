@@ -1,0 +1,28 @@
+@startuml
+!include ../style.puml
+
+participant "Client\n(Txn 1)" as Client
+participant "Participant" as Part
+
+note over Client
+  Txn Context:
+  readTs = 100
+end note
+
+'[step]
+Client -> Part: TxnWrite(key="X", val="v2")
+Part -> Part: writeTs = 105
+Part -> Part: intentStore.put("X@105", "v2")
+Part --> Client: OK
+
+'[step]
+Client -> Part: TxnRead(key="X", readTs=100)
+note right of Part
+  **Read-Your-Own-Writes**
+  Checks intentStore for own txnId FIRST.
+  Finds "X@105" (even though 105 > 100).
+end note
+
+'[step]
+Part --> Client: Return "v2"
+@enduml

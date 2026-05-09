@@ -283,108 +283,90 @@ sections:
         notes: "Connect this back to the workshop code. This is exactly how Table.java works."
 
 
-      - type: "diagram"
-        title: "How Hybrid Timestamps Flow Through The Workshop"
-        diagramRef: "workshop_hlc_routing_flow"
-        bullets:
-          - "BeginTransaction goes to coordinatorFor(txnId)"
-          - "TxnWrite goes to replicaFor(key)"
-          - "Each RPC carries clientTime or propagatedTime"
-          - "Both clients and replicas merge received HLC values into their local clock"
-          - "The system stays decentralized because time moves through normal request/response traffic"
-        notes: "This slide makes the workshop architecture concrete."
-
-      - type: "text"
-        title: "Modules 02 and 03: Where HLC Becomes Storage"
-        bullets:
-          - "Module 02 stores multiple committed versions under MVCC keys"
-          - "Reads ask: what version was visible at timestamp T?"
-          - "Module 03 routes keys to storage nodes using hash(key)"
-          - "Clients and replicas propagate HLC timestamps on every request and response"
-        notes: "This is the bridge from time to versioned distributed storage."
-
       # - type: "diagram"
-      #   title: "MVCC Version Chains: The Logical Model"
-      #   diagramRef: "workshop_mvcc_logical_version_ordering"
+      #   title: "How Hybrid Timestamps Flow Through The Workshop"
+      #   diagramRef: "workshop_hlc_routing_flow"
       #   bullets:
-      #     - "A single logical key has many committed versions over time"
-      #     - "The visibility rule is: return the latest version whose timestamp is <= read timestamp"
-      #     - "readAt(MAX_TIMESTAMP) returns the latest value"
-      #     - "readAt(T) returns the historical snapshot visible at time T"
-      #   notes: "Start with the simple logical model from the storage notes before dropping to byte encodings. One key, multiple versions, latest visible version wins."
+      #     - "BeginTransaction goes to coordinatorFor(txnId)"
+      #     - "TxnWrite goes to replicaFor(key)"
+      #     - "Each RPC carries clientTime or propagatedTime"
+      #     - "Both clients and replicas merge received HLC values into their local clock"
+      #     - "The system stays decentralized because time moves through normal request/response traffic"
+      #   notes: "This slide makes the workshop architecture concrete."
 
-      - type: "text"
-        title: "RocksDB Forces Us To Think In Bytes"
-        bullets:
-          - "The logical MVCC rule is simple, but RocksDB only stores byte-array keys and values"
-          - "Comparison is lexicographic, essentially memcmp-style unsigned byte ordering"
-          - "So the physical key format must preserve the access pattern we want"
-          - "That is why the workshop's codec is a core part of the storage design, not just a serialization detail"
-        notes: "This is the conceptual bridge from the PDF page into OrderPreservingCodec. The storage engine sees bytes, not logical tuples."
-
-      # - type: "diagram"
-      #   title: "Physical MVCC Key Layout In RocksDB"
-      #   diagramRef: "workshop_mvcc_physical_key_encoding"
-      #   bullets:
-      #     - "Workshop format: [LogicalKeyBytes] + [0x00] + [InvertedWallClock] + [InvertedTicks]"
-      #     - "The 0x00 separator creates a hard boundary between the user key and timestamp suffix"
-      #     - "Timestamp bytes are inverted so newer versions sort before older ones"
-      #     - "That means an ascending RocksDB iterator sees the newest version of one logical key first"
-      #   notes: "Connect this slide directly to OrderPreservingCodec.encodeMVCCKey. The separator is crucial, especially when keys share prefixes like User and User1."
-
-      # - type: "diagram"
-      #   title: "How Prefix Seek And As-Of Reads Exploit The Encoding"
-      #   diagramRef: "workshop_mvcc_rocksdb_seek_behavior"
-      #   bullets:
-      #     - "All versions of one logical key stay contiguous in byte order"
-      #     - "Seeking to the logical key prefix lands on the newest version first"
-      #     - "Seeking with an as-of timestamp lands on the newest version visible at that time"
-      #     - "This lets RocksDB-backed MVCC implement the same visibility rule as the in-memory model efficiently"
-      #   notes: "This is the payoff. The encoding is not arbitrary; it exists so prefix scans and as-of reads become simple iterator operations."
-
-  - title: "Distributed Transactions In The Workshop"
+  - title: "Distributed Transactions"
     slides:
-      - type: "text"
-        title: "Module 04: Snapshot Isolation On Top Of HLC + MVCC"
+      - type: "diagram"
+        title: "Two Hats: Coordinator vs. Participant"
+        diagramRef: "workshop_txn_roles"
         bullets:
-          - "The workshop does not jump straight to commit wait or TrueTime"
-          - "It first builds a decentralized snapshot-isolation engine"
-          - "Transactions get a read timestamp at begin time"
-          - "Writes become intents first, then commit resolves them into committed MVCC versions"
-        notes: "This section explains what the audience is actually building in module 04."
+          - "Every node plays two roles depending on the request."
+          - "Coordinator: Holds the TxnRecord in memory for the lifetime of the transaction."
+          - "Participant: Holds the actual data and provisional intents."
+        notes: "Explain that routing is based on ID. coordinatorFor(txnId) vs replicaFor(key)."
 
       - type: "diagram"
-        title: "Transaction Lifecycle In distrib-txn-db"
-        diagramRef: "workshop_transaction_lifecycle"
+        title: "Dual Storage: Intents vs. Committed"
+        diagramRef: "workshop_txn_dual_store"
         bullets:
-          - "BeginTransaction creates a PENDING TxnRecord on the coordinator"
-          - "TxnWrite stores an IntentRecord in the participant's intentStore"
-          - "TxnRead returns own intents first, otherwise reads committed data at readTimestamp"
-          - "Commit marks the record COMMITTED and sends resolve requests to participants"
-          - "Participants move intents into the committed store and delete provisional records"
-        notes: "This is the operational core of the workshop."
-
-      - type: "text"
-        title: "Module 04 Concepts To Emphasize"
-        bullets:
-          - "coordinatorFor(txnId): transaction records live on a node chosen by hashing txnId"
-          - "replicaFor(key): key-level reads and writes route by hash(key)"
-          - "intentStore and committedStore are separate"
-          - "read-your-own-writes is preserved even though writes are still provisional"
-          - "lazy intent resolution lets later reads and writes clean up old intents"
-        notes: "These are the ideas people should look for in TransactionalStorageClient and TransactionalStorageReplica."
+          - "Writes aren't immediately applied to the database."
+          - "They go to a provisional intentStore (acting as a write lock)."
+          - "They only move to the committedStore once finalized."
+        notes: "This is the core 2PC mechanism. Intent = data + lock."
 
       - type: "diagram"
-        title: "Snapshot Isolation with HLC: Complete Transaction Flow"
-        diagramRef: "snapshot_isolation_hybrid_clock_detailed"
-        showBullets: false
+        title: "The Fast Commit Protocol"
+        diagramRef: "workshop_txn_lifecycle"
         bullets:
-          - "BEGIN establishes transaction context and read timestamp"
-          - "READ sees one stable snapshot"
-          - "WRITE creates intents that are invisible to other transactions"
-          - "COMMIT converts intents to committed versions"
-          - "MVCC plus HLC gives decentralized snapshot isolation"
-        notes: "Reuse the existing detailed diagram here because it already matches the workshop story well."
+          - "1. Begin: Create TxnRecord."
+          - "2. Write: Write intents to Participants."
+          - "3. Commit: Flip TxnStatus to COMMITTED in memory (Instant success!)"
+          - "4. Resolve: Asynchronously move intents to committedStore."
+        notes: "Emphasize step 3 and 4. Commit is fast, Resolve is background cleanup."
+
+      - type: "diagram"
+        title: "Active Intent Resolution (Fault Tolerance)"
+        diagramRef: "workshop_txn_intent_resolution"
+        bullets:
+          - "What if the Coordinator dies before sending Resolve?"
+          - "Reads hitting languishing intents ping the Coordinator for status."
+          - "If COMMITTED, the reader resolves the intent locally and continues."
+        notes: "This makes the system self-healing. No centralized process has to wake up to clean intents."
+
+  - title: "Implementing Snapshot Isolation"
+    slides:
+      - type: "diagram"
+        title: "Establishing the Snapshot Timestamp"
+        diagramRef: "workshop_si_snapshot_timestamp"
+        bullets:
+          - "Transactions get a readTimestamp at begin time from the Coordinator."
+          - "All reads for the entire transaction use this exact point in time."
+        notes: "This guarantees a consistent view of the database."
+
+      - type: "diagram"
+        title: "Writing Intents & Write Timestamps"
+        diagramRef: "workshop_si_intent_timestamp"
+        bullets:
+          - "While reads use the readTimestamp, intents are written at the Participant's local time."
+          - "This ensures the database's clock is constantly pushed forward causally."
+        notes: "Crucial rule: Write timestamp != Read timestamp."
+
+      - type: "diagram"
+        title: "Read-Your-Own-Writes"
+        diagramRef: "workshop_si_read_own_writes"
+        bullets:
+          - "How does a transaction read data it hasn't committed yet?"
+          - "It explicitly checks the intentStore for its own txnId before falling back to the committedStore."
+        notes: "This bypasses the strict snapshot rule just for its own writes."
+
+      - type: "diagram"
+        title: "Preventing Lost Updates (Write-Write Conflicts)"
+        diagramRef: "workshop_si_write_conflict"
+        bullets:
+          - "The core Snapshot Isolation validation rule."
+          - "Before writing an intent: Is there a committed version newer than my readTimestamp?"
+          - "If yes, we are operating on stale data and must abort!"
+        notes: "Show failsSnapshotIsolationWriteValidation() here."
 
   - title: "The Remaining Gap: External Consistency"
     slides:

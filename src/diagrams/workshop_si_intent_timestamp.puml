@@ -1,0 +1,30 @@
+@startuml
+!include ../style.puml
+
+participant Client
+participant "Participant" as Part
+
+note over Client
+  Txn Context:
+  readTs = 100
+end note
+
+'[step]
+Client -> Part: TxnWrite(key="X", val="v2")
+
+'[step]
+note right of Part
+  **Crucial Rule:**
+  Intent is written at the
+  replica's **current time**, 
+  NOT the readTs!
+  
+  This pushes the clock 
+  forward causally.
+end note
+Part -> Part: writeTs = hybridClock.now() (e.g. 105)
+Part -> Part: intentStore.put("X@105", "v2")
+
+'[step]
+Part --> Client: OK
+@enduml

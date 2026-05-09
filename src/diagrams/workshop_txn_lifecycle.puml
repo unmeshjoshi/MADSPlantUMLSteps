@@ -1,0 +1,34 @@
+@startuml
+!include ../style.puml
+
+participant Client
+participant "Coordinator" as Coord
+participant "Participant" as Part
+
+'[step]
+Client -> Coord: 1. BeginTransaction
+Coord --> Client: OK
+
+'[step]
+Client -> Part: 2. WriteIntent(key)
+Part --> Client: OK
+
+'[step]
+Client -> Coord: 3. CommitTransaction
+note right of Coord
+  **Fast Commit**
+  Transaction is legally committed
+  once the status flips in memory!
+end note
+Coord -> Coord: Set TxnStatus = COMMITTED
+Coord --> Client: 4. OK (Success!)
+
+'[step]
+note over Coord, Part
+  **Asynchronous Resolve**
+  Coordinator tells Participants to cleanup.
+  Client does NOT wait for this!
+end note
+Coord -> Part: 5. ResolveRequest(key)
+Part -> Part: Move Intent to CommittedStore
+@enduml

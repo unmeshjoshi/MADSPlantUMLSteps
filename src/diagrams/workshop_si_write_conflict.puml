@@ -1,0 +1,34 @@
+@startuml
+!include ../style.puml
+
+participant "Client\n(Txn 1)" as Client
+participant "Participant" as Part
+
+note over Client
+  Txn Context:
+  readTs = 100
+end note
+
+'[step]
+Client -> Part: TxnWrite(key="X", val="v2")
+
+'[step]
+note right of Part
+  **Write Validation (Lost Update Check)**
+  Are there any committed versions
+  NEWER than readTs=100?
+end note
+Part -> Part: committedStore.getVersionsUpTo(MAX)
+
+'[step]
+note right of Part
+  Found "X@120" -> "v1.5"
+  (120 > 100)
+  
+  Another transaction committed 
+  after our snapshot!
+end note
+
+'[step]
+Part --> Client: ERROR: "Conflicting committed transaction"
+@enduml

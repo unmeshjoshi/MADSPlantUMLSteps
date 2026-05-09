@@ -1,0 +1,30 @@
+@startuml
+!include ../style.puml
+
+participant "Client" as Client
+participant "Node A\n(Coordinator)" as Coord
+participant "Node B\n(Participant)" as Part
+
+note over Coord
+  **Coordinator Role**
+  Maintains the ""TxnRecord"" 
+  in memory for the lifetime 
+  of the transaction.
+end note
+
+note over Part
+  **Participant Role**
+  Maintains the actual data 
+  and provisional intents.
+end note
+
+'[step]
+Client -> Coord: BeginTransaction(txnId=1)
+Coord -> Coord: Create TxnRecord(status=PENDING)
+Coord --> Client: OK
+
+'[step]
+Client -> Part: TxnWriteRequest(key="X", val="v2")
+Part -> Part: Write Intent("X" -> "v2")
+Part --> Client: OK
+@enduml

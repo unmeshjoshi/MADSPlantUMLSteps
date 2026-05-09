@@ -1,0 +1,34 @@
+@startuml
+!include ../style.puml
+
+participant "Client" as Client
+participant "Coordinator" as Coord
+participant "Participant Replica" as Replica
+
+note over Replica
+  **Dual Storage Architecture**
+  1. ""intentStore"": Provisional writes
+  2. ""committedStore"": Finalized data
+end note
+
+'[step]
+Client -> Replica: TxnWrite(key="X")
+note right of Replica
+  **Write Intent**
+  Write goes ONLY to intentStore
+  (acting as a write lock).
+end note
+Replica -> Replica: intentStore.put("X", "v2")
+Replica --> Client: OK
+
+'[step]
+Coord -> Replica: ResolveTransaction(key="X", commitTs=200)
+note right of Replica
+  **Resolve Intent**
+  Move data from intentStore
+  to committedStore!
+end note
+Replica -> Replica: committedStore.put("X@200", "v2")
+Replica -> Replica: intentStore.delete("X")
+Replica --> Coord: OK
+@enduml

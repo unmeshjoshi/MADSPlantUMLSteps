@@ -1,0 +1,22 @@
+@startuml
+!include ../style.puml
+
+participant Client
+participant "Coordinator" as Coord
+
+'[step]
+Client -> Coord: BeginTransaction
+note right of Coord
+  Reads local clock to establish
+  the fixed snapshot point.
+end note
+Coord -> Coord: readTs = hybridClock.now()
+
+'[step]
+Coord --> Client: OK (propagatedTime = readTs)
+note left of Client
+  Client uses this **readTs**
+  for ALL subsequent reads
+  in this transaction!
+end note
+@enduml

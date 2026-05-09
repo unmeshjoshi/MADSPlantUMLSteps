@@ -1,0 +1,32 @@
+@startuml
+!include ../style.puml
+
+participant Client
+participant "Participant" as Part
+participant "Coordinator" as Coord
+
+'[step]
+Client -> Part: Read(key="X")
+note right of Part
+  Hits an intent belonging 
+  to another transaction!
+end note
+
+'[step]
+Part -> Coord: GET_TRANSACTION_STATUS(txnId)
+note right of Coord
+  Coordinator checks memory.
+  Status is COMMITTED!
+end note
+Coord --> Part: Status = COMMITTED
+
+'[step]
+Part -> Part: Move Intent to CommittedStore
+note right of Part
+  Participant cleans up the
+  languishing intent locally!
+end note
+
+'[step]
+Part --> Client: Return Committed Value
+@enduml
